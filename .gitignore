@@ -9,10 +9,9 @@
 .idea/**/dictionaries
 .idea/**/shelf
 *.pt
-.devcontainer
 local_data
 *.log
-.ssh
+
 
 # data format
 *.csv

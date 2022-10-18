@@ -1,0 +1,114 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.245.0/containers/docker-existing-dockerfile
+{
+	"name": "algsimulation_v3_mtl",
+
+
+	// Sets the run context to one level up instead of the .devcontainer folder.
+	"context": "..",
+
+	// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
+	"dockerFile": "../Dockerfile",
+		
+	// Enable gpu
+	// "runArgs": [
+	// 	"--gpus",
+	// 	"all",
+	// 	"-v",
+	// 	"/home/kmkim/dataset/algsimulation_v3_mtl/save:/workspaces/algsimulation_v3_mtl/src/save",
+	// 	"-v",
+	// 	"/home/kmkim/dataset/algsimulation_v3_mtl/pid_working_logs:/workspaces/algsimulation_v3_mtl/src/pid_working_logs",
+	// 	"-v",
+	// 	"/home/kmkim/dataset/algsimulation_v3_mtl/rawdata:/workspaces/algsimulation_v3_mtl/src/datasets/rawdata"
+	// ],
+	"runArgs": [
+		"--gpus",
+		"all"
+	],
+	"remoteEnv": {"PYTHONPATH": "${containerEnv:PATH}:/workspaces/algsimulation_v3_mtl/src"},
+	
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [8888, 8787, 8786],
+	// "forwardPorts": [6006],
+
+	// Uncomment when using a ptrace-based debugger like C++, Go, and Rust
+	// "runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
+
+	// Uncomment to use the Docker CLI from inside the container. See https://aka.ms/vscode-remote/samples/docker-from-docker.
+	"mounts": [ 
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/dataset/algsimulation_v3_mtl/save,target=/workspaces/algsimulation_v3_mtl/src/save,type=bind",
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/dataset/algsimulation_v3_mtl/pid_working_logs,target=/workspaces/algsimulation_v3_mtl/src/pid_working_logs,type=bind",
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/dataset/algsimulation_v3_mtl/rawdata,target=/workspaces/algsimulation_v3_mtl/src/datasets/rawdata,type=bind",
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/dataset/algsimulation_v3_mtl/libs/gym,target=/dev_env/libs/gym,type=bind",
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/dataset/algsimulation_v3_mtl/libs/matplotlib,target=/dev_env/libs/matplotlib,type=bind",
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/dataset/algsimulation_v3_mtl/libs/mpl-finance,target=/dev_env/libs/mpl-finance,type=bind"
+		],
+	
+	// Uncomment the next line to run commands after the container is created - for example installing curl.
+	"postCreateCommand": [
+		"git config --global --add safe.directory /workspaces/algsimulation_v3_mtl",
+		"pip3 install -e /dev_env/libs/gym",
+		"pip3 install -e /dev_env/libs/matplotlib",
+		"pip3 install -e /dev_env/libs/mpl-finance"
+		],
+		
+	// Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
+	// "remoteUser": "vscode"
+	
+	//which black, pymy, pylint
+	"settings": { 
+		"python.linting.enabled": true,
+		"python.linting.pylintEnabled": true,
+		"python.formatting.blackPath": "/usr/local/bin/black",
+		"python.linting.mypyPath": "/usr/local/bin/mypy",
+		"python.linting.pylintPath": "/usr/local/bin/pylint",
+		"python.envFile": "${workspaceFolder}/.vscode/.env",
+		"python.formatting.provider": "black",
+		"python.linting.mypyEnabled": true,
+		"python.linting.mypyArgs": [
+			"--strict",
+			"src/*.py"
+		],
+		"python.testing.unittestEnabled": false,
+		"python.testing.unittestArgs": [
+			"-v",
+			"-s",
+			"./test",
+			"-p",
+			"*_test.py"
+		],
+		"python.testing.pytestEnabled": true,
+		"python.testing.pytestPath": "pytest",
+		"python.testing.pytestArgs": [
+			"--exitfirst",
+			"--verbose"
+		],
+		"python.testing.autoTestDiscoverOnSaveEnabled": true,
+		"python.sortImports.args": [
+			"--profile", "black"
+		],
+		"python.languageServer": "Pylance",
+		
+		"[python]": {
+			"editor.formatOnSave": true,
+			"editor.codeActionsOnSave": {
+				"source.organizeImports": true
+				}
+			},
+			"editor.tabSize": 4,
+			"github.gitProtocol": "ssh",
+			"files.autoSave": "onFocusChange",
+			"python.analysis.inlayHints.functionReturnTypes": true,
+			"python.analysis.inlayHints.variableTypes": true
+        
+	},
+
+	"extensions": [
+		"donjayamanne.python-extension-pack",
+		"trixnz.go-to-method",
+		"GitHub.vscode-pull-request-github",
+		"magicstack.MagicPython",
+		"msrvida.vscode-sanddance"
+		]
+	
+}
