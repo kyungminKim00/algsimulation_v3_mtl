@@ -8,6 +8,7 @@ RUN apt-get install -y --no-install-recommends apt-utils
 RUN apt-get install -y cmake libopenmpi-dev zlib1g-dev
 RUN apt-get install -y libcairo2-dev
 RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y tzdata
+RUN apt-get install -y git
 RUN apt-get install -y vim-nox
 RUN apt-get install -y tree
 RUN apt-get install -y tzdata
