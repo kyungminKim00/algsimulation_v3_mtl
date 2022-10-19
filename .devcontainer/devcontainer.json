@@ -20,11 +20,7 @@
 		"-v",
 		"${localEnv:DATAHOME}/algsimulation_v3_mtl/rawdata:/workspaces/algsimulation_v3_mtl/src/datasets/rawdata",
 		"-v",
-		"${localEnv:DATAHOME}/algsimulation_v3_mtl/libs/gym:/dev_env/libs/gym",
-		"-v",
-		"${localEnv:DATAHOME}/algsimulation_v3_mtl/libs/matplotlib:/dev_env/libs/matplotlib",
-		"-v",
-		"${localEnv:DATAHOME}/algsimulation_v3_mtl/libs/mpl-finance:/dev_env/libs/mpl-finance"
+		"${localEnv:DATAHOME}/algsimulation_v3_mtl/libs:/workspaces/algsimulation_v3_mtl/libs"
 	],
 	"remoteEnv": {"PYTHONPATH": "${containerEnv:PATH}:/workspaces/algsimulation_v3_mtl/src"},
 	
@@ -40,9 +36,9 @@
 	
 	// Uncomment the next line to run commands after the container is created - for example installing curl.
 	"postCreateCommand": [
-		"pip3 install -e /dev_env/libs/gym",
-		"pip3 install -e /dev_env/libs/matplotlib",
-		"pip3 install -e /dev_env/libs/mpl-finance"
+		"pip3 install -e /workspaces/algsimulation_v3_mtl/libs/gym",
+		"pip3 install -e /workspaces/algsimulation_v3_mtl/libs/matplotlib",
+		"pip3 install -e /workspaces/algsimulation_v3_mtl/libs/mpl-finance"
 		],
 		
 	// Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
