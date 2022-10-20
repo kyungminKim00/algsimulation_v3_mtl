@@ -15,7 +15,6 @@ local_data
 
 # data format
 *.csv
-*.pkl
 *.out
 **buffer*.txt
 **working_model*.txt
@@ -29,9 +28,6 @@ src/datasets/rawdata/
 src/pid_working_logs/
 
 # open src
-gym
-matplotlib
-mpl-finance
 src/save/**
 
 # Generated files
