@@ -3,7 +3,6 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN mkdir /dev_env
 WORKDIR /dev_env
 COPY . .
-COPY ${DATAHOME}/algsimulation_v3_mtl/libs .
 RUN apt-get update && apt-get upgrade -y && apt-get install -y
 RUN apt-get install -y --no-install-recommends apt-utils
 RUN apt-get install -y cmake libopenmpi-dev zlib1g-dev
