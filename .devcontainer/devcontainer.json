@@ -19,9 +19,7 @@
 		"-v",
 		"${localEnv:DATAHOME}/algsimulation_v3_mtl/pid_working_logs:/workspaces/algsimulation_v3_mtl/src/pid_working_logs",
 		"-v",
-		"${localEnv:DATAHOME}/algsimulation_v3_mtl/rawdata:/workspaces/algsimulation_v3_mtl/src/datasets/rawdata",
-		"-v",
-		"${localEnv:DATAHOME}/algsimulation_v3_mtl/libs:/workspaces/algsimulation_v3_mtl/libs"
+		"${localEnv:DATAHOME}/algsimulation_v3_mtl/rawdata:/workspaces/algsimulation_v3_mtl/src/datasets/rawdata"
 	],
 	"remoteEnv": {"PYTHONPATH": "${containerEnv:PATH}:/workspaces/algsimulation_v3_mtl/src"},
 	

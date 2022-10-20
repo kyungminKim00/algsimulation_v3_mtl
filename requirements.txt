@@ -8,7 +8,6 @@ tqdm
 pycairo
 grpcio
 pylint
-matplotlib
 pandas
 pytest
 pytest-cov
@@ -16,7 +15,6 @@ mock
 tox
 isort
 pandas-datareader
-mpl_finance
 pygad
 fire
 statsmodels
@@ -24,10 +22,11 @@ ray
 psutil
 Bottleneck
 ta
-mplfinance
 yfinance
 black
 pyyaml
 plotly
 click
 mpi4py==3.0.3
+mplfinance
+matplotlib
