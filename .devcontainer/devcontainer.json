@@ -90,7 +90,8 @@
 		"trixnz.go-to-method",
 		"GitHub.vscode-pull-request-github",
 		"magicstack.MagicPython",
-		"msrvida.vscode-sanddance"
+		"msrvida.vscode-sanddance",
+		"ms-toolsai.jupyter"
 		]
 	
 }
