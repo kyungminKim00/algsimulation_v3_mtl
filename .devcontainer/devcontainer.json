@@ -91,7 +91,8 @@
 		"GitHub.vscode-pull-request-github",
 		"magicstack.MagicPython",
 		"msrvida.vscode-sanddance",
-		"ms-toolsai.jupyter"
+		"ms-toolsai.jupyter",
+		"GrapeCity.gc-excelviewer"
 		]
 	
 }
