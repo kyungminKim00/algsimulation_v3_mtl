@@ -14,16 +14,16 @@ ignore=CVS
 
 # Add files or directories matching the regex patterns to the blacklist. The
 # regex matches against base names, not paths.
-ignore-patterns=
+ignore-patterns=*fund_selection*, *rllearn*
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-init-hook='import sys; sys.path.append("./libs");
-sys.path.append("./rllearn");
-sys.path.append("./datasets");
-sys.path.append("./envs");
-sys.path.append("./header");
-sys.path.append("./custom_model")'
+init-hook='import sys; sys.path.append("./libs");'
+# sys.path.append("./rllearn");
+#sys.path.append("./datasets");
+#sys.path.append("./envs");
+#sys.path.append("./header");
+#sys.path.append("./custom_model")'
 
 # Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
 # number of processors available to use.
