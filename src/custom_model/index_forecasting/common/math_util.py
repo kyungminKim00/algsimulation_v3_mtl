@@ -78,7 +78,7 @@ def unflatten_vector(vec, shapes):
     arrs = []
     for shape in shapes:
         size = np.prod(shape)
-        arr = vec[i:i + size].reshape(shape)
+        arr = vec[i : i + size].reshape(shape)
         arrs.append(arr)
         i += size
     return arrs
@@ -99,5 +99,7 @@ def discount_with_boundaries(rewards, episode_starts, gamma):
     n_samples = rewards.shape[0]
     discounted_rewards[n_samples - 1] = rewards[n_samples - 1]
     for step in range(n_samples - 2, -1, -1):
-        discounted_rewards[step] = rewards[step] + gamma * discounted_rewards[step + 1] * (1 - episode_starts[step + 1])
+        discounted_rewards[step] = rewards[step] + gamma * discounted_rewards[
+            step + 1
+        ] * (1 - episode_starts[step + 1])
     return discounted_rewards

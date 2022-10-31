@@ -20,8 +20,12 @@ from __future__ import print_function
 
 # pylint: disable=unused-import
 from custom_model.index_forecasting.nets.inception_resnet_v2 import inception_resnet_v2
-from custom_model.index_forecasting.nets.inception_resnet_v2 import inception_resnet_v2_arg_scope
-from custom_model.index_forecasting.nets.inception_resnet_v2 import inception_resnet_v2_base
+from custom_model.index_forecasting.nets.inception_resnet_v2 import (
+    inception_resnet_v2_arg_scope,
+)
+from custom_model.index_forecasting.nets.inception_resnet_v2 import (
+    inception_resnet_v2_base,
+)
 from custom_model.index_forecasting.nets.inception_v1 import inception_v1
 from custom_model.index_forecasting.nets.inception_v1 import inception_v1_arg_scope
 from custom_model.index_forecasting.nets.inception_v1 import inception_v1_base
@@ -34,4 +38,5 @@ from custom_model.index_forecasting.nets.inception_v3 import inception_v3_base
 from custom_model.index_forecasting.nets.inception_v4 import inception_v4
 from custom_model.index_forecasting.nets.inception_v4 import inception_v4_arg_scope
 from custom_model.index_forecasting.nets.inception_v4 import inception_v4_base
+
 # pylint: enable=unused-import

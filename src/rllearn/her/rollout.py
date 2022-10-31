@@ -8,9 +8,22 @@ from rllearn.her.util import convert_episode_to_batch_major
 
 
 class RolloutWorker:
-    def __init__(self, make_env, policy, dims, logger, time_horizon, rollout_batch_size=1,
-                 exploit=False, use_target_net=False, compute_q=False, noise_eps=0,
-                 random_eps=0, history_len=100, render=False):
+    def __init__(
+        self,
+        make_env,
+        policy,
+        dims,
+        logger,
+        time_horizon,
+        rollout_batch_size=1,
+        exploit=False,
+        use_target_net=False,
+        compute_q=False,
+        noise_eps=0,
+        random_eps=0,
+        history_len=100,
+        render=False,
+    ):
         """
         Rollout worker generates experience by interacting with one or many environments.
 
@@ -46,15 +59,23 @@ class RolloutWorker:
         self.envs = [make_env() for _ in range(rollout_batch_size)]
         assert self.time_horizon > 0
 
-        self.info_keys = [key.replace('info_', '') for key in dims.keys() if key.startswith('info_')]
+        self.info_keys = [
+            key.replace("info_", "") for key in dims.keys() if key.startswith("info_")
+        ]
 
         self.success_history = deque(maxlen=history_len)
         self.q_history = deque(maxlen=history_len)
 
         self.n_episodes = 0
-        self.goals = np.empty((self.rollout_batch_size, self.dims['g']), np.float32)  # goals
-        self.initial_obs = np.empty((self.rollout_batch_size, self.dims['o']), np.float32)  # observations
-        self.initial_ag = np.empty((self.rollout_batch_size, self.dims['g']), np.float32)  # achieved goals
+        self.goals = np.empty(
+            (self.rollout_batch_size, self.dims["g"]), np.float32
+        )  # goals
+        self.initial_obs = np.empty(
+            (self.rollout_batch_size, self.dims["o"]), np.float32
+        )  # observations
+        self.initial_ag = np.empty(
+            (self.rollout_batch_size, self.dims["g"]), np.float32
+        )  # achieved goals
         self.reset_all_rollouts()
         self.clear_history()
 
@@ -66,9 +87,9 @@ class RolloutWorker:
         :param index: (int) the index to reset
         """
         obs = self.envs[index].reset()
-        self.initial_obs[index] = obs['observation']
-        self.initial_ag[index] = obs['achieved_goal']
-        self.goals[index] = obs['desired_goal']
+        self.initial_obs[index] = obs["observation"]
+        self.initial_ag[index] = obs["achieved_goal"]
+        self.goals[index] = obs["desired_goal"]
 
     def reset_all_rollouts(self):
         """
@@ -87,23 +108,35 @@ class RolloutWorker:
         self.reset_all_rollouts()
 
         # compute observations
-        observations = np.empty((self.rollout_batch_size, self.dims['o']), np.float32)  # observations
-        achieved_goals = np.empty((self.rollout_batch_size, self.dims['g']), np.float32)  # achieved goals
+        observations = np.empty(
+            (self.rollout_batch_size, self.dims["o"]), np.float32
+        )  # observations
+        achieved_goals = np.empty(
+            (self.rollout_batch_size, self.dims["g"]), np.float32
+        )  # achieved goals
         observations[:] = self.initial_obs
         achieved_goals[:] = self.initial_ag
 
         # generate episodes
         obs, achieved_goals, acts, goals, successes = [], [], [], [], []
-        info_values = [np.empty((self.time_horizon, self.rollout_batch_size, self.dims['info_' + key]), np.float32)
-                       for key in self.info_keys]
+        info_values = [
+            np.empty(
+                (self.time_horizon, self.rollout_batch_size, self.dims["info_" + key]),
+                np.float32,
+            )
+            for key in self.info_keys
+        ]
         q_values = []
         for step in range(self.time_horizon):
             policy_output = self.policy.get_actions(
-                observations, achieved_goals, self.goals,
+                observations,
+                achieved_goals,
+                self.goals,
                 compute_q=self.compute_q,
-                noise_eps=self.noise_eps if not self.exploit else 0.,
-                random_eps=self.random_eps if not self.exploit else 0.,
-                use_target_net=self.use_target_net)
+                noise_eps=self.noise_eps if not self.exploit else 0.0,
+                random_eps=self.random_eps if not self.exploit else 0.0,
+                use_target_net=self.use_target_net,
+            )
 
             if self.compute_q:
                 action, q_value = policy_output
@@ -115,19 +148,21 @@ class RolloutWorker:
                 # The non-batched case should still have a reasonable shape.
                 action = action.reshape(1, -1)
 
-            o_new = np.empty((self.rollout_batch_size, self.dims['o']))
-            ag_new = np.empty((self.rollout_batch_size, self.dims['g']))
+            o_new = np.empty((self.rollout_batch_size, self.dims["o"]))
+            ag_new = np.empty((self.rollout_batch_size, self.dims["g"]))
             success = np.zeros(self.rollout_batch_size)
             # compute new states and observations
             for batch_idx in range(self.rollout_batch_size):
                 try:
                     # We fully ignore the reward here because it will have to be re-computed
                     # for HER.
-                    curr_o_new, _, _, info = self.envs[batch_idx].step(action[batch_idx])
-                    if 'is_success' in info:
-                        success[batch_idx] = info['is_success']
-                    o_new[batch_idx] = curr_o_new['observation']
-                    ag_new[batch_idx] = curr_o_new['achieved_goal']
+                    curr_o_new, _, _, info = self.envs[batch_idx].step(
+                        action[batch_idx]
+                    )
+                    if "is_success" in info:
+                        success[batch_idx] = info["is_success"]
+                    o_new[batch_idx] = curr_o_new["observation"]
+                    ag_new[batch_idx] = curr_o_new["achieved_goal"]
                     for idx, key in enumerate(self.info_keys):
                         info_values[idx][step, batch_idx] = info[key]
                     if self.render:
@@ -136,7 +171,9 @@ class RolloutWorker:
                     return self.generate_rollouts()
 
             if np.isnan(o_new).any():
-                self.logger.warning('NaN caught during rollout generation. Trying again...')
+                self.logger.warning(
+                    "NaN caught during rollout generation. Trying again..."
+                )
                 self.reset_all_rollouts()
                 return self.generate_rollouts()
 
@@ -151,12 +188,9 @@ class RolloutWorker:
         achieved_goals.append(achieved_goals.copy())
         self.initial_obs[:] = observations
 
-        episode = dict(o=obs,
-                       u=acts,
-                       g=goals,
-                       ag=achieved_goals)
+        episode = dict(o=obs, u=acts, g=goals, ag=achieved_goals)
         for key, value in zip(self.info_keys, info_values):
-            episode['info_{}'.format(key)] = value
+            episode["info_{}".format(key)] = value
 
         # stats
         successful = np.array(successes)[-1, :]
@@ -197,10 +231,10 @@ class RolloutWorker:
 
         :param path: (str) the save location
         """
-        with open(path, 'wb') as file_handler:
+        with open(path, "wb") as file_handler:
             pickle.dump(self.policy, file_handler)
 
-    def logs(self, prefix='worker'):
+    def logs(self, prefix="worker"):
         """
         Generates a dictionary that contains all collected statistics.
 
@@ -208,13 +242,13 @@ class RolloutWorker:
         :return: ([(str, float)]) the logging information
         """
         logs = []
-        logs += [('success_rate', np.mean(self.success_history))]
+        logs += [("success_rate", np.mean(self.success_history))]
         if self.compute_q:
-            logs += [('mean_q', np.mean(self.q_history))]
-        logs += [('episode', self.n_episodes)]
+            logs += [("mean_q", np.mean(self.q_history))]
+        logs += [("episode", self.n_episodes)]
 
-        if prefix is not '' and not prefix.endswith('/'):
-            return [(prefix + '/' + key, val) for key, val in logs]
+        if prefix is not "" and not prefix.endswith("/"):
+            return [(prefix + "/" + key, val) for key, val in logs]
         else:
             return logs
 

@@ -15,8 +15,15 @@ from __future__ import print_function
 
 import header.index_forecasting.RUNHEADER as RUNHEADER
 from util import funTime, dict2json, ordinary_return, _replace_cond, _remove_cond
-from datasets.windowing import rolling_apply, rolling_apply_cov, rolling_apply_cross_cov, \
-    fun_mean, fun_cumsum, fun_cov, fun_cross_cov
+from datasets.windowing import (
+    rolling_apply,
+    rolling_apply_cov,
+    rolling_apply_cross_cov,
+    fun_mean,
+    fun_cumsum,
+    fun_cov,
+    fun_cross_cov,
+)
 from datasets.x_selection import get_uniqueness
 from datasets.decoder import pkexample_type_A
 
@@ -54,7 +61,11 @@ class ReadData(object):
     def _get_class_seq(self, data, base_date, forward_ndx, interval):
         tmp = list()
         for days in interval:
-            tmp.append(self._get_returns(data[base_date, :], data[base_date + forward_ndx + days, :]))
+            tmp.append(
+                self._get_returns(
+                    data[base_date, :], data[base_date + forward_ndx + days, :]
+                )
+            )
         return np.array(tmp, dtype=np.float32)
 
     # Crop Data
@@ -66,7 +77,9 @@ class ReadData(object):
         """X data Section
         """
         # given source data
-        self.data = self.source_data[x_start_ndx:x_end_ndx, :]  # x_seq+1 by the num of variables
+        self.data = self.source_data[
+            x_start_ndx:x_end_ndx, :
+        ]  # x_seq+1 by the num of variables
         if len(self.data.shape) == 1:
             _ = self.data.shape
         elif len(self.data.shape) == 2:
@@ -74,17 +87,16 @@ class ReadData(object):
         elif len(self.data.shape) == 3:
             _, self.height, self.width = self.data.shape
         else:
-            assert False, 'None defined dimension!!!'
+            assert False, "None defined dimension!!!"
 
         # Apply standardization
         std = np.std(self.data, axis=0)
-        std = np.where(std == 0, 1E-12, std)
-        self.normal_data = \
-            (self.data - np.mean(self.data, axis=0) + 1E-12) / std
+        std = np.where(std == 0, 1e-12, std)
+        self.normal_data = (self.data - np.mean(self.data, axis=0) + 1e-12) / std
         assert np.allclose(self.data.shape, self.normal_data.shape)
 
         # Apply status_data for 5 days (returns)
-        previous_data = self.source_data[x_start_ndx - 5:x_end_ndx - 5, :]
+        previous_data = self.source_data[x_start_ndx - 5 : x_end_ndx - 5, :]
         self.status_data5 = ordinary_return(v_init=previous_data, v_final=self.data)
 
         # patch min, max
@@ -94,38 +106,60 @@ class ReadData(object):
         """Y data Section
         """
         # y_seq by the num of variables
-        self.class_seq_price = self.target_data[base_date + 1:base_date + forward_ndx + 1, :]
+        self.class_seq_price = self.target_data[
+            base_date + 1 : base_date + forward_ndx + 1, :
+        ]
         self.class_seq_height, self.class_seq_width = self.class_seq_price.shape
 
-        self.class_seq_ratio = self._get_class_seq(self.target_data, base_date, forward_ndx, [-2, -1, 0, 1, 2])
-        self.class_index = self.target_data[base_date + forward_ndx, :]  # +20 days Price(index)
+        self.class_seq_ratio = self._get_class_seq(
+            self.target_data, base_date, forward_ndx, [-2, -1, 0, 1, 2]
+        )
+        self.class_index = self.target_data[
+            base_date + forward_ndx, :
+        ]  # +20 days Price(index)
         self.base_date_price = self.target_data[base_date, :]  # +0 days Price(index)
 
-        self.class_ratio = \
-            self._get_returns(self.target_data[base_date, :],
-                              self.target_data[base_date + forward_ndx, :])  # +20 days
-        self.class_ratio_ref3 = \
-            self._get_returns(self.target_data[base_date - 1, :],
-                              self.target_data[base_date, :])  # today
-        self.class_ratio_ref1 = \
-            self._get_returns(self.target_data[base_date, :],
-                              self.target_data[base_date + forward_ndx + ref_forward_ndx[0], :])  # +10 days
-        self.class_ratio_ref2 = \
-            self._get_returns(self.target_data[base_date, :],
-                              self.target_data[base_date + forward_ndx + ref_forward_ndx[1], :])  # +15 days
-        self.class_ratio_ref4 = \
-            self._get_returns(self.target_data[base_date, :],
-                              self.target_data[base_date + forward_ndx + ref_forward_ndx[2], :])  # +25 days
-        self.class_ratio_ref5 = \
-            self._get_returns(self.target_data[base_date, :],
-                              self.target_data[base_date + forward_ndx + ref_forward_ndx[3], :])  # +30 days
+        self.class_ratio = self._get_returns(
+            self.target_data[base_date, :], self.target_data[base_date + forward_ndx, :]
+        )  # +20 days
+        self.class_ratio_ref3 = self._get_returns(
+            self.target_data[base_date - 1, :], self.target_data[base_date, :]
+        )  # today
+        self.class_ratio_ref1 = self._get_returns(
+            self.target_data[base_date, :],
+            self.target_data[base_date + forward_ndx + ref_forward_ndx[0], :],
+        )  # +10 days
+        self.class_ratio_ref2 = self._get_returns(
+            self.target_data[base_date, :],
+            self.target_data[base_date + forward_ndx + ref_forward_ndx[1], :],
+        )  # +15 days
+        self.class_ratio_ref4 = self._get_returns(
+            self.target_data[base_date, :],
+            self.target_data[base_date + forward_ndx + ref_forward_ndx[2], :],
+        )  # +25 days
+        self.class_ratio_ref5 = self._get_returns(
+            self.target_data[base_date, :],
+            self.target_data[base_date + forward_ndx + ref_forward_ndx[3], :],
+        )  # +30 days
 
-        self.class_label = np.where(self.class_ratio > 0, 1, 0)  # +20 days up/down label
-        self.class_label_ref1 = np.where(self.class_ratio_ref1 > 0, 1, 0)  # +10 days up/down label
-        self.class_label_ref2 = np.where(self.class_ratio_ref2 > 0, 1, 0)  # +15 days up/down label
-        self.class_label_ref3 = np.where(self.class_ratio_ref3 > 0, 1, 0)  # +0 days up/down label
-        self.class_label_ref4 = np.where(self.class_ratio_ref4 > 0, 1, 0)  # +25 days up/down label
-        self.class_label_ref5 = np.where(self.class_ratio_ref5 > 0, 1, 0)  # +30 days up/down label
+        self.class_label = np.where(
+            self.class_ratio > 0, 1, 0
+        )  # +20 days up/down label
+        self.class_label_ref1 = np.where(
+            self.class_ratio_ref1 > 0, 1, 0
+        )  # +10 days up/down label
+        self.class_label_ref2 = np.where(
+            self.class_ratio_ref2 > 0, 1, 0
+        )  # +15 days up/down label
+        self.class_label_ref3 = np.where(
+            self.class_ratio_ref3 > 0, 1, 0
+        )  # +0 days up/down label
+        self.class_label_ref4 = np.where(
+            self.class_ratio_ref4 > 0, 1, 0
+        )  # +25 days up/down label
+        self.class_label_ref5 = np.where(
+            self.class_ratio_ref5 > 0, 1, 0
+        )  # +30 days up/down label
 
         """Date data Section
         """
@@ -181,7 +215,7 @@ class ReadData(object):
 
 
 def _get_dataset_filename(dataset_dir, split_name, cv_idx):
-    if split_name == 'test':
+    if split_name == "test":
         output_filename = _FILE_PATTERN % (cv_idx, split_name)
     else:
         output_filename = _FILE_PATTERN % (cv_idx, split_name)
@@ -194,7 +228,10 @@ def cv_index_configuration(date, verbose):
     start_end_index_list = np.zeros([_NUM_SHARDS, 2])  # start and end index
     if verbose == 0:  # train and validation
         for shard_id in range(_NUM_SHARDS):
-            start_end_index_list[shard_id] = [shard_id * num_per_shard, min((shard_id + 1) * num_per_shard, len(date))]
+            start_end_index_list[shard_id] = [
+                shard_id * num_per_shard,
+                min((shard_id + 1) * num_per_shard, len(date)),
+            ]
     else:
         start_end_index_list[0] = [0, len(date)]  # from 0 to end
 
@@ -220,78 +257,218 @@ def _cv_index_configuration(start_end_index_list, verbose):
     return index_container
 
 
-def convert_dataset(sd_dates,
-                    sd_data, sd_ma_data_5, sd_ma_data_10, sd_ma_data_20, sd_ma_data_60,
-                    sd_diff_data, sd_diff_ma_data_5, sd_diff_ma_data_10, sd_diff_ma_data_20, sd_diff_ma_data_60,
-                    sd_velocity_data, sd_velocity_ma_data_5, sd_velocity_ma_data_10, sd_velocity_ma_data_20,
-                    sd_velocity_ma_data_60,
-                    sd_min_max_nor_data, sd_min_max_nor_ma_data_5, sd_min_max_nor_ma_data_10,
-                    sd_min_max_nor_ma_data_20, sd_min_max_nor_ma_data_60,
-                    target_data, fund_his_data_30, fund_cov_data_60, extra_cov_data_60,
-                    x_seq, forward_ndx, class_names_to_ids, dataset_dir, verbose):
-    """Converts the given filenames to a TFRecord - tf.train.examples.
-    """
+def convert_dataset(
+    sd_dates,
+    sd_data,
+    sd_ma_data_5,
+    sd_ma_data_10,
+    sd_ma_data_20,
+    sd_ma_data_60,
+    sd_diff_data,
+    sd_diff_ma_data_5,
+    sd_diff_ma_data_10,
+    sd_diff_ma_data_20,
+    sd_diff_ma_data_60,
+    sd_velocity_data,
+    sd_velocity_ma_data_5,
+    sd_velocity_ma_data_10,
+    sd_velocity_ma_data_20,
+    sd_velocity_ma_data_60,
+    sd_min_max_nor_data,
+    sd_min_max_nor_ma_data_5,
+    sd_min_max_nor_ma_data_10,
+    sd_min_max_nor_ma_data_20,
+    sd_min_max_nor_ma_data_60,
+    target_data,
+    fund_his_data_30,
+    fund_cov_data_60,
+    extra_cov_data_60,
+    x_seq,
+    forward_ndx,
+    class_names_to_ids,
+    dataset_dir,
+    verbose,
+):
+    """Converts the given filenames to a TFRecord - tf.train.examples."""
 
     date = sd_dates
 
     # Data Binding.. initialize data helper class
-    sd_reader = ReadData(date, sd_data, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_reader_ma5 = ReadData(date, sd_ma_data_5, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_reader_ma10 = ReadData(date, sd_ma_data_10, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_reader_ma20 = ReadData(date, sd_ma_data_20, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_reader_ma60 = ReadData(date, sd_ma_data_60, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_diff_reader = ReadData(date, sd_diff_data, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_diff_reader_ma5 = ReadData(date, sd_diff_ma_data_5, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_diff_reader_ma10 = ReadData(date, sd_diff_ma_data_10, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_diff_reader_ma20 = ReadData(date, sd_diff_ma_data_20, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_diff_reader_ma60 = ReadData(date, sd_diff_ma_data_60, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_velocity_reader = ReadData(date, sd_velocity_data, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_velocity_reader_ma5 = ReadData(date, sd_velocity_ma_data_5, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_velocity_reader_ma10 = ReadData(date, sd_velocity_ma_data_10, target_data, x_seq, forward_ndx,
-                                       class_names_to_ids)
-    sd_velocity_reader_ma20 = ReadData(date, sd_velocity_ma_data_20, target_data, x_seq, forward_ndx,
-                                       class_names_to_ids)
-    sd_velocity_reader_ma60 = ReadData(date, sd_velocity_ma_data_60, target_data, x_seq, forward_ndx,
-                                       class_names_to_ids)
-    sd_min_max_nor_reader = ReadData(date, sd_min_max_nor_data, target_data, x_seq, forward_ndx, class_names_to_ids)
-    sd_min_max_nor_reader_ma5 = ReadData(date, sd_min_max_nor_ma_data_5, target_data, x_seq, forward_ndx,
-                                         class_names_to_ids)
-    sd_min_max_nor_reader_ma10 = ReadData(date, sd_min_max_nor_ma_data_10, target_data, x_seq, forward_ndx,
-                                          class_names_to_ids)
-    sd_min_max_nor_reader_ma20 = ReadData(date, sd_min_max_nor_ma_data_20, target_data, x_seq, forward_ndx,
-                                          class_names_to_ids)
-    sd_min_max_nor_reader_ma60 = ReadData(date, sd_min_max_nor_ma_data_60, target_data, x_seq, forward_ndx,
-                                          class_names_to_ids)
-    fund_his_reader_30 = ReadData(date, fund_his_data_30, target_data, x_seq, forward_ndx, class_names_to_ids)
-    fund_cov_reader_60 = ReadData(date, fund_cov_data_60, target_data, x_seq, forward_ndx, class_names_to_ids)
-    extra_cov_reader_60 = ReadData(date, extra_cov_data_60, target_data, x_seq, forward_ndx, class_names_to_ids)
+    sd_reader = ReadData(
+        date, sd_data, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_reader_ma5 = ReadData(
+        date, sd_ma_data_5, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_reader_ma10 = ReadData(
+        date, sd_ma_data_10, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_reader_ma20 = ReadData(
+        date, sd_ma_data_20, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_reader_ma60 = ReadData(
+        date, sd_ma_data_60, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_diff_reader = ReadData(
+        date, sd_diff_data, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_diff_reader_ma5 = ReadData(
+        date, sd_diff_ma_data_5, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_diff_reader_ma10 = ReadData(
+        date, sd_diff_ma_data_10, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_diff_reader_ma20 = ReadData(
+        date, sd_diff_ma_data_20, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_diff_reader_ma60 = ReadData(
+        date, sd_diff_ma_data_60, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_velocity_reader = ReadData(
+        date, sd_velocity_data, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_velocity_reader_ma5 = ReadData(
+        date, sd_velocity_ma_data_5, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_velocity_reader_ma10 = ReadData(
+        date,
+        sd_velocity_ma_data_10,
+        target_data,
+        x_seq,
+        forward_ndx,
+        class_names_to_ids,
+    )
+    sd_velocity_reader_ma20 = ReadData(
+        date,
+        sd_velocity_ma_data_20,
+        target_data,
+        x_seq,
+        forward_ndx,
+        class_names_to_ids,
+    )
+    sd_velocity_reader_ma60 = ReadData(
+        date,
+        sd_velocity_ma_data_60,
+        target_data,
+        x_seq,
+        forward_ndx,
+        class_names_to_ids,
+    )
+    sd_min_max_nor_reader = ReadData(
+        date, sd_min_max_nor_data, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    sd_min_max_nor_reader_ma5 = ReadData(
+        date,
+        sd_min_max_nor_ma_data_5,
+        target_data,
+        x_seq,
+        forward_ndx,
+        class_names_to_ids,
+    )
+    sd_min_max_nor_reader_ma10 = ReadData(
+        date,
+        sd_min_max_nor_ma_data_10,
+        target_data,
+        x_seq,
+        forward_ndx,
+        class_names_to_ids,
+    )
+    sd_min_max_nor_reader_ma20 = ReadData(
+        date,
+        sd_min_max_nor_ma_data_20,
+        target_data,
+        x_seq,
+        forward_ndx,
+        class_names_to_ids,
+    )
+    sd_min_max_nor_reader_ma60 = ReadData(
+        date,
+        sd_min_max_nor_ma_data_60,
+        target_data,
+        x_seq,
+        forward_ndx,
+        class_names_to_ids,
+    )
+    fund_his_reader_30 = ReadData(
+        date, fund_his_data_30, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    fund_cov_reader_60 = ReadData(
+        date, fund_cov_data_60, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
+    extra_cov_reader_60 = ReadData(
+        date, extra_cov_data_60, target_data, x_seq, forward_ndx, class_names_to_ids
+    )
 
     # Data set configuration - generate cross validation index
     index_container, verbose = cv_index_configuration(date, verbose)
 
-    _convert_dataset(date,
-                     sd_reader, sd_reader_ma5, sd_reader_ma10, sd_reader_ma20, sd_reader_ma60,
-                     sd_diff_reader, sd_diff_reader_ma5, sd_diff_reader_ma10, sd_diff_reader_ma20, sd_diff_reader_ma60,
-                     sd_velocity_reader, sd_velocity_reader_ma5, sd_velocity_reader_ma10, sd_velocity_reader_ma20,
-                     sd_velocity_reader_ma60,
-                     sd_min_max_nor_reader, sd_min_max_nor_reader_ma5, sd_min_max_nor_reader_ma10,
-                     sd_min_max_nor_reader_ma20, sd_min_max_nor_reader_ma60,
-                     fund_his_reader_30, fund_cov_reader_60, extra_cov_reader_60, x_seq, forward_ndx, index_container,
-                     dataset_dir, verbose)
+    _convert_dataset(
+        date,
+        sd_reader,
+        sd_reader_ma5,
+        sd_reader_ma10,
+        sd_reader_ma20,
+        sd_reader_ma60,
+        sd_diff_reader,
+        sd_diff_reader_ma5,
+        sd_diff_reader_ma10,
+        sd_diff_reader_ma20,
+        sd_diff_reader_ma60,
+        sd_velocity_reader,
+        sd_velocity_reader_ma5,
+        sd_velocity_reader_ma10,
+        sd_velocity_reader_ma20,
+        sd_velocity_reader_ma60,
+        sd_min_max_nor_reader,
+        sd_min_max_nor_reader_ma5,
+        sd_min_max_nor_reader_ma10,
+        sd_min_max_nor_reader_ma20,
+        sd_min_max_nor_reader_ma60,
+        fund_his_reader_30,
+        fund_cov_reader_60,
+        extra_cov_reader_60,
+        x_seq,
+        forward_ndx,
+        index_container,
+        dataset_dir,
+        verbose,
+    )
 
-    sys.stdout.write('\n')
+    sys.stdout.write("\n")
     sys.stdout.flush()
 
 
-def _convert_dataset(date,
-                     sd_reader, sd_reader_ma5, sd_reader_ma10, sd_reader_ma20, sd_reader_ma60,
-                     sd_diff_reader, sd_diff_reader_ma5, sd_diff_reader_ma10, sd_diff_reader_ma20, sd_diff_reader_ma60,
-                     sd_velocity_reader, sd_velocity_reader_ma5, sd_velocity_reader_ma10, sd_velocity_reader_ma20,
-                     sd_velocity_reader_ma60,
-                     sd_min_max_nor_reader, sd_min_max_nor_reader_ma5, sd_min_max_nor_reader_ma10,
-                     sd_min_max_nor_reader_ma20, sd_min_max_nor_reader_ma60,
-                     fund_his_reader_30, fund_cov_reader_60, extra_cov_reader_60,
-                     x_seq, forward_ndx, index_container, dataset_dir, verbose):
+def _convert_dataset(
+    date,
+    sd_reader,
+    sd_reader_ma5,
+    sd_reader_ma10,
+    sd_reader_ma20,
+    sd_reader_ma60,
+    sd_diff_reader,
+    sd_diff_reader_ma5,
+    sd_diff_reader_ma10,
+    sd_diff_reader_ma20,
+    sd_diff_reader_ma60,
+    sd_velocity_reader,
+    sd_velocity_reader_ma5,
+    sd_velocity_reader_ma10,
+    sd_velocity_reader_ma20,
+    sd_velocity_reader_ma60,
+    sd_min_max_nor_reader,
+    sd_min_max_nor_reader_ma5,
+    sd_min_max_nor_reader_ma10,
+    sd_min_max_nor_reader_ma20,
+    sd_min_max_nor_reader_ma60,
+    fund_his_reader_30,
+    fund_cov_reader_60,
+    extra_cov_reader_60,
+    x_seq,
+    forward_ndx,
+    index_container,
+    dataset_dir,
+    verbose,
+):
     with tf.Graph().as_default():
         if verbose == 0:  # for train and validation
             for cv_idx in range(len(index_container)):
@@ -299,64 +476,172 @@ def _convert_dataset(date,
                 train_list = index_container[cv_idx][1]
 
                 # for validation
-                output_filename = _get_dataset_filename(dataset_dir, 'validation', cv_idx)
-                write_patch(sd_reader, sd_reader_ma5, sd_reader_ma10, sd_reader_ma20, sd_reader_ma60,
-                            sd_diff_reader, sd_diff_reader_ma5, sd_diff_reader_ma10, sd_diff_reader_ma20,
-                            sd_diff_reader_ma60,
-                            sd_velocity_reader, sd_velocity_reader_ma5, sd_velocity_reader_ma10,
-                            sd_velocity_reader_ma20, sd_velocity_reader_ma60,
-                            sd_min_max_nor_reader, sd_min_max_nor_reader_ma5, sd_min_max_nor_reader_ma10,
-                            sd_min_max_nor_reader_ma20, sd_min_max_nor_reader_ma60,
-                            fund_his_reader_30, fund_cov_reader_60, extra_cov_reader_60,
-                            x_seq, forward_ndx, validation_list, output_filename, stride=1)
+                output_filename = _get_dataset_filename(
+                    dataset_dir, "validation", cv_idx
+                )
+                write_patch(
+                    sd_reader,
+                    sd_reader_ma5,
+                    sd_reader_ma10,
+                    sd_reader_ma20,
+                    sd_reader_ma60,
+                    sd_diff_reader,
+                    sd_diff_reader_ma5,
+                    sd_diff_reader_ma10,
+                    sd_diff_reader_ma20,
+                    sd_diff_reader_ma60,
+                    sd_velocity_reader,
+                    sd_velocity_reader_ma5,
+                    sd_velocity_reader_ma10,
+                    sd_velocity_reader_ma20,
+                    sd_velocity_reader_ma60,
+                    sd_min_max_nor_reader,
+                    sd_min_max_nor_reader_ma5,
+                    sd_min_max_nor_reader_ma10,
+                    sd_min_max_nor_reader_ma20,
+                    sd_min_max_nor_reader_ma60,
+                    fund_his_reader_30,
+                    fund_cov_reader_60,
+                    extra_cov_reader_60,
+                    x_seq,
+                    forward_ndx,
+                    validation_list,
+                    output_filename,
+                    stride=1,
+                )
 
                 # for train
-                output_filename = _get_dataset_filename(dataset_dir, 'train', cv_idx)
-                write_patch(sd_reader, sd_reader_ma5, sd_reader_ma10, sd_reader_ma20, sd_reader_ma60,
-                            sd_diff_reader, sd_diff_reader_ma5, sd_diff_reader_ma10, sd_diff_reader_ma20,
-                            sd_diff_reader_ma60,
-                            sd_velocity_reader, sd_velocity_reader_ma5, sd_velocity_reader_ma10,
-                            sd_velocity_reader_ma20, sd_velocity_reader_ma60,
-                            sd_min_max_nor_reader, sd_min_max_nor_reader_ma5, sd_min_max_nor_reader_ma10,
-                            sd_min_max_nor_reader_ma20, sd_min_max_nor_reader_ma60,
-                            fund_his_reader_30, fund_cov_reader_60, extra_cov_reader_60,
-                            x_seq, forward_ndx, train_list, output_filename, stride=2)
+                output_filename = _get_dataset_filename(dataset_dir, "train", cv_idx)
+                write_patch(
+                    sd_reader,
+                    sd_reader_ma5,
+                    sd_reader_ma10,
+                    sd_reader_ma20,
+                    sd_reader_ma60,
+                    sd_diff_reader,
+                    sd_diff_reader_ma5,
+                    sd_diff_reader_ma10,
+                    sd_diff_reader_ma20,
+                    sd_diff_reader_ma60,
+                    sd_velocity_reader,
+                    sd_velocity_reader_ma5,
+                    sd_velocity_reader_ma10,
+                    sd_velocity_reader_ma20,
+                    sd_velocity_reader_ma60,
+                    sd_min_max_nor_reader,
+                    sd_min_max_nor_reader_ma5,
+                    sd_min_max_nor_reader_ma10,
+                    sd_min_max_nor_reader_ma20,
+                    sd_min_max_nor_reader_ma60,
+                    fund_his_reader_30,
+                    fund_cov_reader_60,
+                    extra_cov_reader_60,
+                    x_seq,
+                    forward_ndx,
+                    train_list,
+                    output_filename,
+                    stride=2,
+                )
         elif verbose == 2:
             train_list = index_container[[0]]
             # for train only
-            output_filename = _get_dataset_filename(dataset_dir, 'train', 0)
-            write_patch(sd_reader, sd_reader_ma5, sd_reader_ma10, sd_reader_ma20, sd_reader_ma60,
-                        sd_diff_reader, sd_diff_reader_ma5, sd_diff_reader_ma10, sd_diff_reader_ma20,
-                        sd_diff_reader_ma60,
-                        sd_velocity_reader, sd_velocity_reader_ma5, sd_velocity_reader_ma10,
-                        sd_velocity_reader_ma20, sd_velocity_reader_ma60,
-                        sd_min_max_nor_reader, sd_min_max_nor_reader_ma5, sd_min_max_nor_reader_ma10,
-                        sd_min_max_nor_reader_ma20, sd_min_max_nor_reader_ma60,
-                        fund_his_reader_30, fund_cov_reader_60, extra_cov_reader_60,
-                        x_seq, forward_ndx, train_list, output_filename, stride=2)
+            output_filename = _get_dataset_filename(dataset_dir, "train", 0)
+            write_patch(
+                sd_reader,
+                sd_reader_ma5,
+                sd_reader_ma10,
+                sd_reader_ma20,
+                sd_reader_ma60,
+                sd_diff_reader,
+                sd_diff_reader_ma5,
+                sd_diff_reader_ma10,
+                sd_diff_reader_ma20,
+                sd_diff_reader_ma60,
+                sd_velocity_reader,
+                sd_velocity_reader_ma5,
+                sd_velocity_reader_ma10,
+                sd_velocity_reader_ma20,
+                sd_velocity_reader_ma60,
+                sd_min_max_nor_reader,
+                sd_min_max_nor_reader_ma5,
+                sd_min_max_nor_reader_ma10,
+                sd_min_max_nor_reader_ma20,
+                sd_min_max_nor_reader_ma60,
+                fund_his_reader_30,
+                fund_cov_reader_60,
+                extra_cov_reader_60,
+                x_seq,
+                forward_ndx,
+                train_list,
+                output_filename,
+                stride=2,
+            )
         else:  # verbose=1 for test
             test_list = index_container[[0]]
-            output_filename = _get_dataset_filename(dataset_dir, 'test', 0)
-            write_patch(sd_reader, sd_reader_ma5, sd_reader_ma10, sd_reader_ma20, sd_reader_ma60,
-                        sd_diff_reader, sd_diff_reader_ma5, sd_diff_reader_ma10, sd_diff_reader_ma20,
-                        sd_diff_reader_ma60,
-                        sd_velocity_reader, sd_velocity_reader_ma5, sd_velocity_reader_ma10,
-                        sd_velocity_reader_ma20, sd_velocity_reader_ma60,
-                        sd_min_max_nor_reader, sd_min_max_nor_reader_ma5, sd_min_max_nor_reader_ma10,
-                        sd_min_max_nor_reader_ma20, sd_min_max_nor_reader_ma60,
-                        fund_his_reader_30, fund_cov_reader_60, extra_cov_reader_60,
-                        x_seq, forward_ndx, test_list, output_filename, stride=1)
-
-
-@funTime('Converting data')
-def write_patch(sd_reader, sd_reader_ma5, sd_reader_ma10, sd_reader_ma20, sd_reader_ma60,
-                sd_diff_reader, sd_diff_reader_ma5, sd_diff_reader_ma10, sd_diff_reader_ma20, sd_diff_reader_ma60,
-                sd_velocity_reader, sd_velocity_reader_ma5, sd_velocity_reader_ma10, sd_velocity_reader_ma20,
+            output_filename = _get_dataset_filename(dataset_dir, "test", 0)
+            write_patch(
+                sd_reader,
+                sd_reader_ma5,
+                sd_reader_ma10,
+                sd_reader_ma20,
+                sd_reader_ma60,
+                sd_diff_reader,
+                sd_diff_reader_ma5,
+                sd_diff_reader_ma10,
+                sd_diff_reader_ma20,
+                sd_diff_reader_ma60,
+                sd_velocity_reader,
+                sd_velocity_reader_ma5,
+                sd_velocity_reader_ma10,
+                sd_velocity_reader_ma20,
                 sd_velocity_reader_ma60,
-                sd_min_max_nor_reader, sd_min_max_nor_reader_ma5, sd_min_max_nor_reader_ma10,
-                sd_min_max_nor_reader_ma20, sd_min_max_nor_reader_ma60,
-                fund_his_reader_30, fund_cov_reader_60, extra_cov_reader_60,
-                x_seq, forward_ndx, index_container, output_filename, stride):
+                sd_min_max_nor_reader,
+                sd_min_max_nor_reader_ma5,
+                sd_min_max_nor_reader_ma10,
+                sd_min_max_nor_reader_ma20,
+                sd_min_max_nor_reader_ma60,
+                fund_his_reader_30,
+                fund_cov_reader_60,
+                extra_cov_reader_60,
+                x_seq,
+                forward_ndx,
+                test_list,
+                output_filename,
+                stride=1,
+            )
+
+
+@funTime("Converting data")
+def write_patch(
+    sd_reader,
+    sd_reader_ma5,
+    sd_reader_ma10,
+    sd_reader_ma20,
+    sd_reader_ma60,
+    sd_diff_reader,
+    sd_diff_reader_ma5,
+    sd_diff_reader_ma10,
+    sd_diff_reader_ma20,
+    sd_diff_reader_ma60,
+    sd_velocity_reader,
+    sd_velocity_reader_ma5,
+    sd_velocity_reader_ma10,
+    sd_velocity_reader_ma20,
+    sd_velocity_reader_ma60,
+    sd_min_max_nor_reader,
+    sd_min_max_nor_reader_ma5,
+    sd_min_max_nor_reader_ma10,
+    sd_min_max_nor_reader_ma20,
+    sd_min_max_nor_reader_ma60,
+    fund_his_reader_30,
+    fund_cov_reader_60,
+    extra_cov_reader_60,
+    x_seq,
+    forward_ndx,
+    index_container,
+    output_filename,
+    stride,
+):
     # Get patch
     pk_data = list()
     with tf.io.TFRecordWriter(output_filename) as tfrecord_writer:
@@ -365,11 +650,15 @@ def write_patch(sd_reader, sd_reader_ma5, sd_reader_ma10, sd_reader_ma20, sd_rea
             start_ndx, end_ndx = index_container[idx]
             start_ndx, end_ndx = int(start_ndx), int(end_ndx)  # type casting
             for i in range(start_ndx, end_ndx, stride):
-                sys.stdout.write('\r>> [%d] Converting data %s' % (idx, output_filename))
+                sys.stdout.write(
+                    "\r>> [%d] Converting data %s" % (idx, output_filename)
+                )
                 sys.stdout.flush()
 
                 # Read Data
-                if ((i - x_seq * 2) > 0) and ((i + forward_ndx + ref_forward_ndx[-1]) < end_ndx):
+                if ((i - x_seq * 2) > 0) and (
+                    (i + forward_ndx + ref_forward_ndx[-1]) < end_ndx
+                ):
                     sd_reader.get_patch(i)
                     sd_reader_ma5.get_patch(i)
                     sd_reader_ma10.get_patch(i)
@@ -406,93 +695,155 @@ def write_patch(sd_reader, sd_reader_ma5, sd_reader_ma10, sd_reader_ma20, sd_rea
                     # tfrecord_writer.write(example.SerializeToString())
 
                     # when only support pickle, e.g. mpi
-                    pk_data.append(decoder(sd_reader, sd_reader_ma5, sd_reader_ma10, sd_reader_ma20, sd_reader_ma60,
-                                           sd_diff_reader, sd_diff_reader_ma5, sd_diff_reader_ma10,
-                                           sd_diff_reader_ma20, sd_diff_reader_ma60,
-                                           sd_velocity_reader, sd_velocity_reader_ma5, sd_velocity_reader_ma10,
-                                           sd_velocity_reader_ma20, sd_velocity_reader_ma60,
-                                           sd_min_max_nor_reader, sd_min_max_nor_reader_ma5,
-                                           sd_min_max_nor_reader_ma10,
-                                           sd_min_max_nor_reader_ma20, sd_min_max_nor_reader_ma60,
-                                           fund_his_reader_30, fund_cov_reader_60, extra_cov_reader_60))
+                    pk_data.append(
+                        decoder(
+                            sd_reader,
+                            sd_reader_ma5,
+                            sd_reader_ma10,
+                            sd_reader_ma20,
+                            sd_reader_ma60,
+                            sd_diff_reader,
+                            sd_diff_reader_ma5,
+                            sd_diff_reader_ma10,
+                            sd_diff_reader_ma20,
+                            sd_diff_reader_ma60,
+                            sd_velocity_reader,
+                            sd_velocity_reader_ma5,
+                            sd_velocity_reader_ma10,
+                            sd_velocity_reader_ma20,
+                            sd_velocity_reader_ma60,
+                            sd_min_max_nor_reader,
+                            sd_min_max_nor_reader_ma5,
+                            sd_min_max_nor_reader_ma10,
+                            sd_min_max_nor_reader_ma20,
+                            sd_min_max_nor_reader_ma60,
+                            fund_his_reader_30,
+                            fund_cov_reader_60,
+                            extra_cov_reader_60,
+                        )
+                    )
 
-    pk_output_filename = output_filename.split('tfrecord')[0] + 'pkl'
-    with open(pk_output_filename, 'wb') as fp:
+    pk_output_filename = output_filename.split("tfrecord")[0] + "pkl"
+    with open(pk_output_filename, "wb") as fp:
         pickle.dump(pk_data, fp)
-        print('\n' + pk_output_filename + ':sample_size ' + str(len(pk_data)))
+        print("\n" + pk_output_filename + ":sample_size " + str(len(pk_data)))
         fp.close()
 
 
-def _tfexample(patch_sd, patch_sd_ma5, patch_sd_ma10, patch_sd_ma20, patch_sd_ma60,
-               patch_sd_diff, patch_sd_diff_ma5, patch_sd_diff_ma10, patch_sd_diff_ma20, patch_sd_diff_ma60,
-               patch_sd_velocity, patch_sd_velocity_ma5, patch_sd_velocity_ma10, patch_sd_velocity_ma20,
-               patch_sd_velocity_ma60,
-               patch_sd_min_max_nor, patch_sd_min_max_nor_ma5, patch_sd_min_max_nor_ma10, patch_sd_min_max_nor_ma20,
-               patch_sd_min_max_nor_ma60,
-               patch_fund_his_30, patch_cov_60, patch_extra_cov_reader_60):
-    return tf.train.Example(features=tf.train.Features(feature={
-        'structure/data': float_feature(patch_sd.data),
-        'structure/data_max': float_feature(sd_max),
-        'structure/data_min': float_feature(sd_min),
-        'structure/data_ma5': float_feature(patch_sd_ma5.data),
-        'structure/data_ma10': float_feature(patch_sd_ma10.data),
-        'structure/data_ma20': float_feature(patch_sd_ma20.data),
-        'structure/data_ma60': float_feature(patch_sd_ma60.data),
-        'structure/normal': float_feature(patch_sd.normal_data),
-        'structure/normal_ma5': float_feature(patch_sd_ma5.normal_data),
-        'structure/normal_ma10': float_feature(patch_sd_ma10.normal_data),
-        'structure/normal_ma20': float_feature(patch_sd_ma20.normal_data),
-        'structure/normal_ma60': float_feature(patch_sd_ma60.normal_data),
-        'structure/diff': float_feature(patch_sd_diff.normal_data),
-        'structure/diff_ma5': float_feature(patch_sd_diff_ma5.normal_data),
-        'structure/diff_ma10': float_feature(patch_sd_diff_ma10.normal_data),
-        'structure/diff_ma20': float_feature(patch_sd_diff_ma20.normal_data),
-        'structure/diff_ma60': float_feature(patch_sd_diff_ma60.normal_data),
-        'structure/velocity': float_feature(patch_sd_velocity.normal_data),
-        'structure/velocity_ma5': float_feature(patch_sd_velocity_ma5.normal_data),
-        'structure/velocity_ma10': float_feature(patch_sd_velocity_ma10.normal_data),
-        'structure/velocity_ma20': float_feature(patch_sd_velocity_ma20.normal_data),
-        'structure/velocity_ma60': float_feature(patch_sd_velocity_ma60.normal_data),
-        'structure/min_max_nor': float_feature(patch_sd_min_max_nor.data),
-        'structure/min_max_nor_ma5': float_feature(patch_sd_min_max_nor_ma5.data),
-        'structure/min_max_nor_ma10': float_feature(patch_sd_min_max_nor_ma10.data),
-        'structure/min_max_nor_ma20': float_feature(patch_sd_min_max_nor_ma20.data),
-        'structure/min_max_nor_ma60': float_feature(patch_sd_min_max_nor_ma60.data),
-        'structure/extra_cov': float_feature(patch_extra_cov_reader_60.data),
-        'structure/height': int64_feature(patch_sd.height),
-        'structure/width': int64_feature(patch_sd.width),
-        'structure/class/seq_price': float_feature(patch_sd.class_seq_price),
-        'structure/class/seq_ratio': float_feature(patch_sd.class_seq_ratio),
-        'structure/class/seq_height': int64_feature(patch_sd.class_seq_height),
-        'structure/class/seq_width': int64_feature(patch_sd.class_seq_width),
-        # 'structure/class/label': int64_feature(patch_sd.class_label),
-        'structure/class/index': float_feature(patch_sd.class_index),
-        'structure/class/ratio': float_feature(patch_sd.class_ratio),
-        'structure/class/ratio_ref0': float_feature(patch_sd.class_ratio_ref0),
-        'structure/class/ratio_ref1': float_feature(patch_sd.class_ratio_ref1),
-        'structure/class/ratio_ref2': float_feature(patch_sd.class_ratio_ref2),
-        'structure/class/ratio_ref3': float_feature(patch_sd.class_ratio_ref3),
-        'structure/class/ratio_ref4': float_feature(patch_sd.class_ratio_ref4),
-        'structure/class/ratio_ref5': float_feature(patch_sd.class_ratio_ref5),
-        'structure/class/ratio_ref6': float_feature(patch_sd.class_ratio_ref6),
-        'structure/class/ratio_ref7': float_feature(patch_sd.class_ratio_ref7),
-        'fund_his/cov60': float_feature(patch_cov_60.data[-1]),
-        'fund_his/data_cumsum30': float_feature(patch_fund_his_30.data[-1]),
-        'fund_his/height': int64_feature(patch_fund_his_30.height),
-        'fund_his/width': int64_feature(patch_fund_his_30.width),
-        'fund_his/patch_min': float_feature(patch_fund_his_30.patch_min),
-        'fund_his/patch_max': float_feature(patch_fund_his_30.patch_max),
-        'date/base_date_label': bytes_feature(patch_sd.base_date_label),
-        'date/base_date_index': int64_feature(patch_sd.base_date_index),
-        'date/prediction_date_label': bytes_feature(patch_sd.prediction_date_label),
-        'date/prediction_date_index': int64_feature(patch_sd.prediction_date_index),
-    }))
+def _tfexample(
+    patch_sd,
+    patch_sd_ma5,
+    patch_sd_ma10,
+    patch_sd_ma20,
+    patch_sd_ma60,
+    patch_sd_diff,
+    patch_sd_diff_ma5,
+    patch_sd_diff_ma10,
+    patch_sd_diff_ma20,
+    patch_sd_diff_ma60,
+    patch_sd_velocity,
+    patch_sd_velocity_ma5,
+    patch_sd_velocity_ma10,
+    patch_sd_velocity_ma20,
+    patch_sd_velocity_ma60,
+    patch_sd_min_max_nor,
+    patch_sd_min_max_nor_ma5,
+    patch_sd_min_max_nor_ma10,
+    patch_sd_min_max_nor_ma20,
+    patch_sd_min_max_nor_ma60,
+    patch_fund_his_30,
+    patch_cov_60,
+    patch_extra_cov_reader_60,
+):
+    return tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                "structure/data": float_feature(patch_sd.data),
+                "structure/data_max": float_feature(sd_max),
+                "structure/data_min": float_feature(sd_min),
+                "structure/data_ma5": float_feature(patch_sd_ma5.data),
+                "structure/data_ma10": float_feature(patch_sd_ma10.data),
+                "structure/data_ma20": float_feature(patch_sd_ma20.data),
+                "structure/data_ma60": float_feature(patch_sd_ma60.data),
+                "structure/normal": float_feature(patch_sd.normal_data),
+                "structure/normal_ma5": float_feature(patch_sd_ma5.normal_data),
+                "structure/normal_ma10": float_feature(patch_sd_ma10.normal_data),
+                "structure/normal_ma20": float_feature(patch_sd_ma20.normal_data),
+                "structure/normal_ma60": float_feature(patch_sd_ma60.normal_data),
+                "structure/diff": float_feature(patch_sd_diff.normal_data),
+                "structure/diff_ma5": float_feature(patch_sd_diff_ma5.normal_data),
+                "structure/diff_ma10": float_feature(patch_sd_diff_ma10.normal_data),
+                "structure/diff_ma20": float_feature(patch_sd_diff_ma20.normal_data),
+                "structure/diff_ma60": float_feature(patch_sd_diff_ma60.normal_data),
+                "structure/velocity": float_feature(patch_sd_velocity.normal_data),
+                "structure/velocity_ma5": float_feature(
+                    patch_sd_velocity_ma5.normal_data
+                ),
+                "structure/velocity_ma10": float_feature(
+                    patch_sd_velocity_ma10.normal_data
+                ),
+                "structure/velocity_ma20": float_feature(
+                    patch_sd_velocity_ma20.normal_data
+                ),
+                "structure/velocity_ma60": float_feature(
+                    patch_sd_velocity_ma60.normal_data
+                ),
+                "structure/min_max_nor": float_feature(patch_sd_min_max_nor.data),
+                "structure/min_max_nor_ma5": float_feature(
+                    patch_sd_min_max_nor_ma5.data
+                ),
+                "structure/min_max_nor_ma10": float_feature(
+                    patch_sd_min_max_nor_ma10.data
+                ),
+                "structure/min_max_nor_ma20": float_feature(
+                    patch_sd_min_max_nor_ma20.data
+                ),
+                "structure/min_max_nor_ma60": float_feature(
+                    patch_sd_min_max_nor_ma60.data
+                ),
+                "structure/extra_cov": float_feature(patch_extra_cov_reader_60.data),
+                "structure/height": int64_feature(patch_sd.height),
+                "structure/width": int64_feature(patch_sd.width),
+                "structure/class/seq_price": float_feature(patch_sd.class_seq_price),
+                "structure/class/seq_ratio": float_feature(patch_sd.class_seq_ratio),
+                "structure/class/seq_height": int64_feature(patch_sd.class_seq_height),
+                "structure/class/seq_width": int64_feature(patch_sd.class_seq_width),
+                # 'structure/class/label': int64_feature(patch_sd.class_label),
+                "structure/class/index": float_feature(patch_sd.class_index),
+                "structure/class/ratio": float_feature(patch_sd.class_ratio),
+                "structure/class/ratio_ref0": float_feature(patch_sd.class_ratio_ref0),
+                "structure/class/ratio_ref1": float_feature(patch_sd.class_ratio_ref1),
+                "structure/class/ratio_ref2": float_feature(patch_sd.class_ratio_ref2),
+                "structure/class/ratio_ref3": float_feature(patch_sd.class_ratio_ref3),
+                "structure/class/ratio_ref4": float_feature(patch_sd.class_ratio_ref4),
+                "structure/class/ratio_ref5": float_feature(patch_sd.class_ratio_ref5),
+                "structure/class/ratio_ref6": float_feature(patch_sd.class_ratio_ref6),
+                "structure/class/ratio_ref7": float_feature(patch_sd.class_ratio_ref7),
+                "fund_his/cov60": float_feature(patch_cov_60.data[-1]),
+                "fund_his/data_cumsum30": float_feature(patch_fund_his_30.data[-1]),
+                "fund_his/height": int64_feature(patch_fund_his_30.height),
+                "fund_his/width": int64_feature(patch_fund_his_30.width),
+                "fund_his/patch_min": float_feature(patch_fund_his_30.patch_min),
+                "fund_his/patch_max": float_feature(patch_fund_his_30.patch_max),
+                "date/base_date_label": bytes_feature(patch_sd.base_date_label),
+                "date/base_date_index": int64_feature(patch_sd.base_date_index),
+                "date/prediction_date_label": bytes_feature(
+                    patch_sd.prediction_date_label
+                ),
+                "date/prediction_date_index": int64_feature(
+                    patch_sd.prediction_date_index
+                ),
+            }
+        )
+    )
 
 
 def check_nan(data, keys):
     check = np.argwhere(np.sum(np.isnan(data), axis=0) == 1)
     if len(check) > 0:
-        raise ValueError('{0} contains nan values'.format(keys[check.reshape(len(check))]))
+        raise ValueError(
+            "{0} contains nan values".format(keys[check.reshape(len(check))])
+        )
 
 
 def get_conjunction_dates_data(sd_dates, y_index_dates, sd_data, y_index_data):
@@ -502,19 +853,23 @@ def get_conjunction_dates_data(sd_dates, y_index_dates, sd_data, y_index_data):
 
     for i in range(len(sd_dates)):
         for k in range(len(y_index_dates)):
-            if sd_dates[i] == y_index_dates[k]:  # conjunction of sd_dates and y_index_dates
+            if (
+                sd_dates[i] == y_index_dates[k]
+            ):  # conjunction of sd_dates and y_index_dates
                 if np.sum(np.isnan(y_index_data[:, 0])) == 0:
                     sd_dates_true = np.append(sd_dates_true, i)
                     y_index_dates_true = np.append(y_index_dates_true, k)
-                    y_index_dates_true_label = np.append(y_index_dates_true_label, y_index_dates[k])
+                    y_index_dates_true_label = np.append(
+                        y_index_dates_true_label, y_index_dates[k]
+                    )
 
     sd_dates = sd_dates[sd_dates_true]
     sd_data = sd_data[sd_dates_true]
 
     y_index_dates = y_index_dates[y_index_dates_true]
 
-    assert (len(sd_dates) == len(y_index_dates))
-    assert (len(sd_dates) == len(y_index_data))
+    assert len(sd_dates) == len(y_index_dates)
+    assert len(sd_dates) == len(y_index_data)
     check_nan(sd_data, np.arange(sd_data.shape[1]))
     check_nan(y_index_data, np.arange(y_index_data.shape[1]))
 
@@ -560,25 +915,31 @@ def get_conjunction_dates_data(sd_dates, y_index_dates, sd_data, y_index_data):
 
 
 def get_conjunction_dates_data_v3(sd_dates, y_index_dates, sd_data, y_index_data):
-    assert len(sd_dates) == len(sd_data), 'length check'
-    assert len(y_index_dates) == len(y_index_data), 'length check'
-    assert len(np.argwhere(np.isnan(sd_data))) == 0, ValueError('data contains nan')
-    assert y_index_dates.ndim == sd_dates.ndim, 'check dimension'
-    assert y_index_dates.ndim == 1, 'check dimension'
+    assert len(sd_dates) == len(sd_data), "length check"
+    assert len(y_index_dates) == len(y_index_data), "length check"
+    assert len(np.argwhere(np.isnan(sd_data))) == 0, ValueError("data contains nan")
+    assert y_index_dates.ndim == sd_dates.ndim, "check dimension"
+    assert y_index_dates.ndim == 1, "check dimension"
 
     def _get_conjunction_dates_data_v3(s_dates, t_dates, t_data):
         conjunctive_idx = [np.argwhere(t_dates == _dates) for _dates in s_dates]
-        conjunctive_idx = sorted([it[0][0] for it in conjunctive_idx if it.shape[0] == 1])
+        conjunctive_idx = sorted(
+            [it[0][0] for it in conjunctive_idx if it.shape[0] == 1]
+        )
         return t_data[conjunctive_idx], t_dates[conjunctive_idx]
 
-    y_index_data, ref = remove_nan(y_index_data, target_col=RUNHEADER.m_target_index, axis=0)
+    y_index_data, ref = remove_nan(
+        y_index_data, target_col=RUNHEADER.m_target_index, axis=0
+    )
     if len(ref) > 0:
         y_index_dates = np.delete(y_index_dates, ref)
 
     sd_data, sd_dates = _get_conjunction_dates_data_v3(y_index_dates, sd_dates, sd_data)
-    y_index_data, y_index_dates = _get_conjunction_dates_data_v3(sd_dates, y_index_dates, y_index_data)
-    assert np.sum(sd_dates == y_index_dates) == len(y_index_dates), 'check it'
-    assert (len(sd_data) == len(y_index_data)), 'check it'
+    y_index_data, y_index_dates = _get_conjunction_dates_data_v3(
+        sd_dates, y_index_dates, y_index_data
+    )
+    assert np.sum(sd_dates == y_index_dates) == len(y_index_dates), "check it"
+    assert len(sd_data) == len(y_index_data), "check it"
 
     sd_data = np.array(sd_data, dtype=np.float32)
     y_index_data = np.array(y_index_data, dtype=np.float32)
@@ -590,11 +951,12 @@ def get_conjunction_dates_data_v3(sd_dates, y_index_dates, sd_data, y_index_data
 
 
 def get_read_data(sd_dates, y_index_dates, sd_data, y_index_data):
-    """Validate data and Return actual operation days for target_index
-    """
+    """Validate data and Return actual operation days for target_index"""
 
     # 1. [row-wised filter] the conjunction of structure data dates and fund-structure data dates
-    dates, sd_data, y_index_data = get_conjunction_dates_data(sd_dates, y_index_dates, sd_data, y_index_data)
+    dates, sd_data, y_index_data = get_conjunction_dates_data(
+        sd_dates, y_index_dates, sd_data, y_index_data
+    )
 
     # Disable for this data set
     # # 2. find negative-valued index ..
@@ -616,54 +978,72 @@ def cut_off_data(data, cut_off, blind_set_seq=None, test_s_date=None, test_e_dat
     if test_s_date is None:
         blind_set_seq = eof - blind_set_seq
         if len(data.shape) == 1:  # 1D
-            tmp = data[cut_off:blind_set_seq], data[blind_set_seq - RUNHEADER.forward_ndx:]
+            tmp = (
+                data[cut_off:blind_set_seq],
+                data[blind_set_seq - RUNHEADER.forward_ndx :],
+            )
         elif len(data.shape) == 2:  # 2D:
-            tmp = data[cut_off:blind_set_seq, :], data[blind_set_seq - RUNHEADER.forward_ndx:, :]
+            tmp = (
+                data[cut_off:blind_set_seq, :],
+                data[blind_set_seq - RUNHEADER.forward_ndx :, :],
+            )
         elif len(data.shape) == 3:  # 3D:
-            tmp = data[cut_off:blind_set_seq, ::], data[blind_set_seq - RUNHEADER.forward_ndx:, :, :]
+            tmp = (
+                data[cut_off:blind_set_seq, ::],
+                data[blind_set_seq - RUNHEADER.forward_ndx :, :, :],
+            )
         else:
-            raise IndexError('Define your cut-off code')
+            raise IndexError("Define your cut-off code")
     else:
         if len(data.shape) == 1:  # 1D
-            tmp = data[cut_off:test_s_date], data[test_s_date - RUNHEADER.forward_ndx:test_e_date]
+            tmp = (
+                data[cut_off:test_s_date],
+                data[test_s_date - RUNHEADER.forward_ndx : test_e_date],
+            )
         elif len(data.shape) == 2:  # 2D:
-            tmp = data[cut_off:test_s_date, :], data[test_s_date - RUNHEADER.forward_ndx:test_e_date:, :]
+            tmp = (
+                data[cut_off:test_s_date, :],
+                data[test_s_date - RUNHEADER.forward_ndx : test_e_date :, :],
+            )
         elif len(data.shape) == 3:  # 3D:
-            tmp = data[cut_off:test_s_date, ::], data[test_s_date - RUNHEADER.forward_ndx:test_e_date:, :, :]
+            tmp = (
+                data[cut_off:test_s_date, ::],
+                data[test_s_date - RUNHEADER.forward_ndx : test_e_date :, :, :],
+            )
         else:
-            raise IndexError('Define your cut-off code')
+            raise IndexError("Define your cut-off code")
     return tmp
 
 
 def load_file(file_location, file_format):
-    with open(file_location, 'rb') as fp:
-        if file_format == 'npy':
+    with open(file_location, "rb") as fp:
+        if file_format == "npy":
             return np.load(fp)
-        elif file_format == 'pkl':
+        elif file_format == "pkl":
             return pickle.load(fp)
         else:
-            raise ValueError('non-support file format')
+            raise ValueError("non-support file format")
 
 
 def get_working_dates(dates, data):
     """Retrieve working days
-        Args:
-        path : raw data path
+    Args:
+    path : raw data path
 
     """
-    assert dates.shape[0] == data.shape[0], 'the number of rows are different'
+    assert dates.shape[0] == data.shape[0], "the number of rows are different"
 
     # the data from monday to friday
     working_days_index = list()
     for i in range(len(dates)):
-        tmp_date = datetime.datetime.strptime(dates[i], '%Y-%m-%d')
+        tmp_date = datetime.datetime.strptime(dates[i], "%Y-%m-%d")
         if tmp_date.weekday() < 5:  # keep working days
             working_days_index.append(i)
-        dates[i] = tmp_date.strftime('%Y-%m-%d')
+        dates[i] = tmp_date.strftime("%Y-%m-%d")
 
     dates = dates[working_days_index]  # re-store working days
     data = data[working_days_index]  # re-store working days
-    assert dates.shape[0] == data.shape[0], 'the number of rows are different'
+    assert dates.shape[0] == data.shape[0], "the number of rows are different"
 
     return dates, data
 
@@ -682,7 +1062,9 @@ def remove_nan(values, target_col=None, axis=0):
 
 def data_from_csv(filename):
     index_df = pd.read_csv(filename)
-    dates, data = get_working_dates(index_df.values[:, 0], np.array(index_df.values[:, 1:], dtype=np.float32))
+    dates, data = get_working_dates(
+        index_df.values[:, 0], np.array(index_df.values[:, 1:], dtype=np.float32)
+    )
     ids_to_class_names = dict(zip(range(len(index_df.keys()[1:])), index_df.keys()[1:]))
     return dates, data, ids_to_class_names
 
@@ -699,27 +1081,49 @@ def get_data_corresponding(index_price, y_index):
     index_values = replace_nan(index_values)
 
     # the conjunction of target and independent variables
-    dates, data, y_index_dates, y_index_data = \
-        get_conjunction_dates_data_v3(index_dates, y_index_dates, index_values, y_index_values)
-    return dates, data, y_index_dates, y_index_data, ids_to_var_names, ids_to_class_names
+    dates, data, y_index_dates, y_index_data = get_conjunction_dates_data_v3(
+        index_dates, y_index_dates, index_values, y_index_values
+    )
+    return (
+        dates,
+        data,
+        y_index_dates,
+        y_index_data,
+        ids_to_var_names,
+        ids_to_class_names,
+    )
 
 
 def splite_rawdata_v1(index_price=None, y_index=None):
     # update as is
     if RUNHEADER.gen_var:
-        get_uniqueness(file_name=RUNHEADER.raw_x2, target_name=RUNHEADER.raw_x, opt='mva', th=float(RUNHEADER.derived_vars_th[1]))
+        get_uniqueness(
+            file_name=RUNHEADER.raw_x2,
+            target_name=RUNHEADER.raw_x,
+            opt="mva",
+            th=float(RUNHEADER.derived_vars_th[1]),
+        )
 
-    dates, sd_data, y_index_dates, y_index_data, ids_to_var_names, ids_to_class_names = \
-        get_data_corresponding(index_price, y_index)
+    (
+        dates,
+        sd_data,
+        y_index_dates,
+        y_index_data,
+        ids_to_var_names,
+        ids_to_class_names,
+    ) = get_data_corresponding(index_price, y_index)
 
     # returns, Caution: this function assume that Y are index or price values
-    returns = ordinary_return(matrix=y_index_data, unit=current_y_unit(RUNHEADER.target_name))
+    returns = ordinary_return(
+        matrix=y_index_data, unit=current_y_unit(RUNHEADER.target_name)
+    )
 
     # dates, sd_data, y_index_data, returns = \
     #     get_conjunction_dates_data_v2(index_dates, y_index_dates, index_values, y_index_values, returns)
 
-    sd_data, ids_to_var_names, opts = gen_pool(dates, sd_data, ids_to_var_names,
-                                               y_index_data[:, RUNHEADER.m_target_index])
+    sd_data, ids_to_var_names, opts = gen_pool(
+        dates, sd_data, ids_to_var_names, y_index_data[:, RUNHEADER.m_target_index]
+    )
 
     return dates, sd_data, y_index_data, returns, ids_to_class_names, ids_to_var_names
 
@@ -730,25 +1134,35 @@ def _gen_spread(X, Y, ids_to_var_names, num_cov_obs, f_name):
     cnt = 0
     idx = 0
     eof = len(ids_to_var_names)
-    
+
     d_f_summary = pd.read_csv(RUNHEADER.var_desc)
     # f_out = open(f_name + '.csv', 'a')
     while cnt < eof:
         j = cnt + 1
-        tmp_dict = {'{}-{}'.format(ids_to_var_names[cnt], ids_to_var_names[i]): X[:, cnt] - X[:, i]
-            for i in range(j, eof, 1) if unit_datetype.type_check(d_f_summary, ids_to_var_names[cnt], ids_to_var_names[i])}
+        tmp_dict = {
+            "{}-{}".format(ids_to_var_names[cnt], ids_to_var_names[i]): X[:, cnt]
+            - X[:, i]
+            for i in range(j, eof, 1)
+            if unit_datetype.type_check(
+                d_f_summary, ids_to_var_names[cnt], ids_to_var_names[i]
+            )
+        }
         for key, val in tmp_dict.items():
-            sys.stdout.write('\r>> [%d/%d] %s matrix calculation....!!!' % (cnt, eof - 1, key))
+            sys.stdout.write(
+                "\r>> [%d/%d] %s matrix calculation....!!!" % (cnt, eof - 1, key)
+            )
             sys.stdout.flush()
-            cov = rolling_apply_cross_cov(fun_cross_cov, val, Y, num_cov_obs)  # 60days correlation matrix
+            cov = rolling_apply_cross_cov(
+                fun_cross_cov, val, Y, num_cov_obs
+            )  # 60days correlation matrix
             cov = np.where(cov == 1, 0, cov)
-            cov = cov[np.argwhere(np.isnan(cov))[-1][0] + 1:]  # ignore nan
+            cov = cov[np.argwhere(np.isnan(cov))[-1][0] + 1 :]  # ignore nan
 
             if len(cov) > 0:
                 # print('{}'.format(np.max(np.abs(np.mean(cov, axis=0).squeeze()))), file=f_out)
                 _val_test = np.max(np.abs(np.mean(cov, axis=0).squeeze()))
                 if (_val_test >= corr_th) and (_val_test < 0.96):
-                    print(' extracted key: {}'.format(key))
+                    print(" extracted key: {}".format(key))
                     ids_to_var_names_add.append([idx, [key, val]])
                     idx = idx + 1
         cnt = cnt + 1
@@ -795,9 +1209,13 @@ def gen_spread(data, ids_to_var_names, num_sample_obs, base_first_momentum):
     # Examples
     ma_data = None
     if num_sample_obs is not None:  # whole samples or recent samples
-        ma_data = rolling_apply(fun_mean, data[num_sample_obs[0]:num_sample_obs[1], :], base_first_momentum)
+        ma_data = rolling_apply(
+            fun_mean,
+            data[num_sample_obs[0] : num_sample_obs[1], :],
+            base_first_momentum,
+        )
     else:
-        print('Caution: it contains test samples as well')
+        print("Caution: it contains test samples as well")
         ma_data = rolling_apply(fun_mean, data, base_first_momentum)
 
     # # min max
@@ -810,7 +1228,7 @@ def gen_spread(data, ids_to_var_names, num_sample_obs, base_first_momentum):
     # y_ = (y - np.min(y)) / (np.max(y) - np.min(y))
 
     # centering
-    scale_v = ma_data[np.argwhere(np.isnan(ma_data))[-1][0] + 1:]  # ignore nan
+    scale_v = ma_data[np.argwhere(np.isnan(ma_data))[-1][0] + 1 :]  # ignore nan
     scale_v = RobustScaler().fit_transform(scale_v)
     X_ = scale_v[:, :-1]
     y_ = scale_v[:, -1]
@@ -818,31 +1236,54 @@ def gen_spread(data, ids_to_var_names, num_sample_obs, base_first_momentum):
     # nor_diff_add, ids_to_var_names_add = gen_spread_test(X, y, ids_to_var_names, './data_ma')
     # nor_diff_add, ids_to_var_names_add = gen_spread_test(X_, y_, ids_to_var_names, './data_ma_nor')
     num_cov_obs = 60
-    return _gen_spread(X_, y_, ids_to_var_names, num_cov_obs,
-                       './datasets/rawdata/index_data/data_spread_' + RUNHEADER.target_name)
+    return _gen_spread(
+        X_,
+        y_,
+        ids_to_var_names,
+        num_cov_obs,
+        "./datasets/rawdata/index_data/data_spread_" + RUNHEADER.target_name,
+    )
 
 
-def _pool_adhoc1(data, ids_to_var_names, opt='None', th=0.975):
-    return get_uniqueness(from_file=False, _data=data, _dict=ids_to_var_names, opt=opt, th=th)
+def _pool_adhoc1(data, ids_to_var_names, opt="None", th=0.975):
+    return get_uniqueness(
+        from_file=False, _data=data, _dict=ids_to_var_names, opt=opt, th=th
+    )
 
 
 def _pool_adhoc2(data, ids_to_var_names):
     return unit_datetype.quantising_vars(data, ids_to_var_names)
-    
-def gen_spread_append(sd_data, target_data, ids_to_var_names, var_names_to_ids, num_sample_obs, base_first_momentum):
+
+
+def gen_spread_append(
+    sd_data,
+    target_data,
+    ids_to_var_names,
+    var_names_to_ids,
+    num_sample_obs,
+    base_first_momentum,
+):
     # 1. Gen Spread & Append
     data = np.hstack([sd_data, np.expand_dims(target_data, axis=1)])
     if RUNHEADER.disable_derived_vars:
         ids_to_var_names_add = {}
     else:
-        ids_to_var_names_add = gen_spread(data, ids_to_var_names, num_sample_obs, base_first_momentum)
-        print('{} variables are added'.format(len(ids_to_var_names_add)))
-        assert len(ids_to_var_names_add) > 0, 'None of variables would be added'
+        ids_to_var_names_add = gen_spread(
+            data, ids_to_var_names, num_sample_obs, base_first_momentum
+        )
+        print("{} variables are added".format(len(ids_to_var_names_add)))
+        assert len(ids_to_var_names_add) > 0, "None of variables would be added"
 
-    _dates, _values, _, _, _ids_to_var_names, _ = get_data_corresponding(RUNHEADER.raw_x2, RUNHEADER.raw_y)
-    assert sd_data.shape[0] == _values.shape[0], 'target index forces to the un-matching of shapes'
+    _dates, _values, _, _, _ids_to_var_names, _ = get_data_corresponding(
+        RUNHEADER.raw_x2, RUNHEADER.raw_y
+    )
+    assert (
+        sd_data.shape[0] == _values.shape[0]
+    ), "target index forces to the un-matching of shapes"
 
-    _var_names_to_ids = dict(zip(list(_ids_to_var_names.values()), list(_ids_to_var_names.keys())))
+    _var_names_to_ids = dict(
+        zip(list(_ids_to_var_names.values()), list(_ids_to_var_names.keys()))
+    )
 
     # 1-1. Append
     c_max_len = len(_ids_to_var_names)
@@ -851,25 +1292,33 @@ def gen_spread_append(sd_data, target_data, ids_to_var_names, var_names_to_ids, 
     new_array = list()
     for key, val in ids_to_var_names_add.items():
         check_sum = check_sum + 1
-        assert check_sum == key, 'Dict keys are not ordered!!! consider OrderedDict instead'
+        assert (
+            check_sum == key
+        ), "Dict keys are not ordered!!! consider OrderedDict instead"
 
         n_key = c_max_len + key
         tmp.append([n_key, val[0]])
-        i_key, j_key = val[0].split('-')
+        i_key, j_key = val[0].split("-")
         i_index, j_index = var_names_to_ids[i_key], var_names_to_ids[j_key]
 
         # # actual index distance
         # new_array.append(data[:, i_index] - data[:, j_index])
 
         # scaled value distance
-        scale_v = np.append(np.expand_dims(data[:, i_index], axis=1), np.expand_dims(data[:, j_index], axis=1), axis=1)
+        scale_v = np.append(
+            np.expand_dims(data[:, i_index], axis=1),
+            np.expand_dims(data[:, j_index], axis=1),
+            axis=1,
+        )
         scale_v = np.hstack([scale_v, np.expand_dims(target_data, axis=1)])
         scale_v = RobustScaler().fit_transform(scale_v)
         new_array.append(scale_v[:, 0] - scale_v[:, 1])
 
     # 1-2. Re-assign Dictionary and Data
     ids_to_var_names = OrderedDict(tmp)
-    var_names_to_ids = OrderedDict(zip(list(ids_to_var_names.values()), list(ids_to_var_names.keys())))
+    var_names_to_ids = OrderedDict(
+        zip(list(ids_to_var_names.values()), list(ids_to_var_names.keys()))
+    )
     # data = np.append(data[:, :-1], np.array(new_array).T, axis=1)
     if RUNHEADER.disable_derived_vars:
         data = _values
@@ -879,22 +1328,37 @@ def gen_spread_append(sd_data, target_data, ids_to_var_names, var_names_to_ids, 
     return data, ids_to_var_names, var_names_to_ids
 
 
-def pool_ordering_refine(data, target_data, ids_to_var_names, var_names_to_ids,
-                         base_first_momentum, num_sample_obs, num_cov_obs, max_allowed_num_variables, explane_th):
+def pool_ordering_refine(
+    data,
+    target_data,
+    ids_to_var_names,
+    var_names_to_ids,
+    base_first_momentum,
+    num_sample_obs,
+    num_cov_obs,
+    max_allowed_num_variables,
+    explane_th,
+):
     data = np.hstack([data, np.expand_dims(target_data, axis=1)])
 
     # 2. pool ordering
-    latest_3y_samples = (num_sample_obs[1] - (20 * 12 * 3))
-    ma_data = rolling_apply(fun_mean, data[latest_3y_samples:num_sample_obs[1], :], base_first_momentum)
+    latest_3y_samples = num_sample_obs[1] - (20 * 12 * 3)
+    ma_data = rolling_apply(
+        fun_mean, data[latest_3y_samples : num_sample_obs[1], :], base_first_momentum
+    )
 
     # cov = rolling_apply_cov(fun_cov, ma_data, num_cov_obs)  # 60days correlation matrix
     # cov = cov[:, :, -1]
     # cov = cov[:, :-1]
-    new_cov = np.zeros([ma_data.shape[0], ma_data.shape[1]-1])
-    for idx in range(ma_data.shape[1]-1):
-        sys.stdout.write('\r>> [%d/%d] vectors calculation....!!!' % (idx, ma_data.shape[1]-1))
+    new_cov = np.zeros([ma_data.shape[0], ma_data.shape[1] - 1])
+    for idx in range(ma_data.shape[1] - 1):
+        sys.stdout.write(
+            "\r>> [%d/%d] vectors calculation....!!!" % (idx, ma_data.shape[1] - 1)
+        )
         sys.stdout.flush()
-        cov = rolling_apply_cross_cov(fun_cross_cov, ma_data[:, idx], ma_data[:, -1], num_cov_obs)  # 60days correlation matrix
+        cov = rolling_apply_cross_cov(
+            fun_cross_cov, ma_data[:, idx], ma_data[:, -1], num_cov_obs
+        )  # 60days correlation matrix
         new_cov[:, idx] = cov[:, 0, 1]
     # 2-1. ordering
     tmp_cov = np.where(np.isnan(new_cov), 0, new_cov)
@@ -907,19 +1371,27 @@ def pool_ordering_refine(data, target_data, ids_to_var_names, var_names_to_ids,
     # cov_dict = [[k, v] for k, v in o_cov_dict.items()][::-1]
 
     # 2-2. Refine
-    cov_dict = OrderedDict([[key, val] for key, val in cov_dict.items() if val > explane_th])
-    assert len(cov_dict) != 0, 'empty list'
+    cov_dict = OrderedDict(
+        [[key, val] for key, val in cov_dict.items() if val > explane_th]
+    )
+    assert len(cov_dict) != 0, "empty list"
     # 2-3. Re-assign Dict & Data
     ordered_ids = [var_names_to_ids[name] for name in cov_dict.keys()]
     # 2-3-1. Apply max_num of variables
-    print('the num of variables exceeding explane_th: {}'.format(len(ordered_ids)))
+    print("the num of variables exceeding explane_th: {}".format(len(ordered_ids)))
     num_variables = len(ordered_ids)
     if num_variables > max_allowed_num_variables:
         ordered_ids = ordered_ids[:max_allowed_num_variables]
     # 2-3-2. re-assign
     ids_to_var_names = OrderedDict(
-        zip(np.arange(len(ordered_ids)).tolist(), [ids_to_var_names[ids] for ids in ordered_ids]))
-    var_names_to_ids = dict(zip(list(ids_to_var_names.values()), list(ids_to_var_names.keys())))
+        zip(
+            np.arange(len(ordered_ids)).tolist(),
+            [ids_to_var_names[ids] for ids in ordered_ids],
+        )
+    )
+    var_names_to_ids = dict(
+        zip(list(ids_to_var_names.values()), list(ids_to_var_names.keys()))
+    )
     data = data[:, :-1]
     data = data.T[ordered_ids].T
 
@@ -928,7 +1400,9 @@ def pool_ordering_refine(data, target_data, ids_to_var_names, var_names_to_ids,
 
 def gen_pool(dates, sd_data, ids_to_var_names, target_data):
     base_first_momentum = 5  # default 5
-    RUNHEADER.m_pool_sample_start = len(dates) - 750  # for operation, it has been changed after a experimental
+    RUNHEADER.m_pool_sample_start = (
+        len(dates) - 750
+    )  # for operation, it has been changed after a experimental
     RUNHEADER.m_pool_sample_end = len(dates)
     num_sample_obs = [RUNHEADER.m_pool_sample_start, RUNHEADER.m_pool_sample_end]
     num_cov_obs = 60  # default 60
@@ -936,28 +1410,32 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data):
     explane_th = RUNHEADER.explane_th
     plot = True  # default False
     opts = None
-    var_names_to_ids = dict(zip(list(ids_to_var_names.values()), list(ids_to_var_names.keys())))
+    var_names_to_ids = dict(
+        zip(list(ids_to_var_names.values()), list(ids_to_var_names.keys()))
+    )
 
     def _save(_dates, _data, _ids_to_var_names):
         file_name = RUNHEADER.file_data_vars + RUNHEADER.target_name
         _data = np.append(np.expand_dims(_dates, axis=1), _data, axis=1)
-        print('{} saving'.format(file_name))
+        print("{} saving".format(file_name))
         if RUNHEADER.gen_var:
-            _mode = '_intermediate.csv'
+            _mode = "_intermediate.csv"
         else:
-            _mode = '.csv'
-            pd.DataFrame(data=list(_ids_to_var_names.values()), columns=['VarName']). \
-                to_csv(file_name + '_Indices.csv', index=None, header=None)
+            _mode = ".csv"
+            pd.DataFrame(
+                data=list(_ids_to_var_names.values()), columns=["VarName"]
+            ).to_csv(file_name + "_Indices.csv", index=None, header=None)
             # rewrite
-            unit_datetype.script_run(file_name + '_Indices.csv')
-        
-        pd.DataFrame(data=_data, columns=['TradeDate'] + list(_ids_to_var_names.values())). \
-                to_csv(file_name + _mode, index=None)
+            unit_datetype.script_run(file_name + "_Indices.csv")
+
+        pd.DataFrame(
+            data=_data, columns=["TradeDate"] + list(_ids_to_var_names.values())
+        ).to_csv(file_name + _mode, index=None)
         # # for demo test
         # pd.DataFrame(data=_data[:500, :], columns=['TradeDate'] + list(_ids_to_var_names.values())). \
         #         to_csv(file_name + _mode, index=None)
-            
-        print('save done {} '.format(file_name + _mode))
+
+        print("save done {} ".format(file_name + _mode))
         os._exit(0)
 
     # 1. Gen Spread & Append
@@ -971,10 +1449,15 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data):
         #                                                                    base_first_momentum, num_sample_obs,
         #                                                                    num_cov_obs,
         #                                                                    max_allowed_num_variables, explane_th)
-        data, ids_to_var_names, var_names_to_ids = \
-            gen_spread_append(sd_data, target_data, ids_to_var_names, var_names_to_ids, num_sample_obs,
-                              base_first_momentum)
-        print('Gen Data shape: {} '.format(data.shape))
+        data, ids_to_var_names, var_names_to_ids = gen_spread_append(
+            sd_data,
+            target_data,
+            ids_to_var_names,
+            var_names_to_ids,
+            num_sample_obs,
+            base_first_momentum,
+        )
+        print("Gen Data shape: {} ".format(data.shape))
         _save(dates, data, ids_to_var_names)
         # file_name = RUNHEADER.file_data_vars + RUNHEADER.target_name
         # data = np.append(np.expand_dims(dates, axis=1), data, axis=1)
@@ -983,24 +1466,31 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data):
         # exit()
     else:
         # 2. pool ordering
-        data, ids_to_var_names, var_names_to_ids = pool_ordering_refine(sd_data, target_data, ids_to_var_names,
-                                                                        var_names_to_ids,
-                                                                        base_first_momentum, num_sample_obs,
-                                                                        num_cov_obs,
-                                                                        max_allowed_num_variables, explane_th)
+        data, ids_to_var_names, var_names_to_ids = pool_ordering_refine(
+            sd_data,
+            target_data,
+            ids_to_var_names,
+            var_names_to_ids,
+            base_first_momentum,
+            num_sample_obs,
+            num_cov_obs,
+            max_allowed_num_variables,
+            explane_th,
+        )
         # ad-hoc process
         # filtering with uniqueness
         tmp_data = np.append(np.expand_dims(dates, axis=1), data, axis=1)
-        data, ids_to_var_names = _pool_adhoc1(tmp_data, ids_to_var_names, opt='mva', th=0.92)
-        
+        data, ids_to_var_names = _pool_adhoc1(
+            tmp_data, ids_to_var_names, opt="mva", th=0.92
+        )
+
         # quantising selected variables
         data, ids_to_var_names = _pool_adhoc2(data, ids_to_var_names)
-        assert len(dates) == data.shape[0], 'Type Check!!!'
-        assert len(ids_to_var_names) == data.shape[1], 'Type Check!!!'
+        assert len(dates) == data.shape[0], "Type Check!!!"
+        assert len(ids_to_var_names) == data.shape[1], "Type Check!!!"
 
-        print('Pool Refine Done!!!')
+        print("Pool Refine Done!!!")
         _save(dates, data, ids_to_var_names)
-        
 
     # cov = np.transpose(cov, (2, 0, 1))
     # cov = cov[ordered_ids]
@@ -1055,7 +1545,7 @@ def ma(data):
 
 def triangular_vector(data):
     row, n_var, _ = data.shape
-    data = data.reshape(row, n_var ** 2)
+    data = data.reshape(row, n_var**2)
 
     # extract upper-triangular components
     del_idx = list()
@@ -1065,15 +1555,15 @@ def triangular_vector(data):
         else:
             for n_idx2 in np.arange(n_idx + 1):
                 del_idx.append(n_idx * n_var + n_idx2)
-    triangular_idx = np.delete(np.arange(n_var ** 2), del_idx)
+    triangular_idx = np.delete(np.arange(n_var**2), del_idx)
 
     return data[:, triangular_idx]
 
 
-def run(dataset_dir, file_pattern='fs_v0_cv%02d_%s.tfrecord', s_test=None, e_test=None):
+def run(dataset_dir, file_pattern="fs_v0_cv%02d_%s.tfrecord", s_test=None, e_test=None):
     """Conversion operation.
-        Args:
-        dataset_dir: The dataset directory where the dataset is stored.
+    Args:
+    dataset_dir: The dataset directory where the dataset is stored.
     """
     # index_price = './datasets/rawdata/index_data/prep_index_df_20190821.csv'  # 145 variables
     # index_price = './datasets/rawdata/index_data/01_KOSPI_20190911_176.csv'  # KOSPI
@@ -1082,6 +1572,7 @@ def run(dataset_dir, file_pattern='fs_v0_cv%02d_%s.tfrecord', s_test=None, e_tes
     # y_index = './datasets/rawdata/index_data/gold_index.csv'
 
     import header.index_forecasting.RUNHEADER as RUNHEADER
+
     index_price = RUNHEADER.raw_x
     y_index = RUNHEADER.raw_y
 
@@ -1091,21 +1582,28 @@ def run(dataset_dir, file_pattern='fs_v0_cv%02d_%s.tfrecord', s_test=None, e_tes
     # e_test = RUNHEADER.e_test
 
     # Version 1: using fund raw data (csv)
-    dates, sd_data, y_index_data, returns, ids_to_class_names, ids_to_var_names = splite_rawdata_v1(
-        index_price=index_price,
-        y_index=y_index)
+    (
+        dates,
+        sd_data,
+        y_index_data,
+        returns,
+        ids_to_class_names,
+        ids_to_var_names,
+    ) = splite_rawdata_v1(index_price=index_price, y_index=y_index)
     ## delete next code
     # y_index_dates = np.copy(dates)
 
     # declare global variables
-    global sd_max, sd_min, sd_diff_max, sd_diff_min, sd_velocity_max, sd_velocity_min, dependent_var, \
-        _NUM_SHARDS, ref_forward_ndx, _FILE_PATTERN
+    global sd_max, sd_min, sd_diff_max, sd_diff_min, sd_velocity_max, sd_velocity_min, dependent_var, _NUM_SHARDS, ref_forward_ndx, _FILE_PATTERN
 
     _NUM_SHARDS = 5
     _FILE_PATTERN = file_pattern
     ref_forward_ndx = np.array([-10, -5, 5, 10], dtype=np.int)
-    ref_forward_ndx = np.array([-int(RUNHEADER.forward_ndx*0.5), -int(RUNHEADER.forward_ndx*0.25), 5, 10], dtype=np.int)
-    
+    ref_forward_ndx = np.array(
+        [-int(RUNHEADER.forward_ndx * 0.5), -int(RUNHEADER.forward_ndx * 0.25), 5, 10],
+        dtype=np.int,
+    )
+
     """declare dataset meta information (part1)
     """
     only_train = True  # only train without validation set
@@ -1115,19 +1613,25 @@ def run(dataset_dir, file_pattern='fs_v0_cv%02d_%s.tfrecord', s_test=None, e_tes
     num_of_datatype_obs = 5
     num_of_datatype_obs_total = 15  # 25 -> 15
 
-    dependent_var = 'tri'
+    dependent_var = "tri"
     global g_x_seq, g_num_of_datatype_obs, g_x_variables, g_num_of_datatype_obs_total, decoder
     decoder = pkexample_type_A
 
-    class_names_to_ids = dict(zip(ids_to_class_names.values(), ids_to_class_names.keys()))
+    class_names_to_ids = dict(
+        zip(ids_to_class_names.values(), ids_to_class_names.keys())
+    )
     var_names_to_ids = dict(zip(ids_to_var_names.values(), ids_to_var_names.keys()))
     if os.path.isdir(dataset_dir):
-        dataset_utils.write_label_file(ids_to_class_names, dataset_dir, filename='y_index.txt')
-        dataset_utils.write_label_file(ids_to_var_names, dataset_dir, filename='x_index.txt')
-        dict2json(dataset_dir + '/y_index.json', ids_to_class_names)
-        dict2json(dataset_dir + '/x_index.json', ids_to_var_names)
+        dataset_utils.write_label_file(
+            ids_to_class_names, dataset_dir, filename="y_index.txt"
+        )
+        dataset_utils.write_label_file(
+            ids_to_var_names, dataset_dir, filename="x_index.txt"
+        )
+        dict2json(dataset_dir + "/y_index.json", ids_to_class_names)
+        dict2json(dataset_dir + "/x_index.json", ids_to_var_names)
     else:
-        ValueError('Dir location does not exist')
+        ValueError("Dir location does not exist")
 
     """Generate re-fined data from raw data
     :param
@@ -1142,11 +1646,17 @@ def run(dataset_dir, file_pattern='fs_v0_cv%02d_%s.tfrecord', s_test=None, e_tes
     """
     x_variables = len(sd_data[0])
     num_y_index = len(y_index_data[0])
-    assert x_variables == len(ids_to_var_names), 'the numbers of x variables are different'
+    assert x_variables == len(
+        ids_to_var_names
+    ), "the numbers of x variables are different"
 
     # init global variables
-    g_x_seq, g_num_of_datatype_obs, g_x_variables, g_num_of_datatype_obs_total = \
-        x_seq, num_of_datatype_obs, x_variables, num_of_datatype_obs_total
+    g_x_seq, g_num_of_datatype_obs, g_x_variables, g_num_of_datatype_obs_total = (
+        x_seq,
+        num_of_datatype_obs,
+        x_variables,
+        num_of_datatype_obs_total,
+    )
 
     """Define primitive inputs
         1.price, 2.ratio, 3.velocity
@@ -1176,10 +1686,21 @@ def run(dataset_dir, file_pattern='fs_v0_cv%02d_%s.tfrecord', s_test=None, e_tes
     """
     # according to the price, difference, velocity, performs windowing
     sd_ma_data_5, sd_ma_data_10, sd_ma_data_20, sd_ma_data_60 = ma(sd_data)
-    sd_diff_ma_data_5, sd_diff_ma_data_10, sd_diff_ma_data_20, sd_diff_ma_data_60 = ma(sd_diff)
-    sd_velocity_ma_data_5, sd_velocity_ma_data_10, sd_velocity_ma_data_20, sd_velocity_ma_data_60 = ma(sd_velocity)
-    sd_min_max_nor_ma_data_5, sd_min_max_nor_ma_data_10, sd_min_max_nor_ma_data_20, sd_min_max_nor_ma_data_60 \
-        = ma(sd_min_max_nor)
+    sd_diff_ma_data_5, sd_diff_ma_data_10, sd_diff_ma_data_20, sd_diff_ma_data_60 = ma(
+        sd_diff
+    )
+    (
+        sd_velocity_ma_data_5,
+        sd_velocity_ma_data_10,
+        sd_velocity_ma_data_20,
+        sd_velocity_ma_data_60,
+    ) = ma(sd_velocity)
+    (
+        sd_min_max_nor_ma_data_5,
+        sd_min_max_nor_ma_data_10,
+        sd_min_max_nor_ma_data_20,
+        sd_min_max_nor_ma_data_60,
+    ) = ma(sd_min_max_nor)
 
     # windowing for extra data
     fund_his_30 = rolling_apply(fun_cumsum, returns, 30)  # 30days cumulative sum
@@ -1193,49 +1714,88 @@ def run(dataset_dir, file_pattern='fs_v0_cv%02d_%s.tfrecord', s_test=None, e_tes
         e_test = np.argwhere(dates == e_test)[0][0]
 
     # data set split
-    sd_dates_train, sd_dates_test = cut_off_data(dates, cut_off, blind_set_seq, s_test, e_test)
-    sd_data_train, sd_data_test = cut_off_data(sd_data, cut_off, blind_set_seq, s_test, e_test)
-    sd_diff_data_train, sd_diff_data_test = cut_off_data(sd_diff, cut_off, blind_set_seq, s_test, e_test)
-    sd_velocity_data_train, sd_velocity_data_test = cut_off_data(sd_velocity, cut_off, blind_set_seq, s_test, e_test)
-    sd_min_max_nor_data_train, sd_min_max_nor_data_test = cut_off_data(sd_min_max_nor, cut_off, blind_set_seq, s_test,
-                                                                       e_test)
-    sd_ma_data_5_train, sd_ma_data_5_test = cut_off_data(sd_ma_data_5, cut_off, blind_set_seq, s_test, e_test)
-    sd_ma_data_10_train, sd_ma_data_10_test = cut_off_data(sd_ma_data_10, cut_off, blind_set_seq, s_test, e_test)
-    sd_ma_data_20_train, sd_ma_data_20_test = cut_off_data(sd_ma_data_20, cut_off, blind_set_seq, s_test, e_test)
-    sd_ma_data_60_train, sd_ma_data_60_test = cut_off_data(sd_ma_data_60, cut_off, blind_set_seq, s_test, e_test)
-    sd_diff_ma_data_5_train, sd_diff_ma_data_5_test = cut_off_data(sd_diff_ma_data_5, cut_off, blind_set_seq, s_test,
-                                                                   e_test)
-    sd_diff_ma_data_10_train, sd_diff_ma_data_10_test = cut_off_data(sd_diff_ma_data_10, cut_off, blind_set_seq, s_test,
-                                                                     e_test)
-    sd_diff_ma_data_20_train, sd_diff_ma_data_20_test = cut_off_data(sd_diff_ma_data_20, cut_off, blind_set_seq, s_test,
-                                                                     e_test)
-    sd_diff_ma_data_60_train, sd_diff_ma_data_60_test = cut_off_data(sd_diff_ma_data_60, cut_off, blind_set_seq, s_test,
-                                                                     e_test)
-    sd_velocity_ma_data_5_train, sd_velocity_ma_data_5_test = cut_off_data(sd_velocity_ma_data_5, cut_off,
-                                                                           blind_set_seq, s_test, e_test)
-    sd_velocity_ma_data_10_train, sd_velocity_ma_data_10_test = cut_off_data(sd_velocity_ma_data_10, cut_off,
-                                                                             blind_set_seq, s_test, e_test)
-    sd_velocity_ma_data_20_train, sd_velocity_ma_data_20_test = cut_off_data(sd_velocity_ma_data_20, cut_off,
-                                                                             blind_set_seq, s_test, e_test)
-    sd_velocity_ma_data_60_train, sd_velocity_ma_data_60_test = cut_off_data(sd_velocity_ma_data_60, cut_off,
-                                                                             blind_set_seq, s_test, e_test)
-    sd_min_max_nor_ma_data_5_train, sd_min_max_nor_ma_data_5_test = cut_off_data(sd_min_max_nor_ma_data_5, cut_off,
-                                                                                 blind_set_seq, s_test, e_test)
-    sd_min_max_nor_ma_data_10_train, sd_min_max_nor_ma_data_10_test = cut_off_data(sd_min_max_nor_ma_data_10, cut_off,
-                                                                                   blind_set_seq, s_test, e_test)
-    sd_min_max_nor_ma_data_20_train, sd_min_max_nor_ma_data_20_test = cut_off_data(sd_min_max_nor_ma_data_20, cut_off,
-                                                                                   blind_set_seq, s_test, e_test)
-    sd_min_max_nor_ma_data_60_train, sd_min_max_nor_ma_data_60_test = cut_off_data(sd_min_max_nor_ma_data_60, cut_off,
-                                                                                   blind_set_seq, s_test, e_test)
-    fund_his_30_train, fund_his_30_test = cut_off_data(fund_his_30, cut_off, blind_set_seq, s_test, e_test)
-    fund_cov_60_train, fund_cov_60_test = cut_off_data(fund_cov_60, cut_off, blind_set_seq, s_test, e_test)
-    extra_cor_60_train, extra_cor_60_test = cut_off_data(extra_cor_60, cut_off, blind_set_seq, s_test, e_test)
+    sd_dates_train, sd_dates_test = cut_off_data(
+        dates, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_data_train, sd_data_test = cut_off_data(
+        sd_data, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_diff_data_train, sd_diff_data_test = cut_off_data(
+        sd_diff, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_velocity_data_train, sd_velocity_data_test = cut_off_data(
+        sd_velocity, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_min_max_nor_data_train, sd_min_max_nor_data_test = cut_off_data(
+        sd_min_max_nor, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_ma_data_5_train, sd_ma_data_5_test = cut_off_data(
+        sd_ma_data_5, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_ma_data_10_train, sd_ma_data_10_test = cut_off_data(
+        sd_ma_data_10, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_ma_data_20_train, sd_ma_data_20_test = cut_off_data(
+        sd_ma_data_20, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_ma_data_60_train, sd_ma_data_60_test = cut_off_data(
+        sd_ma_data_60, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_diff_ma_data_5_train, sd_diff_ma_data_5_test = cut_off_data(
+        sd_diff_ma_data_5, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_diff_ma_data_10_train, sd_diff_ma_data_10_test = cut_off_data(
+        sd_diff_ma_data_10, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_diff_ma_data_20_train, sd_diff_ma_data_20_test = cut_off_data(
+        sd_diff_ma_data_20, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_diff_ma_data_60_train, sd_diff_ma_data_60_test = cut_off_data(
+        sd_diff_ma_data_60, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_velocity_ma_data_5_train, sd_velocity_ma_data_5_test = cut_off_data(
+        sd_velocity_ma_data_5, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_velocity_ma_data_10_train, sd_velocity_ma_data_10_test = cut_off_data(
+        sd_velocity_ma_data_10, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_velocity_ma_data_20_train, sd_velocity_ma_data_20_test = cut_off_data(
+        sd_velocity_ma_data_20, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_velocity_ma_data_60_train, sd_velocity_ma_data_60_test = cut_off_data(
+        sd_velocity_ma_data_60, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_min_max_nor_ma_data_5_train, sd_min_max_nor_ma_data_5_test = cut_off_data(
+        sd_min_max_nor_ma_data_5, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_min_max_nor_ma_data_10_train, sd_min_max_nor_ma_data_10_test = cut_off_data(
+        sd_min_max_nor_ma_data_10, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_min_max_nor_ma_data_20_train, sd_min_max_nor_ma_data_20_test = cut_off_data(
+        sd_min_max_nor_ma_data_20, cut_off, blind_set_seq, s_test, e_test
+    )
+    sd_min_max_nor_ma_data_60_train, sd_min_max_nor_ma_data_60_test = cut_off_data(
+        sd_min_max_nor_ma_data_60, cut_off, blind_set_seq, s_test, e_test
+    )
+    fund_his_30_train, fund_his_30_test = cut_off_data(
+        fund_his_30, cut_off, blind_set_seq, s_test, e_test
+    )
+    fund_cov_60_train, fund_cov_60_test = cut_off_data(
+        fund_cov_60, cut_off, blind_set_seq, s_test, e_test
+    )
+    extra_cor_60_train, extra_cor_60_test = cut_off_data(
+        extra_cor_60, cut_off, blind_set_seq, s_test, e_test
+    )
 
     target_data_train, target_data_test = None, None
-    if dependent_var == 'returns':
-        target_data_train, target_data_test = cut_off_data(returns, cut_off, blind_set_seq, s_test, e_test)
-    elif dependent_var == 'tri':
-        target_data_train, target_data_test = cut_off_data(y_index_data, cut_off, blind_set_seq, s_test, e_test)
+    if dependent_var == "returns":
+        target_data_train, target_data_test = cut_off_data(
+            returns, cut_off, blind_set_seq, s_test, e_test
+        )
+    elif dependent_var == "tri":
+        target_data_train, target_data_test = cut_off_data(
+            y_index_data, cut_off, blind_set_seq, s_test, e_test
+        )
 
     """Write examples
     """
@@ -1246,40 +1806,90 @@ def run(dataset_dir, file_pattern='fs_v0_cv%02d_%s.tfrecord', s_test=None, e_tes
         _verbose = 0
 
     # Train
-    convert_dataset(sd_dates_train,
-                    sd_data_train, sd_ma_data_5_train, sd_ma_data_10_train, sd_ma_data_20_train,
-                    sd_ma_data_60_train,
-                    sd_diff_data_train, sd_diff_ma_data_5_train, sd_diff_ma_data_10_train, sd_diff_ma_data_20_train,
-                    sd_diff_ma_data_60_train,
-                    sd_velocity_data_train, sd_velocity_ma_data_5_train, sd_velocity_ma_data_10_train,
-                    sd_velocity_ma_data_20_train, sd_velocity_ma_data_60_train,
-                    sd_min_max_nor_data_train, sd_min_max_nor_ma_data_5_train, sd_min_max_nor_ma_data_10_train,
-                    sd_min_max_nor_ma_data_20_train, sd_min_max_nor_ma_data_60_train,
-                    target_data_train, fund_his_30_train, fund_cov_60_train, extra_cor_60_train,
-                    x_seq, forward_ndx, class_names_to_ids, dataset_dir, verbose=_verbose)
+    convert_dataset(
+        sd_dates_train,
+        sd_data_train,
+        sd_ma_data_5_train,
+        sd_ma_data_10_train,
+        sd_ma_data_20_train,
+        sd_ma_data_60_train,
+        sd_diff_data_train,
+        sd_diff_ma_data_5_train,
+        sd_diff_ma_data_10_train,
+        sd_diff_ma_data_20_train,
+        sd_diff_ma_data_60_train,
+        sd_velocity_data_train,
+        sd_velocity_ma_data_5_train,
+        sd_velocity_ma_data_10_train,
+        sd_velocity_ma_data_20_train,
+        sd_velocity_ma_data_60_train,
+        sd_min_max_nor_data_train,
+        sd_min_max_nor_ma_data_5_train,
+        sd_min_max_nor_ma_data_10_train,
+        sd_min_max_nor_ma_data_20_train,
+        sd_min_max_nor_ma_data_60_train,
+        target_data_train,
+        fund_his_30_train,
+        fund_cov_60_train,
+        extra_cor_60_train,
+        x_seq,
+        forward_ndx,
+        class_names_to_ids,
+        dataset_dir,
+        verbose=_verbose,
+    )
 
     # Blind set
-    convert_dataset(sd_dates_test,
-                    sd_data_test, sd_ma_data_5_test, sd_ma_data_10_test, sd_ma_data_20_test, sd_ma_data_60_test,
-                    sd_diff_data_test, sd_diff_ma_data_5_test, sd_diff_ma_data_10_test, sd_diff_ma_data_20_test,
-                    sd_diff_ma_data_60_test,
-                    sd_velocity_data_test, sd_velocity_ma_data_5_test, sd_velocity_ma_data_10_test,
-                    sd_velocity_ma_data_20_test, sd_velocity_ma_data_60_test,
-                    sd_min_max_nor_data_test, sd_min_max_nor_ma_data_5_test, sd_min_max_nor_ma_data_10_test,
-                    sd_min_max_nor_ma_data_20_test, sd_min_max_nor_ma_data_60_test,
-                    target_data_test, fund_his_30_test, fund_cov_60_test, extra_cor_60_test,
-                    x_seq, forward_ndx, class_names_to_ids, dataset_dir, verbose=1)
+    convert_dataset(
+        sd_dates_test,
+        sd_data_test,
+        sd_ma_data_5_test,
+        sd_ma_data_10_test,
+        sd_ma_data_20_test,
+        sd_ma_data_60_test,
+        sd_diff_data_test,
+        sd_diff_ma_data_5_test,
+        sd_diff_ma_data_10_test,
+        sd_diff_ma_data_20_test,
+        sd_diff_ma_data_60_test,
+        sd_velocity_data_test,
+        sd_velocity_ma_data_5_test,
+        sd_velocity_ma_data_10_test,
+        sd_velocity_ma_data_20_test,
+        sd_velocity_ma_data_60_test,
+        sd_min_max_nor_data_test,
+        sd_min_max_nor_ma_data_5_test,
+        sd_min_max_nor_ma_data_10_test,
+        sd_min_max_nor_ma_data_20_test,
+        sd_min_max_nor_ma_data_60_test,
+        target_data_test,
+        fund_his_30_test,
+        fund_cov_60_test,
+        extra_cor_60_test,
+        x_seq,
+        forward_ndx,
+        class_names_to_ids,
+        dataset_dir,
+        verbose=1,
+    )
 
     # write meta information for data set
-    meta = {'x_seq': x_seq, 'x_variables': x_variables, 'forecast': forward_ndx,
-            'num_y_index': num_y_index, 'num_of_datatype_obs': g_num_of_datatype_obs,
-            'num_of_datatype_obs_total': g_num_of_datatype_obs_total,
-            'action_to_y_index': ids_to_class_names, 'y_index_to_action': class_names_to_ids,
-            'idx_to_variable': ids_to_var_names, 'variable_to_idx': var_names_to_ids}
-    with open(dataset_dir + '/meta', 'wb') as fp:
+    meta = {
+        "x_seq": x_seq,
+        "x_variables": x_variables,
+        "forecast": forward_ndx,
+        "num_y_index": num_y_index,
+        "num_of_datatype_obs": g_num_of_datatype_obs,
+        "num_of_datatype_obs_total": g_num_of_datatype_obs_total,
+        "action_to_y_index": ids_to_class_names,
+        "y_index_to_action": class_names_to_ids,
+        "idx_to_variable": ids_to_var_names,
+        "variable_to_idx": var_names_to_ids,
+    }
+    with open(dataset_dir + "/meta", "wb") as fp:
         pickle.dump(meta, fp)
         fp.close()
 
-    print('\nFinished converting the dataset!')
-    print('\n Location: {0}'.format(dataset_dir))
+    print("\nFinished converting the dataset!")
+    print("\n Location: {0}".format(dataset_dir))
     os._exit(0)

@@ -25,8 +25,9 @@ def gmatmul(tensor_a, tensor_b, transpose_a=False, transpose_b=False, reduce_dim
             tensor_b = tf.transpose(a=tensor_b, perm=b_dims)
         b_t_shape = tensor_b.get_shape()
         tensor_b = tf.reshape(tensor_b, [int(b_shape[reduce_dim]), -1])
-        result = tf.matmul(tensor_a, tensor_b, transpose_a=transpose_a,
-                           transpose_b=transpose_b)
+        result = tf.matmul(
+            tensor_a, tensor_b, transpose_a=transpose_a, transpose_b=transpose_b
+        )
         result = tf.reshape(result, b_t_shape)
         if reduce_dim != 0:
             b_dims = list(range(len(b_shape)))
@@ -47,8 +48,9 @@ def gmatmul(tensor_a, tensor_b, transpose_a=False, transpose_b=False, reduce_dim
             tensor_a = tf.transpose(a=tensor_a, perm=a_dims)
         a_t_shape = tensor_a.get_shape()
         tensor_a = tf.reshape(tensor_a, [-1, int(a_shape[reduce_dim])])
-        result = tf.matmul(tensor_a, tensor_b, transpose_a=transpose_a,
-                           transpose_b=transpose_b)
+        result = tf.matmul(
+            tensor_a, tensor_b, transpose_a=transpose_a, transpose_b=transpose_b
+        )
         result = tf.reshape(result, a_t_shape)
         if reduce_dim != outter_dim:
             a_dims = list(range(len(a_shape)))
@@ -58,9 +60,11 @@ def gmatmul(tensor_a, tensor_b, transpose_a=False, transpose_b=False, reduce_dim
         return result
 
     elif len(tensor_a.get_shape()) == 2 and len(tensor_b.get_shape()) == 2:
-        return tf.matmul(tensor_a, tensor_b, transpose_a=transpose_a, transpose_b=transpose_b)
+        return tf.matmul(
+            tensor_a, tensor_b, transpose_a=transpose_a, transpose_b=transpose_b
+        )
 
-    assert False, 'something went wrong'
+    assert False, "something went wrong"
 
 
 def clipout_neg(vec, threshold=1e-6):
@@ -75,7 +79,7 @@ def clipout_neg(vec, threshold=1e-6):
     return mask * vec
 
 
-def detect_min_val(input_mat, var, threshold=1e-6, name='', debug=False):
+def detect_min_val(input_mat, var, threshold=1e-6, name="", debug=False):
     """
     If debug is not set, will run clipout_neg. Else, will clip and print out odd eigen values
 
@@ -92,16 +96,29 @@ def detect_min_val(input_mat, var, threshold=1e-6, name='', debug=False):
     input_mat_clipped = clipout_neg(input_mat, threshold)
 
     if debug:
-        input_mat_clipped = tf.cond(pred=tf.logical_or(tf.greater(eigen_ratio, 0.), tf.less(eigen_ratio, -500)),
-                                    true_fn=lambda: input_mat_clipped, false_fn=lambda: tf.compat.v1.Print(
+        input_mat_clipped = tf.cond(
+            pred=tf.logical_or(
+                tf.greater(eigen_ratio, 0.0), tf.less(eigen_ratio, -500)
+            ),
+            true_fn=lambda: input_mat_clipped,
+            false_fn=lambda: tf.compat.v1.Print(
                 input_mat_clipped,
-                [tf.convert_to_tensor(value='odd ratio ' + name + ' eigen values!!!'), tf.convert_to_tensor(value=var.name),
-                 eigen_min, eigen_max, eigen_ratio]))
+                [
+                    tf.convert_to_tensor(
+                        value="odd ratio " + name + " eigen values!!!"
+                    ),
+                    tf.convert_to_tensor(value=var.name),
+                    eigen_min,
+                    eigen_max,
+                    eigen_ratio,
+                ],
+            ),
+        )
 
     return input_mat_clipped
 
 
-def factor_reshape(eigen_vectors, eigen_values, grad, fac_idx=0, f_type='act'):
+def factor_reshape(eigen_vectors, eigen_values, grad, fac_idx=0, f_type="act"):
     """
     factor and reshape input eigen values
 
@@ -114,14 +131,18 @@ def factor_reshape(eigen_vectors, eigen_values, grad, fac_idx=0, f_type='act'):
             and eigen values
     """
     grad_shape = grad.get_shape()
-    if f_type == 'act':
+    if f_type == "act":
         assert eigen_values.get_shape()[0] == grad_shape[fac_idx]
-        expanded_shape = [1, ] * len(grad_shape)
+        expanded_shape = [
+            1,
+        ] * len(grad_shape)
         expanded_shape[fac_idx] = -1
         eigen_values = tf.reshape(eigen_values, expanded_shape)
-    if f_type == 'grad':
+    if f_type == "grad":
         assert eigen_values.get_shape()[0] == grad_shape[len(grad_shape) - fac_idx - 1]
-        expanded_shape = [1, ] * len(grad_shape)
+        expanded_shape = [
+            1,
+        ] * len(grad_shape)
         expanded_shape[len(grad_shape) - fac_idx - 1] = -1
         eigen_values = tf.reshape(eigen_values, expanded_shape)
 

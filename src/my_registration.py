@@ -6,13 +6,16 @@ from gym import error, logger
 #
 # 2016-10-31: We're experimentally expanding the environment ID format
 # to include an optional username.
-env_id_re = re.compile(r'^(?:[\w:-]+\/)?([\w:.-]+)-v(\d+)$')
+env_id_re = re.compile(r"^(?:[\w:-]+\/)?([\w:.-]+)-v(\d+)$")
+
 
 def load(name):
-    import pkg_resources # takes ~400ms to load, so we import it lazily
-    entry_point = pkg_resources.EntryPoint.parse('x={}'.format(name))
+    import pkg_resources  # takes ~400ms to load, so we import it lazily
+
+    entry_point = pkg_resources.EntryPoint.parse("x={}".format(name))
     result = entry_point.resolve()
     return result
+
 
 class EnvSpec(object):
     """A specification for a particular instance of the environment. Used
@@ -33,7 +36,20 @@ class EnvSpec(object):
         trials (int): The number of trials run in official evaluation
     """
 
-    def __init__(self, id, entry_point=None, trials=100, reward_threshold=None, local_only=False, kwargs=None, nondeterministic=False, tags=None, max_episode_steps=500, max_episode_seconds=None, timestep_limit=None):
+    def __init__(
+        self,
+        id,
+        entry_point=None,
+        trials=100,
+        reward_threshold=None,
+        local_only=False,
+        kwargs=None,
+        nondeterministic=False,
+        tags=None,
+        max_episode_steps=500,
+        max_episode_seconds=None,
+        timestep_limit=None,
+    ):
         self.id = id
         # Evaluation parameters
         self.trials = trials
@@ -46,12 +62,12 @@ class EnvSpec(object):
         self.tags = tags
 
         # BACKWARDS COMPAT 2017/1/18
-        if tags.get('wrapper_config.TimeLimit.max_episode_steps'):
-            max_episode_steps = tags.get('wrapper_config.TimeLimit.max_episode_steps')
+        if tags.get("wrapper_config.TimeLimit.max_episode_steps"):
+            max_episode_steps = tags.get("wrapper_config.TimeLimit.max_episode_steps")
             # TODO: Add the following deprecation warning after 2017/02/18
             # warnings.warn("DEPRECATION WARNING wrapper_config.TimeLimit has been deprecated. Replace any calls to `register(tags={'wrapper_config.TimeLimit.max_episode_steps': 200)}` with `register(max_episode_steps=200)`. This change was made 2017/1/31 and is included in gym version 0.8.0. If you are getting many of these warnings, you may need to update universe past version 0.21.3")
 
-        tags['wrapper_config.TimeLimit.max_episode_steps'] = max_episode_steps
+        tags["wrapper_config.TimeLimit.max_episode_steps"] = max_episode_steps
         ######
 
         # BACKWARDS COMPAT 2017/1/31
@@ -68,7 +84,11 @@ class EnvSpec(object):
         # useful.
         match = env_id_re.search(id)
         if not match:
-            raise error.Error('Attempted to register malformed environment ID: {}. (Currently all IDs must be of the form {}.)'.format(id, env_id_re.pattern))
+            raise error.Error(
+                "Attempted to register malformed environment ID: {}. (Currently all IDs must be of the form {}.)".format(
+                    id, env_id_re.pattern
+                )
+            )
         self._env_name = match.group(1)
         self._entry_point = entry_point
         self._local_only = local_only
@@ -77,7 +97,11 @@ class EnvSpec(object):
     def make(self, **kwargs):
         """Instantiates an instance of the environment with appropriate kwargs"""
         if self._entry_point is None:
-            raise error.Error('Attempting to make deprecated env {}. (HINT: is there a newer registered version of this env?)'.format(self.id))
+            raise error.Error(
+                "Attempting to make deprecated env {}. (HINT: is there a newer registered version of this env?)".format(
+                    self.id
+                )
+            )
         _kwargs = self._kwargs.copy()
         _kwargs.update(kwargs)
         if callable(self._entry_point):
@@ -116,45 +140,51 @@ class EnvRegistry(object):
 
     def make(self, id, entry_point, **kwargs):
         if len(kwargs) > 0:
-            logger.info('Making new env: %s (%s)', id, kwargs)
+            logger.info("Making new env: %s (%s)", id, kwargs)
         else:
-            logger.info('Making new env: %s', id)
+            logger.info("Making new env: %s", id)
         spec = self.spec(id, entry_point)
         env = spec.make(**kwargs)
         # We used to have people override _reset/_step rather than
         # reset/step. Set _gym_disable_underscore_compat = True on
         # your environment if you use these methods and don't want
         # compatibility code to be invoked.
-        if hasattr(env, "_reset") and hasattr(env, "_step") and not getattr(env, "_gym_disable_underscore_compat", False):
+        if (
+            hasattr(env, "_reset")
+            and hasattr(env, "_step")
+            and not getattr(env, "_gym_disable_underscore_compat", False)
+        ):
             patch_deprecated_methods(env)
-        if (env.spec.timestep_limit is not None) and not spec.tags.get('vnc'):
+        if (env.spec.timestep_limit is not None) and not spec.tags.get("vnc"):
             from gym.wrappers.time_limit import TimeLimit
-            env = TimeLimit(env,
-                            max_episode_steps=env.spec.max_episode_steps,
-                            max_episode_seconds=env.spec.max_episode_seconds)
-        return env
 
+            env = TimeLimit(
+                env,
+                max_episode_steps=env.spec.max_episode_steps,
+                max_episode_seconds=env.spec.max_episode_seconds,
+            )
+        return env
 
     def all(self):
         return self.env_specs.values()
 
-#    def spec(self, id):
-#        match = env_id_re.search(id)
-#        if not match:
-#            raise error.Error('Attempted to look up malformed environment ID: {}. (Currently all IDs must be of the form {}.)'.format(id.encode('utf-8'), env_id_re.pattern))
-#
-#        try:
-#            return self.env_specs[id]
-#        except KeyError:
-#            # Parse the env name and check to see if it matches the non-version
-#            # part of a valid env (could also check the exact number here)
-#            env_name = match.group(1)
-#            matching_envs = [valid_env_name for valid_env_name, valid_env_spec in self.env_specs.items()
-#                             if env_name == valid_env_spec._env_name]
-#            if matching_envs:
-#                raise error.DeprecatedEnv('Env {} not found (valid versions include {})'.format(id, matching_envs))
-#            else:
-#                raise error.UnregisteredEnv('No registered env with id: {}'.format(id))
+    #    def spec(self, id):
+    #        match = env_id_re.search(id)
+    #        if not match:
+    #            raise error.Error('Attempted to look up malformed environment ID: {}. (Currently all IDs must be of the form {}.)'.format(id.encode('utf-8'), env_id_re.pattern))
+    #
+    #        try:
+    #            return self.env_specs[id]
+    #        except KeyError:
+    #            # Parse the env name and check to see if it matches the non-version
+    #            # part of a valid env (could also check the exact number here)
+    #            env_name = match.group(1)
+    #            matching_envs = [valid_env_name for valid_env_name, valid_env_spec in self.env_specs.items()
+    #                             if env_name == valid_env_spec._env_name]
+    #            if matching_envs:
+    #                raise error.DeprecatedEnv('Env {} not found (valid versions include {})'.format(id, matching_envs))
+    #            else:
+    #                raise error.UnregisteredEnv('No registered env with id: {}'.format(id))
 
     def spec(self, id, entry_point):
         return EnvSpec(id, entry_point=entry_point)
@@ -164,32 +194,44 @@ class EnvRegistry(object):
             # Parse the env name and check to see if it matches the non-version
             # part of a valid env (could also check the exact number here)
             env_name = match.group(1)
-            matching_envs = [valid_env_name for valid_env_name, valid_env_spec in self.env_specs.items()
-                             if env_name == valid_env_spec._env_name]
+            matching_envs = [
+                valid_env_name
+                for valid_env_name, valid_env_spec in self.env_specs.items()
+                if env_name == valid_env_spec._env_name
+            ]
             if matching_envs:
-                raise error.DeprecatedEnv('Env {} not found (valid versions include {})'.format(id, matching_envs))
+                raise error.DeprecatedEnv(
+                    "Env {} not found (valid versions include {})".format(
+                        id, matching_envs
+                    )
+                )
             else:
-                raise error.UnregisteredEnv('No registered env with id: {}'.format(id))
-
+                raise error.UnregisteredEnv("No registered env with id: {}".format(id))
 
     def register(self, id, **kwargs):
         if id in self.env_specs:
-            raise error.Error('Cannot re-register id: {}'.format(id))
+            raise error.Error("Cannot re-register id: {}".format(id))
         self.env_specs[id] = EnvSpec(id, **kwargs)
+
 
 # Have a global registry
 registry = EnvRegistry()
 
+
 def register(id, **kwargs):
     return registry.register(id, **kwargs)
+
 
 def make(id, **kwargs):
     return registry.make(id, **kwargs)
 
+
 def spec(id):
     return registry.spec(id)
 
+
 warn_once = True
+
 
 def patch_deprecated_methods(env):
     """
@@ -198,14 +240,20 @@ def patch_deprecated_methods(env):
     """
     global warn_once
     if warn_once:
-        logger.warn("Environment '%s' has deprecated methods '_step' and '_reset' rather than 'step' and 'reset'. Compatibility code invoked. Set _gym_disable_underscore_compat = True to disable this behavior." % str(type(env)))
+        logger.warn(
+            "Environment '%s' has deprecated methods '_step' and '_reset' rather than 'step' and 'reset'. Compatibility code invoked. Set _gym_disable_underscore_compat = True to disable this behavior."
+            % str(type(env))
+        )
         warn_once = False
     env.reset = env._reset
-    env.step  = env._step
-    env.seed  = env._seed
+    env.step = env._step
+    env.seed = env._seed
+
     def render(mode):
         return env._render(mode, close=False)
+
     def close():
         env._render("human", close=True)
+
     env.render = render
     env.close = close

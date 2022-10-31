@@ -8,4 +8,5 @@ from rllearn.ppo1 import PPO1
 from rllearn.ppo2 import PPO2
 from rllearn.trpo_mpi import TRPO
 from rllearn.sac import SAC
+
 __version__ = "2.4.1"

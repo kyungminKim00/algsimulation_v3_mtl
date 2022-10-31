@@ -27,7 +27,9 @@ def traj_segment_generator(policy, env, horizon, reward_giver=None, gail=False):
         - ep_true_rets: (float) the real environment reward
     """
     # Check when using GAIL
-    assert not (gail and reward_giver is None), "You must pass a reward giver when using GAIL"
+    assert not (
+        gail and reward_giver is None
+    ), "You must pass a reward giver when using GAIL"
 
     # Initialize state variables
     step = 0
@@ -43,10 +45,10 @@ def traj_segment_generator(policy, env, horizon, reward_giver=None, gail=False):
 
     # Initialize history arrays
     observations = np.array([observation for _ in range(horizon)])
-    true_rews = np.zeros(horizon, 'float32')
-    rews = np.zeros(horizon, 'float32')
-    vpreds = np.zeros(horizon, 'float32')
-    dones = np.zeros(horizon, 'int32')
+    true_rews = np.zeros(horizon, "float32")
+    rews = np.zeros(horizon, "float32")
+    vpreds = np.zeros(horizon, "float32")
+    dones = np.zeros(horizon, "int32")
     actions = np.array([action for _ in range(horizon)])
     prev_actions = actions.copy()
     states = policy.initial_state
@@ -54,7 +56,9 @@ def traj_segment_generator(policy, env, horizon, reward_giver=None, gail=False):
 
     while True:
         prevac = action
-        action, vpred, states, _ = policy.step(observation.reshape(-1, *observation.shape), states, done)
+        action, vpred, states, _ = policy.step(
+            observation.reshape(-1, *observation.shape), states, done
+        )
         # Slight weirdness here because we need value function at time T
         # before returning segment [0, T-1] so we get the correct
         # terminal value
@@ -66,18 +70,18 @@ def traj_segment_generator(policy, env, horizon, reward_giver=None, gail=False):
                 current_it_timesteps = sum(ep_lens) + current_it_len
 
             yield {
-                    "ob": observations,
-                    "rew": rews,
-                    "dones": dones,
-                    "true_rew": true_rews,
-                    "vpred": vpreds,
-                    "ac": actions,
-                    "prevac": prev_actions,
-                    "nextvpred": vpred[0] * (1 - done),
-                    "ep_rets": ep_rets,
-                    "ep_lens": ep_lens,
-                    "ep_true_rets": ep_true_rets,
-                    "total_timestep": current_it_timesteps
+                "ob": observations,
+                "rew": rews,
+                "dones": dones,
+                "true_rew": true_rews,
+                "vpred": vpreds,
+                "ac": actions,
+                "prevac": prev_actions,
+                "nextvpred": vpred[0] * (1 - done),
+                "ep_rets": ep_rets,
+                "ep_lens": ep_lens,
+                "ep_true_rets": ep_true_rets,
+                "total_timestep": current_it_timesteps,
             }
             _, vpred, _, _ = policy.step(observation.reshape(-1, *observation.shape))
             # Be careful!!! if you change the downstream algorithm to aggregate
@@ -96,7 +100,9 @@ def traj_segment_generator(policy, env, horizon, reward_giver=None, gail=False):
         clipped_action = action
         # Clip the actions to avoid out of bound error
         if isinstance(env.action_space, gym.spaces.Box):
-            clipped_action = np.clip(action, env.action_space.low, env.action_space.high)
+            clipped_action = np.clip(
+                action, env.action_space.low, env.action_space.high
+            )
 
         if gail:
             rew = reward_giver.get_reward(observation, clipped_action[0])
@@ -135,7 +141,7 @@ def add_vtarg_and_adv(seg, gamma, lam):
     new = np.append(seg["dones"], 0)
     vpred = np.append(seg["vpred"], seg["nextvpred"])
     rew_len = len(seg["rew"])
-    seg["adv"] = gaelam = np.empty(rew_len, 'float32')
+    seg["adv"] = gaelam = np.empty(rew_len, "float32")
     rew = seg["rew"]
     lastgaelam = 0
     for step in reversed(range(rew_len)):

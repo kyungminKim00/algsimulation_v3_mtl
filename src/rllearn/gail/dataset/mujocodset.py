@@ -51,14 +51,16 @@ class Dset(object):
         if self.pointer + batch_size >= self.num_pairs:
             self.init_pointer()
         end = self.pointer + batch_size
-        inputs = self.inputs[self.pointer:end, :]
-        labels = self.labels[self.pointer:end, :]
+        inputs = self.inputs[self.pointer : end, :]
+        labels = self.labels[self.pointer : end, :]
         self.pointer = end
         return inputs, labels
 
 
 class MujocoDset(object):
-    def __init__(self, expert_path, train_fraction=0.7, traj_limitation=-1, randomize=True):
+    def __init__(
+        self, expert_path, train_fraction=0.7, traj_limitation=-1, randomize=True
+    ):
         """
         Dataset for mujoco
 
@@ -69,9 +71,9 @@ class MujocoDset(object):
         """
         traj_data = np.load(expert_path)
         if traj_limitation < 0:
-            traj_limitation = len(traj_data['obs'])
-        obs = traj_data['obs'][:traj_limitation]
-        acs = traj_data['acs'][:traj_limitation]
+            traj_limitation = len(traj_data["obs"])
+        obs = traj_data["obs"][:traj_limitation]
+        acs = traj_data["acs"][:traj_limitation]
 
         # obs, acs: shape (N, L, ) + S where N = # episodes, L = episode length
         # and S is the environment observation/action space.
@@ -79,23 +81,27 @@ class MujocoDset(object):
         self.obs = np.reshape(obs, [-1, np.prod(obs.shape[2:])])
         self.acs = np.reshape(acs, [-1, np.prod(acs.shape[2:])])
 
-        self.rets = traj_data['ep_rets'][:traj_limitation]
-        self.avg_ret = sum(self.rets)/len(self.rets)
+        self.rets = traj_data["ep_rets"][:traj_limitation]
+        self.avg_ret = sum(self.rets) / len(self.rets)
         self.std_ret = np.std(np.array(self.rets))
         if len(self.acs) > 2:
             self.acs = np.squeeze(self.acs)
         assert len(self.obs) == len(self.acs)
-        self.num_traj = min(traj_limitation, len(traj_data['obs']))
+        self.num_traj = min(traj_limitation, len(traj_data["obs"]))
         self.num_transition = len(self.obs)
         self.randomize = randomize
         self.dset = Dset(self.obs, self.acs, self.randomize)
         # for behavior cloning
-        self.train_set = Dset(self.obs[:int(self.num_transition*train_fraction), :],
-                              self.acs[:int(self.num_transition*train_fraction), :],
-                              self.randomize)
-        self.val_set = Dset(self.obs[int(self.num_transition*train_fraction):, :],
-                            self.acs[int(self.num_transition*train_fraction):, :],
-                            self.randomize)
+        self.train_set = Dset(
+            self.obs[: int(self.num_transition * train_fraction), :],
+            self.acs[: int(self.num_transition * train_fraction), :],
+            self.randomize,
+        )
+        self.val_set = Dset(
+            self.obs[int(self.num_transition * train_fraction) :, :],
+            self.acs[int(self.num_transition * train_fraction) :, :],
+            self.randomize,
+        )
         self.log_info()
 
     def log_info(self):
@@ -117,9 +123,9 @@ class MujocoDset(object):
         """
         if split is None:
             return self.dset.get_next_batch(batch_size)
-        elif split == 'train':
+        elif split == "train":
             return self.train_set.get_next_batch(batch_size)
-        elif split == 'val':
+        elif split == "val":
             return self.val_set.get_next_batch(batch_size)
         else:
             raise NotImplementedError
@@ -146,10 +152,13 @@ def test(expert_path, traj_limitation, plot):
         dset.plot()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--expert_path", type=str, default="../data/deterministic.trpo.Hopper.0.00.npz")
+    parser.add_argument(
+        "--expert_path", type=str, default="../data/deterministic.trpo.Hopper.0.00.npz"
+    )
     parser.add_argument("--traj_limitation", type=int, default=None)
     parser.add_argument("--plot", type=bool, default=False)
     args = parser.parse_args()

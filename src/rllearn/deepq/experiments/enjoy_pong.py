@@ -23,5 +23,5 @@ def main():
         print("Episode reward", episode_rew)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

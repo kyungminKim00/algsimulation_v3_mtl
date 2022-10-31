@@ -1468,7 +1468,7 @@ def normalized_spread(data, ma_data_5, ma_data_10, data_20, ma_data_60, X_unit):
 
 def triangular_vector(data):
     row, n_var, _ = data.shape
-    data = data.reshape(row, n_var ** 2)
+    data = data.reshape(row, n_var**2)
 
     # extract upper-triangular components
     del_idx = list()
@@ -1478,7 +1478,7 @@ def triangular_vector(data):
         else:
             for n_idx2 in np.arange(n_idx + 1):
                 del_idx.append(n_idx * n_var + n_idx2)
-    triangular_idx = np.delete(np.arange(n_var ** 2), del_idx)
+    triangular_idx = np.delete(np.arange(n_var**2), del_idx)
 
     return data[:, triangular_idx]
 

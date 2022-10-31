@@ -14,9 +14,9 @@ from rllearn.common.schedules import LinearSchedule
 
 class CustomPolicy(FeedForwardPolicy):
     def __init__(self, *args, **kwargs):
-        super(CustomPolicy, self).__init__(*args, **kwargs,
-                                           layers=[64],
-                                           feature_extraction="mlp")
+        super(CustomPolicy, self).__init__(
+            *args, **kwargs, layers=[64], feature_extraction="mlp"
+        )
 
 
 def main(args):
@@ -33,13 +33,15 @@ def main(args):
             ob_space=env.observation_space,
             ac_space=env.action_space,
             optimizer=tf.compat.v1.train.AdamOptimizer(learning_rate=5e-4),
-            sess=sess
+            sess=sess,
         )
         # Create the replay buffer
         replay_buffer = ReplayBuffer(50000)
         # Create the schedule for exploration starting from 1 (every action is random) down to
         # 0.02 (98% of actions are selected according to values predicted by the model).
-        exploration = LinearSchedule(schedule_timesteps=10000, initial_p=1.0, final_p=0.02)
+        exploration = LinearSchedule(
+            schedule_timesteps=10000, initial_p=1.0, final_p=0.02
+        )
 
         # Initialize the parameters and copy them to the target network.
         tf_utils.initialize()
@@ -78,8 +80,17 @@ def main(args):
             else:
                 # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
                 if step > 1000:
-                    obses_t, actions, rewards, obses_tp1, dones = replay_buffer.sample(32)
-                    train(obses_t, actions, rewards, obses_tp1, dones, np.ones_like(rewards))
+                    obses_t, actions, rewards, obses_tp1, dones = replay_buffer.sample(
+                        32
+                    )
+                    train(
+                        obses_t,
+                        actions,
+                        rewards,
+                        obses_tp1,
+                        dones,
+                        np.ones_like(rewards),
+                    )
                 # Update target network periodically.
                 if step % 1000 == 0:
                     update_target()
@@ -88,14 +99,24 @@ def main(args):
                 logger.record_tabular("steps", step)
                 logger.record_tabular("episodes", len(episode_rewards))
                 logger.record_tabular("mean episode reward", mean_100ep_reward)
-                logger.record_tabular("% time spent exploring", int(100 * exploration.value(step)))
+                logger.record_tabular(
+                    "% time spent exploring", int(100 * exploration.value(step))
+                )
                 logger.dump_tabular()
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Train DQN on cartpole using a custom mlp")
-    parser.add_argument('--no-render', default=False, action="store_true", help="Disable rendering")
-    parser.add_argument('--max-timesteps', default=50000, type=int,
-                        help="Maximum number of timesteps when not rendering")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Train DQN on cartpole using a custom mlp"
+    )
+    parser.add_argument(
+        "--no-render", default=False, action="store_true", help="Disable rendering"
+    )
+    parser.add_argument(
+        "--max-timesteps",
+        default=50000,
+        type=int,
+        help="Maximum number of timesteps when not rendering",
+    )
     args = parser.parse_args()
     main(args)

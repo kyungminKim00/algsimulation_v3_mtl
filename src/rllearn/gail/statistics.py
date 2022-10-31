@@ -9,7 +9,6 @@ import rllearn.common.tf_util as tf_util
 
 
 class Stats:
-
     def __init__(self, scalar_keys=None, histogram_keys=None):
         """
         initialize the placeholders from the input keys, for summary logging
@@ -27,19 +26,29 @@ class Stats:
         self.scalar_summaries_ph = []
         self.histogram_summaries_ph = []
         self.histogram_summaries = []
-        with tf.compat.v1.variable_scope('summary'):
+        with tf.compat.v1.variable_scope("summary"):
             for key in scalar_keys:
-                place_holder = tf.compat.v1.placeholder('float32', None, name=key + '.scalar.summary')
-                string_summary = tf.compat.v1.summary.scalar(key + '.scalar.summary', place_holder)
+                place_holder = tf.compat.v1.placeholder(
+                    "float32", None, name=key + ".scalar.summary"
+                )
+                string_summary = tf.compat.v1.summary.scalar(
+                    key + ".scalar.summary", place_holder
+                )
                 self.scalar_summaries_ph.append(place_holder)
                 self.scalar_summaries.append(string_summary)
             for key in histogram_keys:
-                place_holder = tf.compat.v1.placeholder('float32', None, name=key + '.histogram.summary')
-                string_summary = tf.compat.v1.summary.scalar(key + '.histogram.summary', place_holder)
+                place_holder = tf.compat.v1.placeholder(
+                    "float32", None, name=key + ".histogram.summary"
+                )
+                string_summary = tf.compat.v1.summary.scalar(
+                    key + ".histogram.summary", place_holder
+                )
                 self.histogram_summaries_ph.append(place_holder)
                 self.histogram_summaries.append(string_summary)
 
-        self.summaries = tf.compat.v1.summary.merge(self.scalar_summaries + self.histogram_summaries)
+        self.summaries = tf.compat.v1.summary.merge(
+            self.scalar_summaries + self.histogram_summaries
+        )
 
     def add_all_summary(self, writer, values, _iter):
         """

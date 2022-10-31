@@ -11,6 +11,7 @@ class Filter(object):
 
     Can pass kwarg: 'update' (bool) if the filter can update from the value
     """
+
     def __call__(self, arr, update=True):
         raise NotImplementedError
 
@@ -38,6 +39,7 @@ class IdentityFilter(Filter):
 
     Can pass kwarg: 'update' (bool) if the filter can update from the value
     """
+
     def __call__(self, arr, update=True):
         return arr
 
@@ -125,7 +127,7 @@ class AddClock(Filter):
         return np.append(arr, self.count / 100.0)
 
     def output_shape(self, input_space):
-        return input_space.shape[0] + 1,
+        return (input_space.shape[0] + 1,)
 
 
 class FlattenFilter(Filter):
@@ -136,11 +138,12 @@ class FlattenFilter(Filter):
 
     Can pass kwarg: 'update' (bool) if the filter can update from the value
     """
+
     def __call__(self, arr, update=True):
         return arr.ravel()
 
     def output_shape(self, input_space):
-        return int(np.prod(input_space.shape)),
+        return (int(np.prod(input_space.shape)),)
 
 
 class Ind2OneHotFilter(Filter):
@@ -162,7 +165,7 @@ class Ind2OneHotFilter(Filter):
         return out
 
     def output_shape(self, input_space):
-        return input_space.n,
+        return (input_space.n,)
 
 
 class DivFilter(Filter):

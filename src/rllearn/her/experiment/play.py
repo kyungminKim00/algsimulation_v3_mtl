@@ -10,10 +10,10 @@ from rllearn.her.rollout import RolloutWorker
 
 
 @click.command()
-@click.argument('policy_file', type=str)
-@click.option('--seed', type=int, default=0)
-@click.option('--n_test_rollouts', type=int, default=10)
-@click.option('--render', type=int, default=1)
+@click.argument("policy_file", type=str)
+@click.option("--seed", type=int, default=0)
+@click.option("--n_test_rollouts", type=int, default=10)
+@click.option("--render", type=int, default=1)
 def main(policy_file, seed, n_test_rollouts, render):
     """
     run HER from a saved policy
@@ -26,32 +26,34 @@ def main(policy_file, seed, n_test_rollouts, render):
     set_global_seeds(seed)
 
     # Load policy.
-    with open(policy_file, 'rb') as file_handler:
+    with open(policy_file, "rb") as file_handler:
         policy = pickle.load(file_handler)
-    env_name = policy.info['env_name']
+    env_name = policy.info["env_name"]
 
     # Prepare params.
     params = config.DEFAULT_PARAMS
     if env_name in config.DEFAULT_ENV_PARAMS:
-        params.update(config.DEFAULT_ENV_PARAMS[env_name])  # merge env-specific parameters in
-    params['env_name'] = env_name
+        params.update(
+            config.DEFAULT_ENV_PARAMS[env_name]
+        )  # merge env-specific parameters in
+    params["env_name"] = env_name
     params = config.prepare_params(params)
     config.log_params(params, logger_input=logger)
 
     dims = config.configure_dims(params)
 
     eval_params = {
-        'exploit': True,
-        'use_target_net': params['test_with_polyak'],
-        'compute_q': True,
-        'rollout_batch_size': 1,
-        'render': bool(render),
+        "exploit": True,
+        "use_target_net": params["test_with_polyak"],
+        "compute_q": True,
+        "rollout_batch_size": 1,
+        "render": bool(render),
     }
 
-    for name in ['time_horizon', 'gamma', 'noise_eps', 'random_eps']:
+    for name in ["time_horizon", "gamma", "noise_eps", "random_eps"]:
         eval_params[name] = params[name]
 
-    evaluator = RolloutWorker(params['make_env'], policy, dims, logger, **eval_params)
+    evaluator = RolloutWorker(params["make_env"], policy, dims, logger, **eval_params)
     evaluator.seed(seed)
 
     # Run evaluation.
@@ -60,10 +62,10 @@ def main(policy_file, seed, n_test_rollouts, render):
         evaluator.generate_rollouts()
 
     # record logs
-    for key, val in evaluator.logs('test'):
+    for key, val in evaluator.logs("test"):
         logger.record_tabular(key, np.mean(val))
     logger.dump_tabular()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

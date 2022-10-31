@@ -35,7 +35,9 @@ def unpack(seq, sizes):
     """
     seq = list(seq)
     iterator = iter(seq)
-    assert sum(1 if s is None else s for s in sizes) == len(seq), "Trying to unpack %s into %s" % (seq, sizes)
+    assert sum(1 if s is None else s for s in sizes) == len(
+        seq
+    ), "Trying to unpack %s into %s" % (seq, sizes)
     for size in sizes:
         if size is None:
             yield iterator.__next__()
@@ -73,7 +75,10 @@ class EzPickle(object):
         self._ezpickle_kwargs = kwargs
 
     def __getstate__(self):
-        return {"_ezpickle_args": self._ezpickle_args, "_ezpickle_kwargs": self._ezpickle_kwargs}
+        return {
+            "_ezpickle_args": self._ezpickle_args,
+            "_ezpickle_kwargs": self._ezpickle_kwargs,
+        }
 
     def __setstate__(self, _dict):
         out = type(self)(*_dict["_ezpickle_args"], **_dict["_ezpickle_kwargs"])
@@ -90,7 +95,7 @@ def set_global_seeds(seed):
     np.random.seed(seed)
     random.seed(seed)
     # prng was removed in latest gym version
-    if hasattr(gym.spaces, 'prng'):
+    if hasattr(gym.spaces, "prng"):
         gym.spaces.prng.seed(seed)
 
 
@@ -114,21 +119,21 @@ def pretty_eta(seconds_left):
     hours_left %= 24
 
     def helper(cnt, name):
-        return "{} {}{}".format(str(cnt), name, ('s' if cnt > 1 else ''))
+        return "{} {}{}".format(str(cnt), name, ("s" if cnt > 1 else ""))
 
     if days_left > 0:
-        msg = helper(days_left, 'day')
+        msg = helper(days_left, "day")
         if hours_left > 0:
-            msg += ' and ' + helper(hours_left, 'hour')
+            msg += " and " + helper(hours_left, "hour")
         return msg
     if hours_left > 0:
-        msg = helper(hours_left, 'hour')
+        msg = helper(hours_left, "hour")
         if minutes_left > 0:
-            msg += ' and ' + helper(minutes_left, 'minute')
+            msg += " and " + helper(minutes_left, "minute")
         return msg
     if minutes_left > 0:
-        return helper(minutes_left, 'minute')
-    return 'less than a minute'
+        return helper(minutes_left, "minute")
+    return "less than a minute"
 
 
 class RunningAvg(object):
@@ -172,8 +177,10 @@ def boolean_flag(parser, name, default=False, help_msg=None):
     :param default: (bool) default value of the flag
     :param help_msg: (str) help string for the flag
     """
-    dest = name.replace('-', '_')
-    parser.add_argument("--" + name, action="store_true", default=default, dest=dest, help=help_msg)
+    dest = name.replace("-", "_")
+    parser.add_argument(
+        "--" + name, action="store_true", default=default, dest=dest, help=help_msg
+    )
     parser.add_argument("--no-" + name, action="store_false", dest=dest)
 
 
@@ -220,7 +227,9 @@ def relatively_safe_pickle_dump(obj, path, compression=False):
         with tempfile.NamedTemporaryFile() as uncompressed_file:
             pickle.dump(obj, uncompressed_file)
             uncompressed_file.file.flush()
-            with zipfile.ZipFile(temp_storage, "w", compression=zipfile.ZIP_DEFLATED) as myzip:
+            with zipfile.ZipFile(
+                temp_storage, "w", compression=zipfile.ZIP_DEFLATED
+            ) as myzip:
                 myzip.write(uncompressed_file.name, "data")
     else:
         with open(temp_storage, "wb") as file_handler:

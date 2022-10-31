@@ -21,8 +21,17 @@ class VecNormalize(VecEnvWrapper):
     :param epsilon: (float) To avoid division by zero
     """
 
-    def __init__(self, venv, training=True, norm_obs=True, norm_reward=True,
-                 clip_obs=10., clip_reward=10., gamma=0.99, epsilon=1e-8):
+    def __init__(
+        self,
+        venv,
+        training=True,
+        norm_obs=True,
+        norm_reward=True,
+        clip_obs=10.0,
+        clip_reward=10.0,
+        gamma=0.99,
+        epsilon=1e-8,
+    ):
         VecEnvWrapper.__init__(self, venv)
         self.obs_rms = RunningMeanStd(shape=self.observation_space.shape)
         self.ret_rms = RunningMeanStd(shape=())
@@ -51,7 +60,11 @@ class VecNormalize(VecEnvWrapper):
         if self.norm_reward:
             if self.training:
                 self.ret_rms.update(self.ret)
-            rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.clip_reward, self.clip_reward)
+            rews = np.clip(
+                rews / np.sqrt(self.ret_rms.var + self.epsilon),
+                -self.clip_reward,
+                self.clip_reward,
+            )
         self.ret[news] = 0
         return obs, rews, news, infos
 
@@ -62,8 +75,11 @@ class VecNormalize(VecEnvWrapper):
         if self.norm_obs:
             if self.training:
                 self.obs_rms.update(obs)
-            obs = np.clip((obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.epsilon), -self.clip_obs,
-                          self.clip_obs)
+            obs = np.clip(
+                (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.epsilon),
+                -self.clip_obs,
+                self.clip_obs,
+            )
             return obs
         else:
             return obs
@@ -92,14 +108,14 @@ class VecNormalize(VecEnvWrapper):
         """
         :param path: (str) path to log dir
         """
-        for rms, name in zip([self.obs_rms, self.ret_rms], ['obs_rms', 'ret_rms']):
-            with open("{}/{}.pkl".format(path, name), 'wb') as file_handler:
+        for rms, name in zip([self.obs_rms, self.ret_rms], ["obs_rms", "ret_rms"]):
+            with open("{}/{}.pkl".format(path, name), "wb") as file_handler:
                 pickle.dump(rms, file_handler)
 
     def load_running_average(self, path):
         """
         :param path: (str) path to log dir
         """
-        for name in ['obs_rms', 'ret_rms']:
-            with open("{}/{}.pkl".format(path, name), 'rb') as file_handler:
+        for name in ["obs_rms", "ret_rms"]:
+            with open("{}/{}.pkl".format(path, name), "rb") as file_handler:
                 setattr(self, name, pickle.load(file_handler))

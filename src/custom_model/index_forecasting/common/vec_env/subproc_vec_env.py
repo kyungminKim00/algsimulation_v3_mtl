@@ -18,27 +18,27 @@ def _worker(remote, parent_remote, env_fn_wrapper, header):
     while True:
         try:
             cmd, data = remote.recv()
-            if cmd == 'step':
+            if cmd == "step":
                 observation, reward, done, info = env.step(data)
                 # if done:
                 #     observation = env.reset()
                 remote.send((observation, reward, done, info))
-            elif cmd == 'reset':
+            elif cmd == "reset":
                 observation = env.reset()
                 remote.send(observation)
-            elif cmd == 'render':
+            elif cmd == "render":
                 remote.send(env.render(*data[0], **data[1]))
-            elif cmd == 'close':
+            elif cmd == "close":
                 remote.close()
                 break
-            elif cmd == 'get_spaces':
+            elif cmd == "get_spaces":
                 remote.send((env.observation_space, env.action_space))
-            elif cmd == 'env_method':
+            elif cmd == "env_method":
                 method = getattr(env, data[0])
                 remote.send(method(*data[1], **data[2]))
-            elif cmd == 'get_attr':
+            elif cmd == "get_attr":
                 remote.send(getattr(env, data))
-            elif cmd == 'set_attr':
+            elif cmd == "set_attr":
                 remote.send(setattr(env, data[0], data[1]))
             else:
                 raise NotImplementedError
@@ -50,13 +50,15 @@ def _worker(remote, parent_remote, env_fn_wrapper, header):
 #     for key in header.keys():
 #         RUNHEADER.__dict__[key] = header[key]
 
+
 class SubprocVecEnv(VecEnv):
     """
     Creates a multiprocess vectorized wrapper for multiple environments
 
     :param env_fns: ([Gym Environment]) Environments to run in subprocesses
     """
-    @funTime('SubprocVecEnv')
+
+    @funTime("SubprocVecEnv")
     def __init__(self, env_fns):
         # Added
         header = env_fns[0][1]
@@ -66,22 +68,31 @@ class SubprocVecEnv(VecEnv):
         self.closed = False
         n_envs = len(env_fns)
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(n_envs)])
-        self.processes = [Process(target=_worker, args=(work_remote, remote, CloudpickleWrapper(env_fn), header))
-                          for (work_remote, remote, env_fn) in zip(self.work_remotes, self.remotes, env_fns)]
+        self.processes = [
+            Process(
+                target=_worker,
+                args=(work_remote, remote, CloudpickleWrapper(env_fn), header),
+            )
+            for (work_remote, remote, env_fn) in zip(
+                self.work_remotes, self.remotes, env_fns
+            )
+        ]
         for process in self.processes:
-            process.daemon = True  # if the main process crashes, we should not cause things to hang
+            process.daemon = (
+                True  # if the main process crashes, we should not cause things to hang
+            )
             process.start()
         for remote in self.work_remotes:
             remote.close()
 
-        self.remotes[0].send(('get_spaces', None))
+        self.remotes[0].send(("get_spaces", None))
         observation_space, action_space = self.remotes[0].recv()
 
         VecEnv.__init__(self, len(env_fns), observation_space, action_space)
 
     def step_async(self, actions):
         for remote, action in zip(self.remotes, actions):
-            remote.send(('step', action))
+            remote.send(("step", action))
         self.waiting = True
 
     def step_wait(self):
@@ -92,7 +103,7 @@ class SubprocVecEnv(VecEnv):
 
     def reset(self):
         for remote in self.remotes:
-            remote.send(('reset', None))
+            remote.send(("reset", None))
         return np.stack([remote.recv() for remote in self.remotes])
 
     def close(self):
@@ -102,31 +113,32 @@ class SubprocVecEnv(VecEnv):
             for remote in self.remotes:
                 remote.recv()
         for remote in self.remotes:
-            remote.send(('close', None))
+            remote.send(("close", None))
         for process in self.processes:
             process.join()
         self.closed = True
 
-    def render(self, mode='human', *args, **kwargs):
+    def render(self, mode="human", *args, **kwargs):
         for pipe in self.remotes:
             # gather images from subprocesses
             # `mode` will be taken into account later
-            pipe.send(('render', (args, {'mode': 'rgb_array', **kwargs})))
+            pipe.send(("render", (args, {"mode": "rgb_array", **kwargs})))
         imgs = [pipe.recv() for pipe in self.remotes]
         # Create a big image by tiling images from subprocesses
         bigimg = tile_images(imgs)
-        if mode == 'human':
+        if mode == "human":
             import cv2
-            cv2.imshow('vecenv', bigimg[:, :, ::-1])
+
+            cv2.imshow("vecenv", bigimg[:, :, ::-1])
             cv2.waitKey(1)
-        elif mode == 'rgb_array':
+        elif mode == "rgb_array":
             return bigimg
         else:
             raise NotImplementedError
 
     def get_images(self):
         for pipe in self.remotes:
-            pipe.send(('render', {"mode": 'rgb_array'}))
+            pipe.send(("render", {"mode": "rgb_array"}))
         imgs = [pipe.recv() for pipe in self.remotes]
         return imgs
 
@@ -141,7 +153,7 @@ class SubprocVecEnv(VecEnv):
         """
 
         for remote in self.remotes:
-            remote.send(('env_method', (method_name, method_args, method_kwargs)))
+            remote.send(("env_method", (method_name, method_args, method_kwargs)))
         return [remote.recv() for remote in self.remotes]
 
     def get_attr(self, attr_name):
@@ -154,7 +166,7 @@ class SubprocVecEnv(VecEnv):
         """
 
         for remote in self.remotes:
-            remote.send(('get_attr', attr_name))
+            remote.send(("get_attr", attr_name))
         return [remote.recv() for remote in self.remotes]
 
     def set_attr(self, attr_name, value, indices=None):
@@ -174,7 +186,7 @@ class SubprocVecEnv(VecEnv):
         elif isinstance(indices, int):
             indices = [indices]
         for remote in [self.remotes[i] for i in indices]:
-            remote.send(('set_attr', (attr_name, value)))
+            remote.send(("set_attr", (attr_name, value)))
         return [remote.recv() for remote in [self.remotes[i] for i in indices]]
 
     def set_attr_non_broadcast(self, attr_name, values, indices=None):
@@ -193,13 +205,8 @@ class SubprocVecEnv(VecEnv):
         elif isinstance(indices, int):
             indices = [indices]
 
-        assert len(indices) == len(values), 'this function is not allowing broadcasting'
+        assert len(indices) == len(values), "this function is not allowing broadcasting"
         for i in indices:
             remote = self.remotes[i]
-            remote.send(('set_attr', (attr_name, values[i])))
+            remote.send(("set_attr", (attr_name, values[i])))
         return [remote.recv() for remote in [self.remotes[i] for i in indices]]
-
-
-
-
-

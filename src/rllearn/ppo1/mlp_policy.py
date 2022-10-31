@@ -58,7 +58,9 @@ class BasePolicy(object):
 
         :return: ([TensorFlow Tensor]) the variables of the network
         """
-        return tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, self.scope)
+        return tf.compat.v1.get_collection(
+            tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, self.scope
+        )
 
     def get_trainable_variables(self):
         """
@@ -66,7 +68,9 @@ class BasePolicy(object):
 
         :return: ([TensorFlow Tensor]) the trainable variables of the network
         """
-        return tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, self.scope)
+        return tf.compat.v1.get_collection(
+            tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, self.scope
+        )
 
     @classmethod
     def get_initial_state(cls):

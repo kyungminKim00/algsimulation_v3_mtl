@@ -68,7 +68,12 @@ if __name__ == "__main__":
         # parser.add_argument("--domain", type=str, default='INX_20')
         args = parser.parse_args()
         args.domain = get_domain_on_CDSW_env(args.domain)
-        args = scp.ScriptParameters(args.domain, args, job_id_int=args.process_id, search_parameter=args.search_parameter).update_args()
+        args = scp.ScriptParameters(
+            args.domain,
+            args,
+            job_id_int=args.process_id,
+            search_parameter=args.search_parameter,
+        ).update_args()
 
         if args.m_online_buffer == 1:
             args.process_id = args.ref_pid

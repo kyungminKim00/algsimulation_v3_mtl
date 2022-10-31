@@ -10,7 +10,11 @@ import tensorflow as tf
 
 from rllearn.common.policies import LstmPolicy, get_policy_from_name, ActorCriticPolicy
 from custom_model.index_forecasting.common import set_global_seeds
-from custom_model.index_forecasting.common.vec_env import VecEnvWrapper, VecEnv, DummyVecEnv
+from custom_model.index_forecasting.common.vec_env import (
+    VecEnvWrapper,
+    VecEnv,
+    DummyVecEnv,
+)
 import logger
 
 
@@ -26,7 +30,16 @@ class BaseRLModel(ABC):
     :param policy_base: (BasePolicy) the base policy used by this method
     """
 
-    def __init__(self, policy, env, verbose=0, *, requires_vec_env, policy_base, policy_kwargs=None):
+    def __init__(
+        self,
+        policy,
+        env,
+        verbose=0,
+        *,
+        requires_vec_env,
+        policy_base,
+        policy_kwargs=None
+    ):
         if isinstance(policy, str):
             self.policy = get_policy_from_name(policy_base, policy)
         else:
@@ -44,7 +57,9 @@ class BaseRLModel(ABC):
         if env is not None:
             if isinstance(env, str):
                 if self.verbose >= 1:
-                    print("Creating environment from the given name, wrapped in a DummyVecEnv.")
+                    print(
+                        "Creating environment from the given name, wrapped in a DummyVecEnv."
+                    )
                 self.env = env = DummyVecEnv([lambda: gym.make(env)])
 
             self.observation_space = env.observation_space
@@ -53,15 +68,19 @@ class BaseRLModel(ABC):
                 if isinstance(env, VecEnv):
                     self.n_envs = env.num_envs
                 else:
-                    raise ValueError("Error: the model requires a vectorized environment, please use a VecEnv wrapper.")
+                    raise ValueError(
+                        "Error: the model requires a vectorized environment, please use a VecEnv wrapper."
+                    )
             else:
                 if isinstance(env, VecEnv):
                     if env.num_envs == 1:
                         self.env = _UnvecWrapper(env)
                         self._vectorize_action = True
                     else:
-                        raise ValueError("Error: the model requires a non vectorized environment or a single vectorized"
-                                         " environment.")
+                        raise ValueError(
+                            "Error: the model requires a non vectorized environment or a single vectorized"
+                            " environment."
+                        )
                 self.n_envs = 1
 
     def get_env(self):
@@ -80,24 +99,35 @@ class BaseRLModel(ABC):
         """
         if env is None and self.env is None:
             if self.verbose >= 1:
-                print("Loading a model without an environment, "
-                      "this model cannot be trained until it has a valid environment.")
+                print(
+                    "Loading a model without an environment, "
+                    "this model cannot be trained until it has a valid environment."
+                )
             return
         elif env is None:
-            raise ValueError("Error: trying to replace the current environment with None")
+            raise ValueError(
+                "Error: trying to replace the current environment with None"
+            )
 
         # sanity checking the environment
-        assert self.observation_space == env.observation_space, \
-            "Error: the environment passed must have at least the same observation space as the model was trained on."
-        assert self.action_space == env.action_space, \
-            "Error: the environment passed must have at least the same action space as the model was trained on."
+        assert (
+            self.observation_space == env.observation_space
+        ), "Error: the environment passed must have at least the same observation space as the model was trained on."
+        assert (
+            self.action_space == env.action_space
+        ), "Error: the environment passed must have at least the same action space as the model was trained on."
         if self._requires_vec_env:
-            assert isinstance(env, VecEnv), \
-                "Error: the environment passed is not a vectorized environment, however {} requires it".format(
-                    self.__class__.__name__)
-            assert not issubclass(self.policy, LstmPolicy) or self.n_envs == env.num_envs, \
-                "Error: the environment passed must have the same number of environments as the model was trained on." \
+            assert isinstance(
+                env, VecEnv
+            ), "Error: the environment passed is not a vectorized environment, however {} requires it".format(
+                self.__class__.__name__
+            )
+            assert (
+                not issubclass(self.policy, LstmPolicy) or self.n_envs == env.num_envs
+            ), (
+                "Error: the environment passed must have the same number of environments as the model was trained on."
                 "This is due to the Lstm policy not being capable of changing the number of environments."
+            )
             self.n_envs = env.num_envs
         else:
             # for models that dont want vectorized environment, check if they make sense and adapt them.
@@ -107,8 +137,10 @@ class BaseRLModel(ABC):
                     env = _UnvecWrapper(env)
                     self._vectorize_action = True
                 else:
-                    raise ValueError("Error: the model requires a non vectorized environment or a single vectorized "
-                                     "environment.")
+                    raise ValueError(
+                        "Error: the model requires a non vectorized environment or a single vectorized "
+                        "environment."
+                    )
             else:
                 self._vectorize_action = False
 
@@ -145,14 +177,23 @@ class BaseRLModel(ABC):
         :param seed: (int) the seed value
         """
         if self.env is None:
-            raise ValueError("Error: cannot train the model without a valid environment, please set an environment with"
-                             "set_env(self, env) method.")
+            raise ValueError(
+                "Error: cannot train the model without a valid environment, please set an environment with"
+                "set_env(self, env) method."
+            )
         if seed is not None:
             set_global_seeds(seed)
 
     @abstractmethod
-    def learn(self, total_timesteps, callback=None, seed=None, log_interval=100, tb_log_name="run",
-              reset_num_timesteps=True):
+    def learn(
+        self,
+        total_timesteps,
+        callback=None,
+        seed=None,
+        log_interval=100,
+        tb_log_name="run",
+        reset_num_timesteps=True,
+    ):
         """
         Return a trained model.
 
@@ -251,7 +292,9 @@ class BaseRLModel(ABC):
                 if os.path.exists(load_path + ".pkl"):
                     load_path += ".pkl"
                 else:
-                    raise ValueError("Error: the file {} could not be found".format(load_path))
+                    raise ValueError(
+                        "Error: the file {} could not be found".format(load_path)
+                    )
 
             with open(load_path, "rb") as file:
                 data, params = cloudpickle.load(file)
@@ -288,39 +331,72 @@ class BaseRLModel(ABC):
             elif observation.shape[1:] == observation_space.shape:
                 return True
             else:
-                raise ValueError("Error: Unexpected observation shape {} for ".format(observation.shape) +
-                                 "Box environment, please use {} ".format(observation_space.shape) +
-                                 "or (n_env, {}) for the observation shape."
-                                 .format(", ".join(map(str, observation_space.shape))))
+                raise ValueError(
+                    "Error: Unexpected observation shape {} for ".format(
+                        observation.shape
+                    )
+                    + "Box environment, please use {} ".format(observation_space.shape)
+                    + "or (n_env, {}) for the observation shape.".format(
+                        ", ".join(map(str, observation_space.shape))
+                    )
+                )
         elif isinstance(observation_space, gym.spaces.Discrete):
-            if observation.shape == ():  # A numpy array of a number, has shape empty tuple '()'
+            if (
+                observation.shape == ()
+            ):  # A numpy array of a number, has shape empty tuple '()'
                 return False
             elif len(observation.shape) == 1:
                 return True
             else:
-                raise ValueError("Error: Unexpected observation shape {} for ".format(observation.shape) +
-                                 "Discrete environment, please use (1,) or (n_env, 1) for the observation shape.")
+                raise ValueError(
+                    "Error: Unexpected observation shape {} for ".format(
+                        observation.shape
+                    )
+                    + "Discrete environment, please use (1,) or (n_env, 1) for the observation shape."
+                )
         elif isinstance(observation_space, gym.spaces.MultiDiscrete):
             if observation.shape == (len(observation_space.nvec),):
                 return False
-            elif len(observation.shape) == 2 and observation.shape[1] == len(observation_space.nvec):
+            elif len(observation.shape) == 2 and observation.shape[1] == len(
+                observation_space.nvec
+            ):
                 return True
             else:
-                raise ValueError("Error: Unexpected observation shape {} for MultiDiscrete ".format(observation.shape) +
-                                 "environment, please use ({},) or ".format(len(observation_space.nvec)) +
-                                 "(n_env, {}) for the observation shape.".format(len(observation_space.nvec)))
+                raise ValueError(
+                    "Error: Unexpected observation shape {} for MultiDiscrete ".format(
+                        observation.shape
+                    )
+                    + "environment, please use ({},) or ".format(
+                        len(observation_space.nvec)
+                    )
+                    + "(n_env, {}) for the observation shape.".format(
+                        len(observation_space.nvec)
+                    )
+                )
         elif isinstance(observation_space, gym.spaces.MultiBinary):
             if observation.shape == (observation_space.n,):
                 return False
-            elif len(observation.shape) == 2 and observation.shape[1] == observation_space.n:
+            elif (
+                len(observation.shape) == 2
+                and observation.shape[1] == observation_space.n
+            ):
                 return True
             else:
-                raise ValueError("Error: Unexpected observation shape {} for MultiBinary ".format(observation.shape) +
-                                 "environment, please use ({},) or ".format(observation_space.n) +
-                                 "(n_env, {}) for the observation shape.".format(observation_space.n))
+                raise ValueError(
+                    "Error: Unexpected observation shape {} for MultiBinary ".format(
+                        observation.shape
+                    )
+                    + "environment, please use ({},) or ".format(observation_space.n)
+                    + "(n_env, {}) for the observation shape.".format(
+                        observation_space.n
+                    )
+                )
         else:
-            raise ValueError("Error: Cannot determine if the observation is vectorized with the space type {}."
-                             .format(observation_space))
+            raise ValueError(
+                "Error: Cannot determine if the observation is vectorized with the space type {}.".format(
+                    observation_space
+                )
+            )
 
 
 class ActorCriticRLModel(BaseRLModel):
@@ -335,10 +411,24 @@ class ActorCriticRLModel(BaseRLModel):
     :param requires_vec_env: (bool) Does this model require a vectorized environment
     """
 
-    def __init__(self, policy, env, _init_setup_model, verbose=0, policy_base=ActorCriticPolicy,
-                 requires_vec_env=False, policy_kwargs=None):
-        super(ActorCriticRLModel, self).__init__(policy, env, verbose=verbose, requires_vec_env=requires_vec_env,
-                                                 policy_base=policy_base, policy_kwargs=policy_kwargs)
+    def __init__(
+        self,
+        policy,
+        env,
+        _init_setup_model,
+        verbose=0,
+        policy_base=ActorCriticPolicy,
+        requires_vec_env=False,
+        policy_kwargs=None,
+    ):
+        super(ActorCriticRLModel, self).__init__(
+            policy,
+            env,
+            verbose=verbose,
+            requires_vec_env=requires_vec_env,
+            policy_base=policy_base,
+            policy_kwargs=policy_kwargs,
+        )
 
         self.sess = None
         self.initial_state = None
@@ -351,8 +441,15 @@ class ActorCriticRLModel(BaseRLModel):
         pass
 
     @abstractmethod
-    def learn(self, total_timesteps, callback=None, seed=None,
-              log_interval=100, tb_log_name="run", reset_num_timesteps=True):
+    def learn(
+        self,
+        total_timesteps,
+        callback=None,
+        seed=None,
+        log_interval=100,
+        tb_log_name="run",
+        reset_num_timesteps=True,
+    ):
         pass
 
     def predict(self, observation, state=None, mask=None, deterministic=False):
@@ -361,19 +458,27 @@ class ActorCriticRLModel(BaseRLModel):
         if mask is None:
             mask = [False for _ in range(self.n_envs)]
         observation = np.array(observation)
-        vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
+        vectorized_env = self._is_vectorized_observation(
+            observation, self.observation_space
+        )
 
         observation = observation.reshape((-1,) + self.observation_space.shape)
-        actions, _, states, _ = self.step(observation, state, mask, deterministic=deterministic)
+        actions, _, states, _ = self.step(
+            observation, state, mask, deterministic=deterministic
+        )
 
         clipped_actions = actions
         # Clip the actions to avoid out of bound error
         if isinstance(self.action_space, gym.spaces.Box):
-            clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
+            clipped_actions = np.clip(
+                actions, self.action_space.low, self.action_space.high
+            )
 
         if not vectorized_env:
             if state is not None:
-                raise ValueError("Error: The environment must be vectorized when using recurrent policies.")
+                raise ValueError(
+                    "Error: The environment must be vectorized when using recurrent policies."
+                )
             clipped_actions = clipped_actions[0]
 
         return clipped_actions, states
@@ -384,54 +489,79 @@ class ActorCriticRLModel(BaseRLModel):
         if mask is None:
             mask = [False for _ in range(self.n_envs)]
         observation = np.array(observation)
-        vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
+        vectorized_env = self._is_vectorized_observation(
+            observation, self.observation_space
+        )
 
         observation = observation.reshape((-1,) + self.observation_space.shape)
         actions_proba = self.proba_step(observation, state, mask)
 
         if len(actions_proba) == 0:  # empty list means not implemented
-            warnings.warn("Warning: action probability is not implemented for {} action space. Returning None."
-                          .format(type(self.action_space).__name__))
+            warnings.warn(
+                "Warning: action probability is not implemented for {} action space. Returning None.".format(
+                    type(self.action_space).__name__
+                )
+            )
             return None
 
         if actions is not None:  # comparing the action distribution, to given actions
             actions = np.array([actions])
             if isinstance(self.action_space, gym.spaces.Discrete):
                 actions = actions.reshape((-1,))
-                assert observation.shape[0] == actions.shape[0], \
-                    "Error: batch sizes differ for actions and observations."
+                assert (
+                    observation.shape[0] == actions.shape[0]
+                ), "Error: batch sizes differ for actions and observations."
                 actions_proba = actions_proba[np.arange(actions.shape[0]), actions]
 
             elif isinstance(self.action_space, gym.spaces.MultiDiscrete):
                 actions = actions.reshape((-1, len(self.action_space.nvec)))
-                assert observation.shape[0] == actions.shape[0], \
-                    "Error: batch sizes differ for actions and observations."
+                assert (
+                    observation.shape[0] == actions.shape[0]
+                ), "Error: batch sizes differ for actions and observations."
                 # Discrete action probability, over multiple categories
-                actions = np.swapaxes(actions, 0, 1)  # swap axis for easier categorical split
-                actions_proba = np.prod([proba[np.arange(act.shape[0]), act]
-                                         for proba, act in zip(actions_proba, actions)], axis=0)
+                actions = np.swapaxes(
+                    actions, 0, 1
+                )  # swap axis for easier categorical split
+                actions_proba = np.prod(
+                    [
+                        proba[np.arange(act.shape[0]), act]
+                        for proba, act in zip(actions_proba, actions)
+                    ],
+                    axis=0,
+                )
 
             elif isinstance(self.action_space, gym.spaces.MultiBinary):
                 actions = actions.reshape((-1, self.action_space.n))
-                assert observation.shape[0] == actions.shape[0], \
-                    "Error: batch sizes differ for actions and observations."
+                assert (
+                    observation.shape[0] == actions.shape[0]
+                ), "Error: batch sizes differ for actions and observations."
                 # Bernoulli action probability, for every action
-                actions_proba = np.prod(actions_proba * actions + (1 - actions_proba) * (1 - actions), axis=1)
+                actions_proba = np.prod(
+                    actions_proba * actions + (1 - actions_proba) * (1 - actions),
+                    axis=1,
+                )
 
             elif isinstance(self.action_space, gym.spaces.Box):
-                warnings.warn("The probabilty of taken a given action is exactly zero for a continuous distribution."
-                              "See http://blog.christianperone.com/2019/01/ for a good explanation")
+                warnings.warn(
+                    "The probabilty of taken a given action is exactly zero for a continuous distribution."
+                    "See http://blog.christianperone.com/2019/01/ for a good explanation"
+                )
                 actions_proba = np.zeros((observation.shape[0], 1), dtype=np.float32)
             else:
-                warnings.warn("Warning: action_probability not implemented for {} actions space. Returning None."
-                              .format(type(self.action_space).__name__))
+                warnings.warn(
+                    "Warning: action_probability not implemented for {} actions space. Returning None.".format(
+                        type(self.action_space).__name__
+                    )
+                )
                 return None
             # normalize action proba shape for the different gym spaces
             actions_proba = actions_proba.reshape((-1, 1))
 
         if not vectorized_env:
             if state is not None:
-                raise ValueError("Error: The environment must be vectorized when using recurrent policies.")
+                raise ValueError(
+                    "Error: The environment must be vectorized when using recurrent policies."
+                )
             actions_proba = actions_proba[0]
 
         return actions_proba
@@ -444,10 +574,16 @@ class ActorCriticRLModel(BaseRLModel):
     def load(cls, load_path, env=None, **kwargs):
         data, params = cls._load_from_file(load_path)
 
-        if 'policy_kwargs' in kwargs and kwargs['policy_kwargs'] != data['policy_kwargs']:
-            raise ValueError("The specified policy kwargs do not equal the stored policy kwargs. "
-                             "Stored kwargs: {}, specified kwargs: {}".format(data['policy_kwargs'],
-                                                                              kwargs['policy_kwargs']))
+        if (
+            "policy_kwargs" in kwargs
+            and kwargs["policy_kwargs"] != data["policy_kwargs"]
+        ):
+            raise ValueError(
+                "The specified policy kwargs do not equal the stored policy kwargs. "
+                "Stored kwargs: {}, specified kwargs: {}".format(
+                    data["policy_kwargs"], kwargs["policy_kwargs"]
+                )
+            )
 
         model = cls(policy=data["policy"], env=None, _init_setup_model=False)
         model.__dict__.update(data)
@@ -476,9 +612,25 @@ class OffPolicyRLModel(BaseRLModel):
     :param policy_base: (BasePolicy) the base policy used by this method
     """
 
-    def __init__(self, policy, env, replay_buffer, verbose=0, *, requires_vec_env, policy_base, policy_kwargs=None):
-        super(OffPolicyRLModel, self).__init__(policy, env, verbose=verbose, requires_vec_env=requires_vec_env,
-                                               policy_base=policy_base, policy_kwargs=policy_kwargs)
+    def __init__(
+        self,
+        policy,
+        env,
+        replay_buffer,
+        verbose=0,
+        *,
+        requires_vec_env,
+        policy_base,
+        policy_kwargs=None
+    ):
+        super(OffPolicyRLModel, self).__init__(
+            policy,
+            env,
+            verbose=verbose,
+            requires_vec_env=requires_vec_env,
+            policy_base=policy_base,
+            policy_kwargs=policy_kwargs,
+        )
 
         self.replay_buffer = replay_buffer
 
@@ -487,8 +639,15 @@ class OffPolicyRLModel(BaseRLModel):
         pass
 
     @abstractmethod
-    def learn(self, total_timesteps, callback=None, seed=None,
-              log_interval=100, tb_log_name="run", reset_num_timesteps=True):
+    def learn(
+        self,
+        total_timesteps,
+        callback=None,
+        seed=None,
+        log_interval=100,
+        tb_log_name="run",
+        reset_num_timesteps=True,
+    ):
         pass
 
     @abstractmethod
@@ -517,7 +676,9 @@ class _UnvecWrapper(VecEnvWrapper):
         :param venv: (VecEnv) the vectorized environment to wrap
         """
         super().__init__(venv)
-        assert venv.num_envs == 1, "Error: cannot unwrap a environment wrapper that has more than one environment."
+        assert (
+            venv.num_envs == 1
+        ), "Error: cannot unwrap a environment wrapper that has more than one environment."
 
     def reset(self):
         return self.venv.reset()[0]
@@ -529,7 +690,7 @@ class _UnvecWrapper(VecEnvWrapper):
         actions, values, states, information = self.venv.step_wait()
         return actions[0], float(values[0]), states[0], information[0]
 
-    def render(self, mode='human'):
+    def render(self, mode="human"):
         return self.venv.render(mode=mode)
 
 
@@ -543,12 +704,12 @@ class SetVerbosity:
         self.verbose = verbose
 
     def __enter__(self):
-        self.tf_level = os.environ.get('TF_CPP_MIN_LOG_LEVEL', '0')
+        self.tf_level = os.environ.get("TF_CPP_MIN_LOG_LEVEL", "0")
         self.log_level = logger.get_level()
         self.gym_level = gym.logger.MIN_LEVEL
 
         if self.verbose <= 1:
-            os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+            os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
         if self.verbose <= 0:
             logger.set_level(logger.DISABLED)
@@ -556,7 +717,7 @@ class SetVerbosity:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.verbose <= 1:
-            os.environ['TF_CPP_MIN_LOG_LEVEL'] = self.tf_level
+            os.environ["TF_CPP_MIN_LOG_LEVEL"] = self.tf_level
 
         if self.verbose <= 0:
             logger.set_level(self.log_level)
@@ -584,7 +745,10 @@ class TensorboardWriter:
             latest_run_id = self._get_latest_run_id()
             if self.new_tb_log:
                 latest_run_id = latest_run_id + 1
-            save_path = os.path.join(self.tensorboard_log_path, "{}_{}".format(self.tb_log_name, latest_run_id))
+            save_path = os.path.join(
+                self.tensorboard_log_path,
+                "{}_{}".format(self.tb_log_name, latest_run_id),
+            )
             self.writer = tf.compat.v1.summary.FileWriter(save_path, graph=self.graph)
         return self.writer
 
@@ -596,10 +760,16 @@ class TensorboardWriter:
         :return: (int) latest run number
         """
         max_run_id = 0
-        for path in glob.glob(self.tensorboard_log_path + "/{}_[0-9]*".format(self.tb_log_name)):
+        for path in glob.glob(
+            self.tensorboard_log_path + "/{}_[0-9]*".format(self.tb_log_name)
+        ):
             file_name = path.split("/")[-1]
             ext = file_name.split("_")[-1]
-            if self.tb_log_name == "_".join(file_name.split("_")[:-1]) and ext.isdigit() and int(ext) > max_run_id:
+            if (
+                self.tb_log_name == "_".join(file_name.split("_")[:-1])
+                and ext.isdigit()
+                and int(ext) > max_run_id
+            ):
                 max_run_id = int(ext)
         return max_run_id
 

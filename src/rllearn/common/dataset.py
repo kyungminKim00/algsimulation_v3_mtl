@@ -48,7 +48,7 @@ class Dataset(object):
 
         data_map = dict()
         for key in self.data_map:
-            data_map[key] = self.data_map[key][cur_id:cur_id+cur_batch_size]
+            data_map[key] = self.data_map[key][cur_id : cur_id + cur_batch_size]
         return data_map
 
     def iterate_once(self, batch_size):
@@ -79,7 +79,14 @@ class Dataset(object):
         return Dataset(data_map, deterministic)
 
 
-def iterbatches(arrays, *, num_batches=None, batch_size=None, shuffle=True, include_final_partial_batch=True):
+def iterbatches(
+    arrays,
+    *,
+    num_batches=None,
+    batch_size=None,
+    shuffle=True,
+    include_final_partial_batch=True
+):
     """
     Iterates over arrays in batches, must provide either num_batches or batch_size, the other must be None.
 
@@ -90,14 +97,18 @@ def iterbatches(arrays, *, num_batches=None, batch_size=None, shuffle=True, incl
     :param include_final_partial_batch: (bool) add the last batch if not the same size as the batch_size
     :return: (tuples) a tuple of a batch of the arrays
     """
-    assert (num_batches is None) != (batch_size is None), 'Provide num_batches or batch_size, but not both'
+    assert (num_batches is None) != (
+        batch_size is None
+    ), "Provide num_batches or batch_size, but not both"
     arrays = tuple(map(np.asarray, arrays))
     n_samples = arrays[0].shape[0]
     assert all(a.shape[0] == n_samples for a in arrays[1:])
     inds = np.arange(n_samples)
     if shuffle:
         np.random.shuffle(inds)
-    sections = np.arange(0, n_samples, batch_size)[1:] if num_batches is None else num_batches
+    sections = (
+        np.arange(0, n_samples, batch_size)[1:] if num_batches is None else num_batches
+    )
     for batch_inds in np.array_split(inds, sections):
         if include_final_partial_batch or len(batch_inds) == batch_size:
             yield tuple(a[batch_inds] for a in arrays)

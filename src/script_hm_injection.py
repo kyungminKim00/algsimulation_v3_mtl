@@ -28,23 +28,24 @@ dataset_version_dict = {
     14: "v25",
 }
 mkidx_mkname = {
-    0: 'INX',
-    1: 'KS',
-    2: 'Gold',
-    3: 'US10YT',
-    4: 'FTSE',
-    5: 'GDAXI',
-    6: 'SSEC',
-    7: 'BVSP',
-    8: 'N225',
-    9: 'GB10YT',
-    10: 'DE10YT',
-    11: 'KR10YT',
-    12: 'CN10YT',
-    13: 'JP10YT',
-    14: 'BR10YT',
+    0: "INX",
+    1: "KS",
+    2: "Gold",
+    3: "US10YT",
+    4: "FTSE",
+    5: "GDAXI",
+    6: "SSEC",
+    7: "BVSP",
+    8: "N225",
+    9: "GB10YT",
+    10: "DE10YT",
+    11: "KR10YT",
+    12: "CN10YT",
+    13: "JP10YT",
+    14: "BR10YT",
 }
 mkname_mkidx = {v: k for k, v in mkidx_mkname.items()}
+
 
 def load(filepath, method):
     with open(filepath, "rb") as fs:
@@ -128,7 +129,7 @@ if __name__ == "__main__":
     # # init args
     # parser.add_argument("--base_dir", type=str, required=True)
     # parser.add_argument("--model_name", type=str, required=True)
-    # Demo    
+    # Demo
     parser.add_argument(
         "--base_dir",
         type=str,
@@ -143,9 +144,9 @@ if __name__ == "__main__":
 
     base_dir = args.base_dir
     model_name = args.model_name
-    m_target_index = mkname_mkidx[base_dir.split('_')[1]]
-    forward_ndx = int(base_dir.split('_')[2][1:])
-    
+    m_target_index = mkname_mkidx[base_dir.split("_")[1]]
+    forward_ndx = int(base_dir.split("_")[2][1:])
+
     script_hm_injection(
         m_target_index,
         forward_ndx,

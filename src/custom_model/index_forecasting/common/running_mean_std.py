@@ -10,8 +10,8 @@ class RunningMeanStd(object):
         :param epsilon: (float) helps with arithmetic issues
         :param shape: (tuple) the shape of the data stream's output
         """
-        self.mean = np.zeros(shape, 'float64')
-        self.var = np.ones(shape, 'float64')
+        self.mean = np.zeros(shape, "float64")
+        self.var = np.ones(shape, "float64")
         self.count = epsilon
 
     def update(self, arr):
@@ -27,7 +27,11 @@ class RunningMeanStd(object):
         new_mean = self.mean + delta * batch_count / tot_count
         m_a = self.var * self.count
         m_b = batch_var * batch_count
-        m_2 = m_a + m_b + np.square(delta) * self.count * batch_count / (self.count + batch_count)
+        m_2 = (
+            m_a
+            + m_b
+            + np.square(delta) * self.count * batch_count / (self.count + batch_count)
+        )
         new_var = m_2 / (self.count + batch_count)
 
         new_count = batch_count + self.count

@@ -65,7 +65,9 @@ class Uint8Input(PlaceholderTfInput):
         :param name: (str) name of the underlying placeholder
         """
 
-        super().__init__(tf.compat.v1.placeholder(tf.uint8, [None] + list(shape), name=name))
+        super().__init__(
+            tf.compat.v1.placeholder(tf.uint8, [None] + list(shape), name=name)
+        )
         self._shape = shape
         self._output = tf.cast(super().get(), tf.float32) / 255.0
 
@@ -83,7 +85,9 @@ class ObservationInput(PlaceholderTfInput):
         :param name: (str) tensorflow name of the underlying placeholder
         """
         is_image = len(observation_space.shape) == 3
-        inpt, self.processed_inpt = observation_input(observation_space, name=name, scale=is_image)
+        inpt, self.processed_inpt = observation_input(
+            observation_space, name=name, scale=is_image
+        )
         super().__init__(inpt)
 
     def get(self):

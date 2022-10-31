@@ -25,6 +25,7 @@ import argparse
 from datasets.if_data_header import configure_header
 from util import get_domain_on_CDSW_env
 
+
 def main(_):
     if not FLAGS.dataset_name:
         raise ValueError("You must supply the dataset name with --dataset_name")
@@ -170,7 +171,7 @@ if __name__ == "__main__":
         parser.add_argument("--operation_mode", type=int, default=None)
         parser.add_argument("--domain", type=str, required=True)
         parser.add_argument("--performed_date", type=str, default=None)
-        
+
         # # Demo v0
         # parser.add_argument("--s_test", type=str, default=None)
         # parser.add_argument("--e_test", type=str, default=None)
@@ -211,8 +212,10 @@ if __name__ == "__main__":
         # parser.add_argument("--performed_date", type=str, default=None)
 
         args = parser.parse_args()
-        if args.dataset_version == 'v0':
-            assert (args.m_target_index is not None) and (args.gen_var is not None), 'the values of variables, m_target_index and gen_var, are required'
+        if args.dataset_version == "v0":
+            assert (args.m_target_index is not None) and (
+                args.gen_var is not None
+            ), "the values of variables, m_target_index and gen_var, are required"
         else:
             args.domain = get_domain_on_CDSW_env(args.domain)
             args = scp.ScriptParameters(args.domain, args).update_args()

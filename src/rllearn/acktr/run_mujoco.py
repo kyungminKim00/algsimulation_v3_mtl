@@ -27,8 +27,17 @@ def train(env_id, num_timesteps, seed):
         with tf.compat.v1.variable_scope("pi"):
             policy = GaussianMlpPolicy(ob_dim, ac_dim)
 
-        learn(env, policy=policy, value_fn=value_fn, gamma=0.99, lam=0.97, timesteps_per_batch=2500, desired_kl=0.002,
-              num_timesteps=num_timesteps, animate=False)
+        learn(
+            env,
+            policy=policy,
+            value_fn=value_fn,
+            gamma=0.99,
+            lam=0.97,
+            timesteps_per_batch=2500,
+            desired_kl=0.002,
+            num_timesteps=num_timesteps,
+            animate=False,
+        )
 
         env.close()
 

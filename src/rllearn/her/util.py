@@ -17,7 +17,7 @@ def import_function(spec):
     :param spec: (str) the function to import
     :return: (function)
     """
-    mod_name, fn_name = spec.split(':')
+    mod_name, fn_name = spec.split(":")
     module = importlib.import_module(mod_name)
     func = getattr(module, fn_name)
     return func
@@ -31,8 +31,9 @@ def flatten_grads(var_list, grads):
     :param grads: ([TensorFlow Tensor]) the gradients
     :return: (TensorFlow Tensor) the flattend variable and gradient
     """
-    return tf.concat([tf.reshape(grad, [tf_util.numel(v)])
-                      for (v, grad) in zip(var_list, grads)], 0)
+    return tf.concat(
+        [tf.reshape(grad, [tf_util.numel(v)]) for (v, grad) in zip(var_list, grads)], 0
+    )
 
 
 def mlp(_input, layers_sizes, reuse=None, flatten=False, name=""):
@@ -48,11 +49,15 @@ def mlp(_input, layers_sizes, reuse=None, flatten=False, name=""):
     """
     for i, size in enumerate(layers_sizes):
         activation = tf.nn.relu if i < len(layers_sizes) - 1 else None
-        _input = tf.compat.v1.layers.dense(inputs=_input,
-                                 units=size,
-                                 kernel_initializer=tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"),
-                                 reuse=reuse,
-                                 name=name + '_' + str(i))
+        _input = tf.compat.v1.layers.dense(
+            inputs=_input,
+            units=size,
+            kernel_initializer=tf.compat.v1.keras.initializers.VarianceScaling(
+                scale=1.0, mode="fan_avg", distribution="uniform"
+            ),
+            reuse=reuse,
+            name=name + "_" + str(i),
+        )
         if activation:
             _input = activation(_input)
     if flatten:
@@ -92,15 +97,9 @@ def mpi_fork(rank, extra_mpi_args=None):
         return "child"
     if os.getenv("IN_MPI") is None:
         env = os.environ.copy()
-        env.update(
-            MKL_NUM_THREADS="1",
-            OMP_NUM_THREADS="1",
-            IN_MPI="1"
-        )
+        env.update(MKL_NUM_THREADS="1", OMP_NUM_THREADS="1", IN_MPI="1")
         # "-bind-to core" is crucial for good performance
-        args = ["mpirun", "-np", str(rank)] + \
-               extra_mpi_args + \
-               [sys.executable]
+        args = ["mpirun", "-np", str(rank)] + extra_mpi_args + [sys.executable]
 
         args += sys.argv
         subprocess.check_call(args, env=env)
@@ -133,7 +132,7 @@ def transitions_in_episode_batch(episode_batch):
     :param episode_batch: (dict) the episode batch
     :return: (int) the number of transitions in episode batch
     """
-    shape = episode_batch['u'].shape
+    shape = episode_batch["u"].shape
     return shape[0] * shape[1]
 
 

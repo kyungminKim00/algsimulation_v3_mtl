@@ -44,7 +44,9 @@ def rollout(env, policy, max_pathlength, animate=False, obfilter=None):
         action_dists.append(ac_dist)
         logps.append(logp)
         prev_ob = np.copy(observation)
-        scaled_ac = env.action_space.low + (action + 1.) * 0.5 * (env.action_space.high - env.action_space.low)
+        scaled_ac = env.action_space.low + (action + 1.0) * 0.5 * (
+            env.action_space.high - env.action_space.low
+        )
         scaled_ac = np.clip(scaled_ac, env.action_space.low, env.action_space.high)
         observation, rew, done, _ = env.step(scaled_ac)
         if obfilter:
@@ -53,13 +55,28 @@ def rollout(env, policy, max_pathlength, animate=False, obfilter=None):
         if done:
             terminated = True
             break
-    return {"observation": np.array(observations), "terminated": terminated,
-            "reward": np.array(rewards), "action": np.array(actions),
-            "action_dist": np.array(action_dists), "logp": np.array(logps)}
+    return {
+        "observation": np.array(observations),
+        "terminated": terminated,
+        "reward": np.array(rewards),
+        "action": np.array(actions),
+        "action_dist": np.array(action_dists),
+        "logp": np.array(logps),
+    }
 
 
-def learn(env, policy, value_fn, gamma, lam, timesteps_per_batch, num_timesteps,
-          animate=False, callback=None, desired_kl=0.002):
+def learn(
+    env,
+    policy,
+    value_fn,
+    gamma,
+    lam,
+    timesteps_per_batch,
+    num_timesteps,
+    animate=False,
+    callback=None,
+    desired_kl=0.002,
+):
     """
     Trains an ACKTR model.
 
@@ -77,11 +94,20 @@ def learn(env, policy, value_fn, gamma, lam, timesteps_per_batch, num_timesteps,
     obfilter = ZFilter(env.observation_space.shape)
 
     max_pathlength = env.spec.timestep_limit
-    stepsize = tf.Variable(initial_value=np.float32(np.array(0.03)), name='stepsize')
+    stepsize = tf.Variable(initial_value=np.float32(np.array(0.03)), name="stepsize")
     inputs, loss, loss_sampled = policy.update_info
-    optim = kfac.KfacOptimizer(learning_rate=stepsize, cold_lr=stepsize * (1 - 0.9), momentum=0.9, kfac_update=2,
-                               epsilon=1e-2, stats_decay=0.99, async_eigen_decomp=1, cold_iter=1,
-                               weight_decay_dict=policy.wd_dict, max_grad_norm=None)
+    optim = kfac.KfacOptimizer(
+        learning_rate=stepsize,
+        cold_lr=stepsize * (1 - 0.9),
+        momentum=0.9,
+        kfac_update=2,
+        epsilon=1e-2,
+        stats_decay=0.99,
+        async_eigen_decomp=1,
+        cold_iter=1,
+        weight_decay_dict=policy.wd_dict,
+        max_grad_norm=None,
+    )
     pi_var_list = []
     for var in tf.compat.v1.trainable_variables():
         if "pi" in var.name:
@@ -96,7 +122,11 @@ def learn(env, policy, value_fn, gamma, lam, timesteps_per_batch, num_timesteps,
     coord = tf.train.Coordinator()
     for queue_runner in [q_runner, value_fn.q_runner]:
         assert queue_runner is not None
-        enqueue_threads.extend(queue_runner.create_threads(tf.compat.v1.get_default_session(), coord=coord, start=True))
+        enqueue_threads.extend(
+            queue_runner.create_threads(
+                tf.compat.v1.get_default_session(), coord=coord, start=True
+            )
+        )
 
     i = 0
     timesteps_so_far = 0
@@ -109,8 +139,13 @@ def learn(env, policy, value_fn, gamma, lam, timesteps_per_batch, num_timesteps,
         timesteps_this_batch = 0
         paths = []
         while True:
-            path = rollout(env, policy, max_pathlength, animate=(len(paths) == 0 and (i % 10 == 0) and animate),
-                           obfilter=obfilter)
+            path = rollout(
+                env,
+                policy,
+                max_pathlength,
+                animate=(len(paths) == 0 and (i % 10 == 0) and animate),
+                obfilter=obfilter,
+            )
             paths.append(path)
             timesteps_this_batch += path["reward"].shape[0]
             timesteps_so_far += path["reward"].shape[0]
@@ -148,16 +183,27 @@ def learn(env, policy, value_fn, gamma, lam, timesteps_per_batch, num_timesteps,
         kl_loss = policy.compute_kl(ob_no, oldac_dist)
         if kl_loss > desired_kl * 2:
             logger.log("kl too high")
-            tf.compat.v1.assign(stepsize, tf.maximum(min_stepsize, stepsize / 1.5)).eval()
+            tf.compat.v1.assign(
+                stepsize, tf.maximum(min_stepsize, stepsize / 1.5)
+            ).eval()
         elif kl_loss < desired_kl / 2:
             logger.log("kl too low")
-            tf.compat.v1.assign(stepsize, tf.minimum(max_stepsize, stepsize * 1.5)).eval()
+            tf.compat.v1.assign(
+                stepsize, tf.minimum(max_stepsize, stepsize * 1.5)
+            ).eval()
         else:
             logger.log("kl just right!")
 
-        logger.record_tabular("EpRewMean", np.mean([path["reward"].sum() for path in paths]))
-        logger.record_tabular("EpRewSEM", np.std([path["reward"].sum() / np.sqrt(len(paths)) for path in paths]))
-        logger.record_tabular("EpLenMean", np.mean([path["reward"].shape[0] for path in paths]))
+        logger.record_tabular(
+            "EpRewMean", np.mean([path["reward"].sum() for path in paths])
+        )
+        logger.record_tabular(
+            "EpRewSEM",
+            np.std([path["reward"].sum() / np.sqrt(len(paths)) for path in paths]),
+        )
+        logger.record_tabular(
+            "EpLenMean", np.mean([path["reward"].shape[0] for path in paths])
+        )
         logger.record_tabular("KL", kl_loss)
         if callback is not None:
             # Only stop training if return value is False, not when it is None. This is for backwards

@@ -11,15 +11,19 @@ def main():
     """
     Run the atari test
     """
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--env', help='environment ID', default='BreakoutNoFrameskip-v4')
-    parser.add_argument('--seed', help='RNG seed', type=int, default=0)
-    parser.add_argument('--prioritized', type=int, default=1)
-    parser.add_argument('--dueling', type=int, default=1)
-    parser.add_argument('--prioritized-replay-alpha', type=float, default=0.6)
-    parser.add_argument('--num-timesteps', type=int, default=int(10e6))
-    parser.add_argument('--checkpoint-freq', type=int, default=10000)
-    parser.add_argument('--checkpoint-path', type=str, default=None)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--env", help="environment ID", default="BreakoutNoFrameskip-v4"
+    )
+    parser.add_argument("--seed", help="RNG seed", type=int, default=0)
+    parser.add_argument("--prioritized", type=int, default=1)
+    parser.add_argument("--dueling", type=int, default=1)
+    parser.add_argument("--prioritized-replay-alpha", type=float, default=0.6)
+    parser.add_argument("--num-timesteps", type=int, default=int(10e6))
+    parser.add_argument("--checkpoint-freq", type=int, default=10000)
+    parser.add_argument("--checkpoint-path", type=str, default=None)
 
     args = parser.parse_args()
     logger.configure()
@@ -50,5 +54,5 @@ def main():
     env.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

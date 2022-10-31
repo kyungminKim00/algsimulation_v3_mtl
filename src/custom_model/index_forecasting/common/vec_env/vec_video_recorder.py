@@ -3,7 +3,13 @@ import os
 from gym.wrappers.monitoring import video_recorder
 
 import logger
-from custom_model.index_forecasting.common.vec_env import VecEnvWrapper, DummyVecEnv, VecNormalize, VecFrameStack, SubprocVecEnv
+from custom_model.index_forecasting.common.vec_env import (
+    VecEnvWrapper,
+    DummyVecEnv,
+    VecNormalize,
+    VecFrameStack,
+    SubprocVecEnv,
+)
 
 
 class VecVideoRecorder(VecEnvWrapper):
@@ -20,8 +26,14 @@ class VecVideoRecorder(VecEnvWrapper):
     :param name_prefix: (str) Prefix to the video name
     """
 
-    def __init__(self, venv, video_folder, record_video_trigger,
-                 video_length=200, name_prefix='rl-video'):
+    def __init__(
+        self,
+        venv,
+        video_folder,
+        record_video_trigger,
+        video_length=200,
+        name_prefix="rl-video",
+    ):
 
         VecEnvWrapper.__init__(self, venv)
 
@@ -35,7 +47,7 @@ class VecVideoRecorder(VecEnvWrapper):
             temp_env = temp_env.venv
 
         if isinstance(temp_env, DummyVecEnv) or isinstance(temp_env, SubprocVecEnv):
-            metadata = temp_env.get_attr('metadata')[0]
+            metadata = temp_env.get_attr("metadata")[0]
         else:
             metadata = temp_env.metadata
 
@@ -63,14 +75,13 @@ class VecVideoRecorder(VecEnvWrapper):
     def start_video_recorder(self):
         self.close_video_recorder()
 
-        video_name = '{}-step-{}-to-step-{}'.format(self.name_prefix, self.step_id,
-                                                    self.step_id + self.video_length)
+        video_name = "{}-step-{}-to-step-{}".format(
+            self.name_prefix, self.step_id, self.step_id + self.video_length
+        )
         base_path = os.path.join(self.video_folder, video_name)
         self.video_recorder = video_recorder.VideoRecorder(
-                env=self.env,
-                base_path=base_path,
-                metadata={'step_id': self.step_id}
-                )
+            env=self.env, base_path=base_path, metadata={"step_id": self.step_id}
+        )
 
         self.video_recorder.capture_frame()
         self.recorded_frames = 1

@@ -24,8 +24,19 @@ def train(env_id, num_timesteps, seed):
         set_global_seeds(workerseed)
         env = make_robotics_env(env_id, workerseed, rank=rank)
 
-        model = PPO1(MlpPolicy, env, timesteps_per_actorbatch=2048, clip_param=0.2, entcoeff=0.0, optim_epochs=5,
-                     optim_stepsize=3e-4, optim_batchsize=256, gamma=0.99, lam=0.95, schedule='linear')
+        model = PPO1(
+            MlpPolicy,
+            env,
+            timesteps_per_actorbatch=2048,
+            clip_param=0.2,
+            entcoeff=0.0,
+            optim_epochs=5,
+            optim_stepsize=3e-4,
+            optim_batchsize=256,
+            gamma=0.99,
+            lam=0.95,
+            schedule="linear",
+        )
         model.learn(total_timesteps=num_timesteps)
         env.close()
 
@@ -38,5 +49,5 @@ def main():
     train(args.env, num_timesteps=args.num_timesteps, seed=args.seed)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

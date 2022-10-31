@@ -29,15 +29,28 @@ def train(env_id, num_timesteps, seed):
     set_global_seeds(workerseed)
     env = make_atari(env_id)
 
-    env = bench.Monitor(env, logger.get_dir() and
-                        os.path.join(logger.get_dir(), str(rank)))
+    env = bench.Monitor(
+        env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank))
+    )
     env.seed(workerseed)
 
     env = wrap_deepmind(env)
     env.seed(workerseed)
 
-    model = PPO1(CnnPolicy, env, timesteps_per_actorbatch=256, clip_param=0.2, entcoeff=0.01, optim_epochs=4,
-                 optim_stepsize=1e-3, optim_batchsize=64, gamma=0.99, lam=0.95, schedule='linear', verbose=2)
+    model = PPO1(
+        CnnPolicy,
+        env,
+        timesteps_per_actorbatch=256,
+        clip_param=0.2,
+        entcoeff=0.01,
+        optim_epochs=4,
+        optim_stepsize=1e-3,
+        optim_batchsize=64,
+        gamma=0.99,
+        lam=0.95,
+        schedule="linear",
+        verbose=2,
+    )
     model.learn(total_timesteps=num_timesteps)
     env.close()
 
@@ -50,5 +63,5 @@ def main():
     train(args.env, num_timesteps=args.num_timesteps, seed=args.seed)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

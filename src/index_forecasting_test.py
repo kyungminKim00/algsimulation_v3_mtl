@@ -64,11 +64,26 @@ class Script:
 
         # Todo: Distributed inference code
         self._inference(
-            models, env_name, n_cpu, mode, model_location, result, m_inference_buffer, b_naive
+            models,
+            env_name,
+            n_cpu,
+            mode,
+            model_location,
+            result,
+            m_inference_buffer,
+            b_naive,
         )
 
     def _inference(
-        self, models, env_name, n_cpu, mode, model_location, result, m_inference_buffer, b_naive=True
+        self,
+        models,
+        env_name,
+        n_cpu,
+        mode,
+        model_location,
+        result,
+        m_inference_buffer,
+        b_naive=True,
     ):
         # import modules
         from custom_model.index_forecasting.common import SubprocVecEnv
@@ -143,7 +158,13 @@ class Script:
 
                 # Fast approach
                 action, states, values, neglogp, values2 = self.base_model.predict(
-                    obs + np.zeros([RUNHEADER.m_n_cpu, obs.shape[1], obs.shape[2], obs.shape[3]]), state=p_states, mask=None, deterministic=True
+                    obs
+                    + np.zeros(
+                        [RUNHEADER.m_n_cpu, obs.shape[1], obs.shape[2], obs.shape[3]]
+                    ),
+                    state=p_states,
+                    mask=None,
+                    deterministic=True,
                 )
 
                 # disable
@@ -319,7 +340,7 @@ def load(filepath, method):
             data = pickle.load(fs)
     fs.close()
     return data
- 
+
 
 def get_model_from_meta_repo(target_name, forward, use_historical_model=False):
     a, b, c, d = list(), list(), list(), list()
@@ -331,11 +352,15 @@ def get_model_from_meta_repo(target_name, forward, use_historical_model=False):
             if model["latest"]:  # the best at the moment
                 return model["m_name"], model["model_name"]
         else:
-            if os.path.isfile('./save/model/rllearn/{}/{}'.format(model["m_name"], model["model_name"])):
+            if os.path.isfile(
+                "./save/model/rllearn/{}/{}".format(
+                    model["m_name"], model["model_name"]
+                )
+            ):
                 a.append(model["m_name"])
                 b.append(model["model_name"])
                 # use current best, if the model exist for the current_period
-                if model["current_period"]:  
+                if model["current_period"]:
                     c.append(True)
                 else:  # use hiatorical best
                     c.append(False)
@@ -348,7 +373,9 @@ def get_model_from_meta_repo(target_name, forward, use_historical_model=False):
 
 
 def configure_header(args):
-    json_location = recent_procedure("./agent_log/working_model_p", args.process_id, "r")
+    json_location = recent_procedure(
+        "./agent_log/working_model_p", args.process_id, "r"
+    )
     # keep explcit test model before re-load RUNHEADER
     f_test_model = RUNHEADER.m_final_model
     dict_RUNHEADER = util.json2dict(
@@ -366,7 +393,7 @@ def configure_header(args):
     RUNHEADER.__dict__["m_bound_estimation_y"] = True
     # RUNHEADER.__dict__["m_warm_up_4_inference"] = RUNHEADER.forward_ndx
     # RUNHEADER.__dict__["m_warm_up_4_inference"] = 6
-    
+
 
 def meta_info(_model_location, _dataset_dir):
     # load meta from trained model

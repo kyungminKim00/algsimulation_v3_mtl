@@ -46,7 +46,7 @@ def mpi_moments(arr, axis=0, comm=None, keepdims=False):
     assert count1 == count
     std = np.sqrt(meansqdiff)
     if not keepdims:
-        newshape = mean.shape[:axis] + mean.shape[axis+1:]
+        newshape = mean.shape[:axis] + mean.shape[axis + 1 :]
         mean = mean.reshape(newshape)
         std = std.reshape(newshape)
     return mean, std, count
@@ -56,9 +56,10 @@ def _helper_runningmeanstd():
     comm = MPI.COMM_WORLD
     np.random.seed(0)
     for (triple, axis) in [
-         ((np.random.randn(3), np.random.randn(4), np.random.randn(5)), 0),
-         ((np.random.randn(3, 2), np.random.randn(4, 2), np.random.randn(5, 2)), 0),
-         ((np.random.randn(2, 3), np.random.randn(2, 4), np.random.randn(2, 4)), 1)]:
+        ((np.random.randn(3), np.random.randn(4), np.random.randn(5)), 0),
+        ((np.random.randn(3, 2), np.random.randn(4, 2), np.random.randn(5, 2)), 0),
+        ((np.random.randn(2, 3), np.random.randn(2, 4), np.random.randn(2, 4)), 1),
+    ]:
 
         arr = np.concatenate(triple, axis=axis)
         ms1 = [arr.mean(axis=axis), arr.std(axis=axis), arr.shape[axis]]

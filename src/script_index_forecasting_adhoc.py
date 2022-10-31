@@ -79,7 +79,11 @@ if __name__ == "__main__":
         if args.operation_mode:
             assert len(flag) == 1, "a len(flag) should be 1 on th operation mode"
             index_forecasting_adhoc.update_model_pool(
-                target_index, forward_ndx, dataset_version, flag[0], args.init_repo_model
+                target_index,
+                forward_ndx,
+                dataset_version,
+                flag[0],
+                args.init_repo_model,
             )
 
         # calculate statics of performance of confidence scores - Experimental mode only

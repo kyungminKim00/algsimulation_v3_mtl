@@ -7,7 +7,7 @@ def increment(x_int: int) -> int:
     Returns:
         int: _description_
     """
-    return x_int +1
+    return x_int + 1
 
 
 def decrement(x_int: int) -> int:

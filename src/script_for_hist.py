@@ -21,8 +21,10 @@ for idx in range(len(bins)):
     if idx == 0:
         pass
     else:
-        where_rows = (bins[idx - 1] < data["expected_return_std"]) & (data["expected_return_std"] < bins[idx])
-        y_data.append(np.sum(data[where_rows]['expected_return']))
+        where_rows = (bins[idx - 1] < data["expected_return_std"]) & (
+            data["expected_return_std"] < bins[idx]
+        )
+        y_data.append(np.sum(data[where_rows]["expected_return"]))
         x_data.append(bins[idx])
 
 plt.plot(x_data, y_data)

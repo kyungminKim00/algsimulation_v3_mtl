@@ -185,7 +185,7 @@ class Script:
         self.ev = 0.8
         self.infer_mode = infer_mode
         self.info = info
-        self.b_naive=b_naive
+        self.b_naive = b_naive
         self.performed_date = performed_date
 
     def align_consistency(self, data):
@@ -227,8 +227,8 @@ class Script:
         g_date = self.performed_date
         if g_date is None:
             g_date = "{}-{}-{}".format(
-            info.split("_")[2][:4], info.split("_")[2][4:6], info.split("_")[2][6:8]
-        )
+                info.split("_")[2][:4], info.split("_")[2][4:6], info.split("_")[2][6:8]
+            )
 
         col_names = [
             "seq_num",
@@ -299,7 +299,7 @@ class Script:
             candidate_models = self.naive_filter(filenames)
         else:
             candidate_models = filenames
-            
+
         if len(candidate_models) == 0:
             print("Skip ad-hoc process - there is no proper candidate models")
             sys.exit()
@@ -385,7 +385,7 @@ class Script:
                 probability[idx] = p[idx]
 
         assert len(d_idx) + len(u_idx) == len(s_examples), "check up & down index"
-        
+
         return (
             s_date.tolist(),
             s_examples.tolist(),
@@ -483,7 +483,13 @@ class Script:
 
 
 class Adhoc:
-    def __init__(self, m_target_index=None, forward_ndx=None, dataset_version=None, performed_date=None):
+    def __init__(
+        self,
+        m_target_index=None,
+        forward_ndx=None,
+        dataset_version=None,
+        performed_date=None,
+    ):
         self.m_target_index = m_target_index
         self.forward_ndx = forward_ndx
         self.dataset_version = dataset_version
@@ -551,7 +557,9 @@ def get_model_name(model_dir, model_name):
             return it
 
 
-def update_model_pool(m_target_index, forward_ndx, dataset_version, flag, init_repo_model=0):
+def update_model_pool(
+    m_target_index, forward_ndx, dataset_version, flag, init_repo_model=0
+):
     target_name = RUNHEADER.target_id2name(m_target_index)
     domain_detail = "{}_T{}_{}".format(target_name, forward_ndx, dataset_version)
     domain = "{}_T{}".format(target_name, forward_ndx)

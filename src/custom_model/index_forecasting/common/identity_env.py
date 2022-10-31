@@ -37,7 +37,7 @@ class IdentityEnv(Env):
     def _get_reward(self, action):
         return 1 if np.all(self.state == action) else 0
 
-    def render(self, mode='human'):
+    def render(self, mode="human"):
         pass
 
 

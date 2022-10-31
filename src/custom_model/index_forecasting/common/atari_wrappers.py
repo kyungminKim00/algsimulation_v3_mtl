@@ -4,6 +4,7 @@ import numpy as np
 import gym
 from gym import spaces
 import cv2
+
 cv2.ocl.setUseOpenCL(False)
 
 
@@ -20,7 +21,7 @@ class NoopResetEnv(gym.Wrapper):
         self.noop_max = noop_max
         self.override_num_noops = None
         self.noop_action = 0
-        assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
+        assert env.unwrapped.get_action_meanings()[0] == "NOOP"
 
     def reset(self, **kwargs):
         self.env.reset(**kwargs)
@@ -48,7 +49,7 @@ class FireResetEnv(gym.Wrapper):
         :param env: (Gym Environment) the environment to wrap
         """
         gym.Wrapper.__init__(self, env)
-        assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
+        assert env.unwrapped.get_action_meanings()[1] == "FIRE"
         assert len(env.unwrapped.get_action_meanings()) >= 3
 
     def reset(self, **kwargs):
@@ -119,7 +120,9 @@ class MaxAndSkipEnv(gym.Wrapper):
         """
         gym.Wrapper.__init__(self, env)
         # most recent raw observations (for max pooling across time steps)
-        self._obs_buffer = np.zeros((2,)+env.observation_space.shape, dtype=env.observation_space.dtype)
+        self._obs_buffer = np.zeros(
+            (2,) + env.observation_space.shape, dtype=env.observation_space.dtype
+        )
         self._skip = skip
 
     def step(self, action):
@@ -179,8 +182,12 @@ class WarpFrame(gym.ObservationWrapper):
         gym.ObservationWrapper.__init__(self, env)
         self.width = 84
         self.height = 84
-        self.observation_space = spaces.Box(low=0, high=255, shape=(self.height, self.width, 1),
-                                            dtype=env.observation_space.dtype)
+        self.observation_space = spaces.Box(
+            low=0,
+            high=255,
+            shape=(self.height, self.width, 1),
+            dtype=env.observation_space.dtype,
+        )
 
     def observation(self, frame):
         """
@@ -190,7 +197,9 @@ class WarpFrame(gym.ObservationWrapper):
         :return: ([int] or [float]) the observation
         """
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
+        frame = cv2.resize(
+            frame, (self.width, self.height), interpolation=cv2.INTER_AREA
+        )
         return frame[:, :, None]
 
 
@@ -211,8 +220,12 @@ class FrameStack(gym.Wrapper):
         self.n_frames = n_frames
         self.frames = deque([], maxlen=n_frames)
         shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0], shp[1], shp[2] * n_frames),
-                                            dtype=env.observation_space.dtype)
+        self.observation_space = spaces.Box(
+            low=0,
+            high=255,
+            shape=(shp[0], shp[1], shp[2] * n_frames),
+            dtype=env.observation_space.dtype,
+        )
 
     def reset(self):
         obs = self.env.reset()
@@ -233,7 +246,9 @@ class FrameStack(gym.Wrapper):
 class ScaledFloatFrame(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
-        self.observation_space = spaces.Box(low=0, high=1.0, shape=env.observation_space.shape, dtype=np.float32)
+        self.observation_space = spaces.Box(
+            low=0, high=1.0, shape=env.observation_space.shape, dtype=np.float32
+        )
 
     def observation(self, observation):
         # careful! This undoes the memory optimization, use
@@ -282,13 +297,15 @@ def make_atari(env_id):
     :return: (Gym Environment) the wrapped atari environment
     """
     env = gym.make(env_id)
-    assert 'NoFrameskip' in env.spec.id
+    assert "NoFrameskip" in env.spec.id
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)
     return env
 
 
-def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
+def wrap_deepmind(
+    env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False
+):
     """
     Configure environment for DeepMind-style Atari.
 
@@ -301,7 +318,7 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
     """
     if episode_life:
         env = EpisodicLifeEnv(env)
-    if 'FIRE' in env.unwrapped.get_action_meanings():
+    if "FIRE" in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
     env = WarpFrame(env)
     if scale:

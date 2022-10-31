@@ -30,8 +30,19 @@ class StepBuffer(object):
         self.next_idx = 0
         self.num_in_buffer = 0
 
-    def put(self, actions, values, states, enc_obs, rewards, dones,
-            returns_returns_info, mode=False, min_reward=0, disable_dones=False):
+    def put(
+        self,
+        actions,
+        values,
+        states,
+        enc_obs,
+        rewards,
+        dones,
+        returns_returns_info,
+        mode=False,
+        min_reward=0,
+        disable_dones=False,
+    ):
 
         _dones = np.reshape(dones, [self.n_env])
         cond_idx = np.squeeze(np.argwhere(_dones == 0), axis=1).tolist()
@@ -43,25 +54,30 @@ class StepBuffer(object):
         try:
             if len(env_idx) > 0:
                 if self.enc_obs is None:
-                    self.enc_obs = np.empty([self.n_env] + list(enc_obs.shape[1:]), dtype=self.obs_dtype)
-                    self.actions = np.empty([self.n_env] + list(actions.shape[1:]), dtype=np.int32)
+                    self.enc_obs = np.empty(
+                        [self.n_env] + list(enc_obs.shape[1:]), dtype=self.obs_dtype
+                    )
+                    self.actions = np.empty(
+                        [self.n_env] + list(actions.shape[1:]), dtype=np.int32
+                    )
                     self.rewards = np.empty([self.n_env], dtype=np.float32)
                     self.values = np.empty([self.n_env], dtype=np.float32)
-                    self.states = np.empty([self.n_env] + list(states.shape[1:]), dtype=np.float32)
+                    self.states = np.empty(
+                        [self.n_env] + list(states.shape[1:]), dtype=np.float32
+                    )
                     self.dones = np.empty([self.n_env], dtype=np.bool)
                     self.returns_returns_info = np.empty([self.n_env]).tolist()
 
                 for idx in env_idx:
-                    self.enc_obs[self.next_idx] = np.reshape(enc_obs,
-                                                             [self.n_env] + list(enc_obs.shape[1:]))[idx]
-                    self.actions[self.next_idx] = np.reshape(actions,
-                                                             [self.n_env] + list(actions.shape[1:]))[idx]
-                    self.rewards[self.next_idx] = np.reshape(rewards,
-                                                             [self.n_env])[idx]
-                    self.values[self.next_idx] = np.reshape(values,
-                                                            [self.n_env])[idx]
-                    self.dones[self.next_idx] = np.reshape(dones,
-                                                           [self.n_env])[idx]
+                    self.enc_obs[self.next_idx] = np.reshape(
+                        enc_obs, [self.n_env] + list(enc_obs.shape[1:])
+                    )[idx]
+                    self.actions[self.next_idx] = np.reshape(
+                        actions, [self.n_env] + list(actions.shape[1:])
+                    )[idx]
+                    self.rewards[self.next_idx] = np.reshape(rewards, [self.n_env])[idx]
+                    self.values[self.next_idx] = np.reshape(values, [self.n_env])[idx]
+                    self.dones[self.next_idx] = np.reshape(dones, [self.n_env])[idx]
                     self.states[self.next_idx] = states[idx]
 
                     self.returns_returns_info[self.next_idx] = returns_returns_info[idx]
@@ -93,7 +109,9 @@ class StepBuffer(object):
             idx = np.arange(n_env)
         envx = np.arange(n_env)
 
-        returns_returns_info = self.take(self.returns_returns_info, idx, envx, dummy=True)
+        returns_returns_info = self.take(
+            self.returns_returns_info, idx, envx, dummy=True
+        )
         states = self.take(self.states, idx, envx)
         actions = self.take(self.actions, idx, envx)
         rewards = self.take(self.rewards, idx, envx)
@@ -106,7 +124,9 @@ class StepBuffer(object):
 
         return actions, values, states, obs, rewards, dones, returns_returns_info
 
-    def reshape(self, obs, actions, rewards, values, states, dones, returns_returns_info):
+    def reshape(
+        self, obs, actions, rewards, values, states, dones, returns_returns_info
+    ):
         obs = np.reshape(obs, [self.n_env] + list(obs.shape[2:]))
         actions = np.reshape(actions, [self.n_env] + list(actions.shape[2:]))
         rewards = np.reshape(rewards, [self.n_env])

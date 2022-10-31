@@ -108,8 +108,8 @@ m_offline_learning_rate = 5e-4  # fixed learning rate for offline learning
 m_min_learning_rate = 7e-6  # tuning  7e-5 -> 7e-7  -> 7e-6
 m_lstm_hidden = 1  # 1 for 256
 m_num_features = 1  # 1 for 512
-cyclic_lr_min = float(2e-4*2.5)
-cyclic_lr_max = float(2e-4*4)
+cyclic_lr_min = float(2e-4 * 2.5)
+cyclic_lr_max = float(2e-4 * 4)
 
 
 """ Memory and simulation
@@ -158,7 +158,7 @@ m_early_stop = 15
 m_interval = [2, 150]  # sampling
 m_interval_value = [np.inf, -np.inf]  # sampling
 m_forget_experience = 0.05
-m_forget_experience_short_term = 0.5cov_dict
+m_forget_experience_short_term = 0.5
 improve_th = 0.25
 m_replay_iteration = 1  # use when simulator meets saddle point
 m_sample_th = 0.2
@@ -248,4 +248,8 @@ if _debug_on:
         "dpi": 600,
     }  # full_jpeg = {'width': 1860, 'height': 980]
 else:
-    img_jpeg = {"width": 18, "height": 10, "dpi": 10}  # full_jpeg = {'width': 1860, 'height': 980]
+    img_jpeg = {
+        "width": 18,
+        "height": 10,
+        "dpi": 10,
+    }  # full_jpeg = {'width': 1860, 'height': 980]

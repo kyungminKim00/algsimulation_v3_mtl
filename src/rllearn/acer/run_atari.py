@@ -21,9 +21,9 @@ def train(env_id, num_timesteps, seed, policy, lr_schedule, num_cpu):
     :param num_cpu: (int) The number of cpu to train on
     """
     env = VecFrameStack(make_atari_env(env_id, num_cpu, seed), 4)
-    if policy == 'cnn':
+    if policy == "cnn":
         policy_fn = CnnPolicy
-    elif policy == 'lstm':
+    elif policy == "lstm":
         policy_fn = CnnLstmPolicy
     else:
         warnings.warn("Policy {} not implemented".format(policy))
@@ -39,15 +39,30 @@ def main():
     Runs the test
     """
     parser = atari_arg_parser()
-    parser.add_argument('--policy', choices=['cnn', 'lstm', 'lnlstm'], default='cnn', help='Policy architecture')
-    parser.add_argument('--lr_schedule', choices=['constant', 'linear'], default='constant',
-                        help='Learning rate schedule')
-    parser.add_argument('--logdir', help='Directory for logging')
+    parser.add_argument(
+        "--policy",
+        choices=["cnn", "lstm", "lnlstm"],
+        default="cnn",
+        help="Policy architecture",
+    )
+    parser.add_argument(
+        "--lr_schedule",
+        choices=["constant", "linear"],
+        default="constant",
+        help="Learning rate schedule",
+    )
+    parser.add_argument("--logdir", help="Directory for logging")
     args = parser.parse_args()
     logger.configure(args.logdir)
-    train(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
-          policy=args.policy, lr_schedule=args.lr_schedule, num_cpu=16)
+    train(
+        args.env,
+        num_timesteps=args.num_timesteps,
+        seed=args.seed,
+        policy=args.policy,
+        lr_schedule=args.lr_schedule,
+        num_cpu=16,
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

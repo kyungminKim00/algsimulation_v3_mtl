@@ -49,16 +49,44 @@ class DQN(OffPolicyRLModel):
         WARNING: this logging can take a lot of space quickly
     """
 
-    def __init__(self, policy, env, gamma=0.99, learning_rate=5e-4, buffer_size=50000, exploration_fraction=0.1,
-                 exploration_final_eps=0.02, train_freq=1, batch_size=32, checkpoint_freq=10000, checkpoint_path=None,
-                 learning_starts=1000, target_network_update_freq=500, prioritized_replay=False,
-                 prioritized_replay_alpha=0.6, prioritized_replay_beta0=0.4, prioritized_replay_beta_iters=None,
-                 prioritized_replay_eps=1e-6, param_noise=False, verbose=0, tensorboard_log=None,
-                 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False):
+    def __init__(
+        self,
+        policy,
+        env,
+        gamma=0.99,
+        learning_rate=5e-4,
+        buffer_size=50000,
+        exploration_fraction=0.1,
+        exploration_final_eps=0.02,
+        train_freq=1,
+        batch_size=32,
+        checkpoint_freq=10000,
+        checkpoint_path=None,
+        learning_starts=1000,
+        target_network_update_freq=500,
+        prioritized_replay=False,
+        prioritized_replay_alpha=0.6,
+        prioritized_replay_beta0=0.4,
+        prioritized_replay_beta_iters=None,
+        prioritized_replay_eps=1e-6,
+        param_noise=False,
+        verbose=0,
+        tensorboard_log=None,
+        _init_setup_model=True,
+        policy_kwargs=None,
+        full_tensorboard_log=False,
+    ):
 
         # TODO: replay_buffer refactoring
-        super(DQN, self).__init__(policy=policy, env=env, replay_buffer=None, verbose=verbose, policy_base=DQNPolicy,
-                                  requires_vec_env=False, policy_kwargs=policy_kwargs)
+        super(DQN, self).__init__(
+            policy=policy,
+            env=env,
+            replay_buffer=None,
+            verbose=verbose,
+            policy_base=DQNPolicy,
+            requires_vec_env=False,
+            policy_kwargs=policy_kwargs,
+        )
 
         self.checkpoint_path = checkpoint_path
         self.param_noise = param_noise
@@ -100,8 +128,9 @@ class DQN(OffPolicyRLModel):
     def setup_model(self):
 
         with SetVerbosity(self.verbose):
-            assert not isinstance(self.action_space, gym.spaces.Box), \
-                "Error: DQN cannot output a gym.spaces.Box action space."
+            assert not isinstance(
+                self.action_space, gym.spaces.Box
+            ), "Error: DQN cannot output a gym.spaces.Box action space."
 
             # If the policy is wrap in functool.partial (e.g. to disable dueling)
             # unwrap it to check the class type
@@ -109,16 +138,25 @@ class DQN(OffPolicyRLModel):
                 test_policy = self.policy.func
             else:
                 test_policy = self.policy
-            assert issubclass(test_policy, DQNPolicy), "Error: the input policy for the DQN model must be " \
-                                                       "an instance of DQNPolicy."
+            assert issubclass(test_policy, DQNPolicy), (
+                "Error: the input policy for the DQN model must be "
+                "an instance of DQNPolicy."
+            )
 
             self.graph = tf.Graph()
             with self.graph.as_default():
                 self.sess = tf_util.make_session(graph=self.graph)
 
-                optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=self.learning_rate)
+                optimizer = tf.compat.v1.train.AdamOptimizer(
+                    learning_rate=self.learning_rate
+                )
 
-                self.act, self._train_step, self.update_target, self.step_model = deepq.build_train(
+                (
+                    self.act,
+                    self._train_step,
+                    self.update_target,
+                    self.step_model,
+                ) = deepq.build_train(
                     q_func=partial(self.policy, **self.policy_kwargs),
                     ob_space=self.observation_space,
                     ac_space=self.action_space,
@@ -127,7 +165,7 @@ class DQN(OffPolicyRLModel):
                     grad_norm_clipping=10,
                     param_noise=self.param_noise,
                     sess=self.sess,
-                    full_tensorboard_log=self.full_tensorboard_log
+                    full_tensorboard_log=self.full_tensorboard_log,
                 )
                 self.proba_step = self.step_model.proba_step
                 self.params = find_trainable_variables("deepq")
@@ -138,32 +176,46 @@ class DQN(OffPolicyRLModel):
 
                 self.summary = tf.compat.v1.summary.merge_all()
 
-    def learn(self, total_timesteps, callback=None, seed=None, log_interval=100, tb_log_name="DQN",
-              reset_num_timesteps=True):
+    def learn(
+        self,
+        total_timesteps,
+        callback=None,
+        seed=None,
+        log_interval=100,
+        tb_log_name="DQN",
+        reset_num_timesteps=True,
+    ):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
 
-        with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
-                as writer:
+        with SetVerbosity(self.verbose), TensorboardWriter(
+            self.graph, self.tensorboard_log, tb_log_name, new_tb_log
+        ) as writer:
             self._setup_learn(seed)
 
             # Create the replay buffer
             if self.prioritized_replay:
-                self.replay_buffer = PrioritizedReplayBuffer(self.buffer_size, alpha=self.prioritized_replay_alpha)
+                self.replay_buffer = PrioritizedReplayBuffer(
+                    self.buffer_size, alpha=self.prioritized_replay_alpha
+                )
                 if self.prioritized_replay_beta_iters is None:
                     prioritized_replay_beta_iters = total_timesteps
                 else:
                     prioritized_replay_beta_iters = self.prioritized_replay_beta_iters
-                self.beta_schedule = LinearSchedule(prioritized_replay_beta_iters,
-                                                    initial_p=self.prioritized_replay_beta0,
-                                                    final_p=1.0)
+                self.beta_schedule = LinearSchedule(
+                    prioritized_replay_beta_iters,
+                    initial_p=self.prioritized_replay_beta0,
+                    final_p=1.0,
+                )
             else:
                 self.replay_buffer = ReplayBuffer(self.buffer_size)
                 self.beta_schedule = None
             # Create the schedule for exploration starting from 1.
-            self.exploration = LinearSchedule(schedule_timesteps=int(self.exploration_fraction * total_timesteps),
-                                              initial_p=1.0,
-                                              final_p=self.exploration_final_eps)
+            self.exploration = LinearSchedule(
+                schedule_timesteps=int(self.exploration_fraction * total_timesteps),
+                initial_p=1.0,
+                final_p=self.exploration_final_eps,
+            )
 
             episode_rewards = [0.0]
             obs = self.env.reset()
@@ -180,21 +232,28 @@ class DQN(OffPolicyRLModel):
                 kwargs = {}
                 if not self.param_noise:
                     update_eps = self.exploration.value(self.num_timesteps)
-                    update_param_noise_threshold = 0.
+                    update_param_noise_threshold = 0.0
                 else:
-                    update_eps = 0.
+                    update_eps = 0.0
                     # Compute the threshold such that the KL divergence between perturbed and non-perturbed
                     # policy is comparable to eps-greedy exploration with eps = exploration.value(t).
                     # See Appendix C.1 in Parameter Space Noise for Exploration, Plappert et al., 2017
                     # for detailed explanation.
-                    update_param_noise_threshold = \
-                        -np.log(1. - self.exploration.value(self.num_timesteps) +
-                                self.exploration.value(self.num_timesteps) / float(self.env.action_space.n))
-                    kwargs['reset'] = reset
-                    kwargs['update_param_noise_threshold'] = update_param_noise_threshold
-                    kwargs['update_param_noise_scale'] = True
+                    update_param_noise_threshold = -np.log(
+                        1.0
+                        - self.exploration.value(self.num_timesteps)
+                        + self.exploration.value(self.num_timesteps)
+                        / float(self.env.action_space.n)
+                    )
+                    kwargs["reset"] = reset
+                    kwargs[
+                        "update_param_noise_threshold"
+                    ] = update_param_noise_threshold
+                    kwargs["update_param_noise_scale"] = True
                 with self.sess.as_default():
-                    action = self.act(np.array(obs)[None], update_eps=update_eps, **kwargs)[0]
+                    action = self.act(
+                        np.array(obs)[None], update_eps=update_eps, **kwargs
+                    )[0]
                 env_action = action
                 reset = False
                 new_obs, rew, done, _ = self.env.step(env_action)
@@ -205,8 +264,9 @@ class DQN(OffPolicyRLModel):
                 if writer is not None:
                     ep_rew = np.array([rew]).reshape((1, -1))
                     ep_done = np.array([done]).reshape((1, -1))
-                    self.episode_reward = total_episode_reward_logger(self.episode_reward, ep_rew, ep_done, writer,
-                                                                      self.num_timesteps)
+                    self.episode_reward = total_episode_reward_logger(
+                        self.episode_reward, ep_rew, ep_done, writer, self.num_timesteps
+                    )
 
                 episode_rewards[-1] += rew
                 if done:
@@ -215,55 +275,116 @@ class DQN(OffPolicyRLModel):
                     episode_rewards.append(0.0)
                     reset = True
 
-                if self.num_timesteps > self.learning_starts and self.num_timesteps % self.train_freq == 0:
+                if (
+                    self.num_timesteps > self.learning_starts
+                    and self.num_timesteps % self.train_freq == 0
+                ):
                     # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
                     if self.prioritized_replay:
-                        experience = self.replay_buffer.sample(self.batch_size,
-                                                               beta=self.beta_schedule.value(self.num_timesteps))
-                        (obses_t, actions, rewards, obses_tp1, dones, weights, batch_idxes) = experience
+                        experience = self.replay_buffer.sample(
+                            self.batch_size,
+                            beta=self.beta_schedule.value(self.num_timesteps),
+                        )
+                        (
+                            obses_t,
+                            actions,
+                            rewards,
+                            obses_tp1,
+                            dones,
+                            weights,
+                            batch_idxes,
+                        ) = experience
                     else:
-                        obses_t, actions, rewards, obses_tp1, dones = self.replay_buffer.sample(self.batch_size)
+                        (
+                            obses_t,
+                            actions,
+                            rewards,
+                            obses_tp1,
+                            dones,
+                        ) = self.replay_buffer.sample(self.batch_size)
                         weights, batch_idxes = np.ones_like(rewards), None
 
                     if writer is not None:
                         # run loss backprop with summary, but once every 100 steps save the metadata
                         # (memory, compute time, ...)
                         if (1 + self.num_timesteps) % 100 == 0:
-                            run_options = tf.compat.v1.RunOptions(trace_level=tf.compat.v1.RunOptions.FULL_TRACE)
+                            run_options = tf.compat.v1.RunOptions(
+                                trace_level=tf.compat.v1.RunOptions.FULL_TRACE
+                            )
                             run_metadata = tf.compat.v1.RunMetadata()
-                            summary, td_errors = self._train_step(obses_t, actions, rewards, obses_tp1, obses_tp1,
-                                                                  dones, weights, sess=self.sess, options=run_options,
-                                                                  run_metadata=run_metadata)
-                            writer.add_run_metadata(run_metadata, 'step%d' % self.num_timesteps)
+                            summary, td_errors = self._train_step(
+                                obses_t,
+                                actions,
+                                rewards,
+                                obses_tp1,
+                                obses_tp1,
+                                dones,
+                                weights,
+                                sess=self.sess,
+                                options=run_options,
+                                run_metadata=run_metadata,
+                            )
+                            writer.add_run_metadata(
+                                run_metadata, "step%d" % self.num_timesteps
+                            )
                         else:
-                            summary, td_errors = self._train_step(obses_t, actions, rewards, obses_tp1, obses_tp1,
-                                                                  dones, weights, sess=self.sess)
+                            summary, td_errors = self._train_step(
+                                obses_t,
+                                actions,
+                                rewards,
+                                obses_tp1,
+                                obses_tp1,
+                                dones,
+                                weights,
+                                sess=self.sess,
+                            )
                         writer.add_summary(summary, self.num_timesteps)
                     else:
-                        _, td_errors = self._train_step(obses_t, actions, rewards, obses_tp1, obses_tp1, dones, weights,
-                                                        sess=self.sess)
+                        _, td_errors = self._train_step(
+                            obses_t,
+                            actions,
+                            rewards,
+                            obses_tp1,
+                            obses_tp1,
+                            dones,
+                            weights,
+                            sess=self.sess,
+                        )
 
                     if self.prioritized_replay:
                         new_priorities = np.abs(td_errors) + self.prioritized_replay_eps
-                        self.replay_buffer.update_priorities(batch_idxes, new_priorities)
+                        self.replay_buffer.update_priorities(
+                            batch_idxes, new_priorities
+                        )
 
-                if self.num_timesteps > self.learning_starts and \
-                        self.num_timesteps % self.target_network_update_freq == 0:
+                if (
+                    self.num_timesteps > self.learning_starts
+                    and self.num_timesteps % self.target_network_update_freq == 0
+                ):
                     # Update target network periodically.
                     self.update_target(sess=self.sess)
 
                 if len(episode_rewards[-101:-1]) == 0:
                     mean_100ep_reward = -np.inf
                 else:
-                    mean_100ep_reward = round(float(np.mean(episode_rewards[-101:-1])), 1)
+                    mean_100ep_reward = round(
+                        float(np.mean(episode_rewards[-101:-1])), 1
+                    )
 
                 num_episodes = len(episode_rewards)
-                if self.verbose >= 1 and done and log_interval is not None and len(episode_rewards) % log_interval == 0:
+                if (
+                    self.verbose >= 1
+                    and done
+                    and log_interval is not None
+                    and len(episode_rewards) % log_interval == 0
+                ):
                     logger.record_tabular("steps", self.num_timesteps)
                     logger.record_tabular("episodes", num_episodes)
                     logger.record_tabular("mean 100 episode reward", mean_100ep_reward)
-                    logger.record_tabular("% time spent exploring",
-                                          int(100 * self.exploration.value(self.num_timesteps)))
+                    logger.record_tabular(
+                        "% time spent exploring",
+                        int(100 * self.exploration.value(self.num_timesteps)),
+                    )
                     logger.dump_tabular()
 
                 self.num_timesteps += 1
@@ -272,11 +393,15 @@ class DQN(OffPolicyRLModel):
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
         observation = np.array(observation)
-        vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
+        vectorized_env = self._is_vectorized_observation(
+            observation, self.observation_space
+        )
 
         observation = observation.reshape((-1,) + self.observation_space.shape)
         with self.sess.as_default():
-            actions, _, _ = self.step_model.step(observation, deterministic=deterministic)
+            actions, _, _ = self.step_model.step(
+                observation, deterministic=deterministic
+            )
 
         if not vectorized_env:
             actions = actions[0]
@@ -285,7 +410,9 @@ class DQN(OffPolicyRLModel):
 
     def action_probability(self, observation, state=None, mask=None, actions=None):
         observation = np.array(observation)
-        vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
+        vectorized_env = self._is_vectorized_observation(
+            observation, self.observation_space
+        )
 
         observation = observation.reshape((-1,) + self.observation_space.shape)
         actions_proba = self.proba_step(observation, state, mask)
@@ -294,14 +421,18 @@ class DQN(OffPolicyRLModel):
             actions = np.array([actions])
             assert isinstance(self.action_space, gym.spaces.Discrete)
             actions = actions.reshape((-1,))
-            assert observation.shape[0] == actions.shape[0], "Error: batch sizes differ for actions and observations."
+            assert (
+                observation.shape[0] == actions.shape[0]
+            ), "Error: batch sizes differ for actions and observations."
             actions_proba = actions_proba[np.arange(actions.shape[0]), actions]
             # normalize action proba shape
             actions_proba = actions_proba.reshape((-1, 1))
 
         if not vectorized_env:
             if state is not None:
-                raise ValueError("Error: The environment must be vectorized when using recurrent policies.")
+                raise ValueError(
+                    "Error: The environment must be vectorized when using recurrent policies."
+                )
             actions_proba = actions_proba[0]
 
         return actions_proba
@@ -331,7 +462,7 @@ class DQN(OffPolicyRLModel):
             "policy": self.policy,
             "n_envs": self.n_envs,
             "_vectorize_action": self._vectorize_action,
-            "policy_kwargs": self.policy_kwargs
+            "policy_kwargs": self.policy_kwargs,
         }
 
         params = self.sess.run(self.params)
@@ -342,10 +473,16 @@ class DQN(OffPolicyRLModel):
     def load(cls, load_path, env=None, **kwargs):
         data, params = cls._load_from_file(load_path)
 
-        if 'policy_kwargs' in kwargs and kwargs['policy_kwargs'] != data['policy_kwargs']:
-            raise ValueError("The specified policy kwargs do not equal the stored policy kwargs. "
-                             "Stored kwargs: {}, specified kwargs: {}".format(data['policy_kwargs'],
-                                                                              kwargs['policy_kwargs']))
+        if (
+            "policy_kwargs" in kwargs
+            and kwargs["policy_kwargs"] != data["policy_kwargs"]
+        ):
+            raise ValueError(
+                "The specified policy kwargs do not equal the stored policy kwargs. "
+                "Stored kwargs: {}, specified kwargs: {}".format(
+                    data["policy_kwargs"], kwargs["policy_kwargs"]
+                )
+            )
 
         model = cls(policy=data["policy"], env=env, _init_setup_model=False)
         model.__dict__.update(data)

@@ -29,35 +29,67 @@ class Normalizer:
         self.local_count = np.zeros(1, np.float32)
 
         self.sum_tf = tf.compat.v1.get_variable(
-            initializer=tf.compat.v1.zeros_initializer(), shape=self.local_sum.shape, name='sum',
-            trainable=False, dtype=tf.float32)
+            initializer=tf.compat.v1.zeros_initializer(),
+            shape=self.local_sum.shape,
+            name="sum",
+            trainable=False,
+            dtype=tf.float32,
+        )
         self.sumsq_tf = tf.compat.v1.get_variable(
-            initializer=tf.compat.v1.zeros_initializer(), shape=self.local_sumsq.shape, name='sumsq',
-            trainable=False, dtype=tf.float32)
+            initializer=tf.compat.v1.zeros_initializer(),
+            shape=self.local_sumsq.shape,
+            name="sumsq",
+            trainable=False,
+            dtype=tf.float32,
+        )
         self.count_tf = tf.compat.v1.get_variable(
-            initializer=tf.compat.v1.ones_initializer(), shape=self.local_count.shape, name='count',
-            trainable=False, dtype=tf.float32)
+            initializer=tf.compat.v1.ones_initializer(),
+            shape=self.local_count.shape,
+            name="count",
+            trainable=False,
+            dtype=tf.float32,
+        )
         self.mean = tf.compat.v1.get_variable(
-            initializer=tf.compat.v1.zeros_initializer(), shape=(self.size,), name='mean',
-            trainable=False, dtype=tf.float32)
+            initializer=tf.compat.v1.zeros_initializer(),
+            shape=(self.size,),
+            name="mean",
+            trainable=False,
+            dtype=tf.float32,
+        )
         self.std = tf.compat.v1.get_variable(
-            initializer=tf.compat.v1.ones_initializer(), shape=(self.size,), name='std',
-            trainable=False, dtype=tf.float32)
-        self.count_pl = tf.compat.v1.placeholder(name='count_pl', shape=(1,), dtype=tf.float32)
-        self.sum_pl = tf.compat.v1.placeholder(name='sum_pl', shape=(self.size,), dtype=tf.float32)
-        self.sumsq_pl = tf.compat.v1.placeholder(name='sumsq_pl', shape=(self.size,), dtype=tf.float32)
+            initializer=tf.compat.v1.ones_initializer(),
+            shape=(self.size,),
+            name="std",
+            trainable=False,
+            dtype=tf.float32,
+        )
+        self.count_pl = tf.compat.v1.placeholder(
+            name="count_pl", shape=(1,), dtype=tf.float32
+        )
+        self.sum_pl = tf.compat.v1.placeholder(
+            name="sum_pl", shape=(self.size,), dtype=tf.float32
+        )
+        self.sumsq_pl = tf.compat.v1.placeholder(
+            name="sumsq_pl", shape=(self.size,), dtype=tf.float32
+        )
 
         self.update_op = tf.group(
             self.count_tf.assign_add(self.count_pl),
             self.sum_tf.assign_add(self.sum_pl),
-            self.sumsq_tf.assign_add(self.sumsq_pl)
+            self.sumsq_tf.assign_add(self.sumsq_pl),
         )
         self.recompute_op = tf.group(
             tf.compat.v1.assign(self.mean, self.sum_tf / self.count_tf),
-            tf.compat.v1.assign(self.std, tf.sqrt(tf.maximum(
-                tf.square(self.eps),
-                self.sumsq_tf / self.count_tf - tf.square(self.sum_tf / self.count_tf)
-            ))),
+            tf.compat.v1.assign(
+                self.std,
+                tf.sqrt(
+                    tf.maximum(
+                        tf.square(self.eps),
+                        self.sumsq_tf / self.count_tf
+                        - tf.square(self.sum_tf / self.count_tf),
+                    )
+                ),
+            ),
         )
         self.lock = threading.Lock()
 
@@ -138,18 +170,22 @@ class Normalizer:
         # We perform the synchronization outside of the lock to keep the critical section as short
         # as possible.
         synced_sum, synced_sumsq, synced_count = self.synchronize(
-            local_sum=local_sum, local_sumsq=local_sumsq, local_count=local_count)
+            local_sum=local_sum, local_sumsq=local_sumsq, local_count=local_count
+        )
 
-        self.sess.run(self.update_op, feed_dict={
-            self.count_pl: synced_count,
-            self.sum_pl: synced_sum,
-            self.sumsq_pl: synced_sumsq,
-        })
+        self.sess.run(
+            self.update_op,
+            feed_dict={
+                self.count_pl: synced_count,
+                self.sum_pl: synced_sum,
+                self.sumsq_pl: synced_sumsq,
+            },
+        )
         self.sess.run(self.recompute_op)
 
 
 class IdentityNormalizer:
-    def __init__(self, size, std=1.):
+    def __init__(self, size, std=1.0):
         """
         Normalizer that returns the input unchanged
 

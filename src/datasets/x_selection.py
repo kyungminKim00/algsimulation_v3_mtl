@@ -7,22 +7,23 @@ from collections import OrderedDict
 import header.index_forecasting.RUNHEADER as RUNHEADER
 from datasets.windowing import rolling_apply, fun_mean
 
+
 def load_file(file_location, file_format):
-    with open(file_location, 'rb') as fp:
-        if file_format == 'npy':
+    with open(file_location, "rb") as fp:
+        if file_format == "npy":
             return np.load(fp)
-        elif file_format == 'pkl':
+        elif file_format == "pkl":
             return pickle.load(fp)
         else:
-            raise ValueError('non-support file format')
+            raise ValueError("non-support file format")
 
 
 def write_file(file_location, data, file_format):
-    if file_format == 'npy':
+    if file_format == "npy":
         np.save(file_location, data)
 
-    if file_format == 'pkl':
-        with open(file_location, 'wb') as fp:
+    if file_format == "pkl":
+        with open(file_location, "wb") as fp:
             pickle.dump(data, fp)
 
 
@@ -31,15 +32,23 @@ def rm_indx(data, idx):
     return data
 
 
-def get_uniqueness(file_name=None, target_name=None, from_file=True, _data=None, _dict=None, opt=None, th=0.975):
+def get_uniqueness(
+    file_name=None,
+    target_name=None,
+    from_file=True,
+    _data=None,
+    _dict=None,
+    opt=None,
+    th=0.975,
+):
     th = float(th)
     if not from_file:
-        assert _dict is not None, 'variable name should be given'
+        assert _dict is not None, "variable name should be given"
 
     if from_file:
         sd_data = pd.read_csv(file_name)
         col_name = sd_data.columns
-        dates = np.array(sd_data['TradeDate'])
+        dates = np.array(sd_data["TradeDate"])
         sd_data = sd_data.values[:, 1:]
 
         # # target  data
@@ -49,18 +58,18 @@ def get_uniqueness(file_name=None, target_name=None, from_file=True, _data=None,
         # sd_data = sd_data[-500:]
     else:
         c_vars = _dict if type(_dict) is list else list(_dict.values())
-        col_name = ['TradeDate'] + c_vars
+        col_name = ["TradeDate"] + c_vars
         dates = np.array(_data[:, 0])
         sd_data = _data[:, 1:]
     original_num = sd_data.shape[1]
 
     # target  data
     original_dates = dates
-    dates = dates[:RUNHEADER.m_pool_sample_end]
+    dates = dates[: RUNHEADER.m_pool_sample_end]
     original_sd_data = sd_data
-    sd_data = sd_data[:RUNHEADER.m_pool_sample_end, :]
+    sd_data = sd_data[: RUNHEADER.m_pool_sample_end, :]
 
-    if opt == 'mva':
+    if opt == "mva":
         sd_data = sd_data.astype(float)
         sd_data = rolling_apply(fun_mean, sd_data, 5)
 
@@ -93,7 +102,7 @@ def get_uniqueness(file_name=None, target_name=None, from_file=True, _data=None,
         tmp = data[j, :]
         if len(np.argwhere(tmp > -np.inf)) > 0:
             vs.append(j)
-    print('\n selected variables: {} from {}'.format(len(vs), original_num))
+    print("\n selected variables: {} from {}".format(len(vs), original_num))
     sd_data = original_sd_data[:, vs]
 
     """File save
@@ -105,25 +114,35 @@ def get_uniqueness(file_name=None, target_name=None, from_file=True, _data=None,
         dates = np.reshape(original_dates, [original_dates.shape[0], 1])
         sd_data = np.append(dates, sd_data, axis=1)
         pd.DataFrame(sd_data, columns=col_name).to_csv(target_name, index=None)
-        print('Done!!')
+        print("Done!!")
     else:
         col_name = [col_name[idx + 1] for idx in vs]
         return sd_data, OrderedDict(zip(list(np.arange(len(col_name))), col_name))
 
 
-def get_uniqueness_without_dates(file_name=None, target_name=None, from_file=True, _data=None, _dict=None, opt=None, th=0.975):
-    assert (from_file == False) or (_data is not None) or (file_name is None), 'None Defined method'
-    
+def get_uniqueness_without_dates(
+    file_name=None,
+    target_name=None,
+    from_file=True,
+    _data=None,
+    _dict=None,
+    opt=None,
+    th=0.975,
+):
+    assert (
+        (from_file == False) or (_data is not None) or (file_name is None)
+    ), "None Defined method"
+
     col_name = _dict if type(_dict) is list else list(_dict.values())
 
     th = float(th)
     if not from_file:
-        assert _dict is not None, 'variable name should be given'
-        
+        assert _dict is not None, "variable name should be given"
+
     sd_data = _data
     original_sd_data = _data
-    
-    if opt == 'mva':
+
+    if opt == "mva":
         sd_data = sd_data.astype(float)
         sd_data = rolling_apply(fun_mean, sd_data, 5)
 
@@ -152,13 +171,12 @@ def get_uniqueness_without_dates(file_name=None, target_name=None, from_file=Tru
         tmp = data[j, :]
         if len(np.argwhere(tmp > -np.inf)) > 0:
             vs.append(j)
-    
+
     # modifying
     sd_data = original_sd_data[:, vs]
     col_name = [col_name[idx] for idx in vs]
-    
+
     return sd_data, OrderedDict(zip(list(np.arange(len(col_name))), col_name))
-        
 
 
 # if __name__ == '__main__':

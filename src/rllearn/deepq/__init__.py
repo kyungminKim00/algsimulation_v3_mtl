@@ -12,4 +12,5 @@ def wrap_atari_dqn(env):
     :return: (Gym Environment) the wrapped environment
     """
     from rllearn.common.atari_wrappers import wrap_deepmind
+
     return wrap_deepmind(env, frame_stack=True, scale=False)

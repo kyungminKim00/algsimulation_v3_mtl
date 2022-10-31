@@ -4,8 +4,19 @@ from rllearn.her.util import mlp
 
 
 class ActorCritic:
-    def __init__(self, inputs_tf, dim_obs, dim_goal, dim_action,
-                 max_u, o_stats, g_stats, hidden, layers, **kwargs):
+    def __init__(
+        self,
+        inputs_tf,
+        dim_obs,
+        dim_goal,
+        dim_action,
+        max_u,
+        o_stats,
+        g_stats,
+        hidden,
+        layers,
+        **kwargs
+    ):
         """The actor-critic network and related training code.
 
         :param inputs_tf: ({str: TensorFlow Tensor}) all necessary inputs for the network: the
@@ -29,9 +40,9 @@ class ActorCritic:
         self.hidden = hidden
         self.layers = layers
 
-        self.o_tf = inputs_tf['o']
-        self.g_tf = inputs_tf['g']
-        self.u_tf = inputs_tf['u']
+        self.o_tf = inputs_tf["o"]
+        self.g_tf = inputs_tf["g"]
+        self.u_tf = inputs_tf["u"]
 
         # Prepare inputs for actor and critic.
         obs = self.o_stats.normalize(self.o_tf)
@@ -39,10 +50,11 @@ class ActorCritic:
         input_pi = tf.concat(axis=1, values=[obs, goals])  # for actor
 
         # Networks.
-        with tf.compat.v1.variable_scope('pi'):
-            self.pi_tf = self.max_u * tf.tanh(mlp(
-                input_pi, [self.hidden] * self.layers + [self.dimu]))
-        with tf.compat.v1.variable_scope('Q'):
+        with tf.compat.v1.variable_scope("pi"):
+            self.pi_tf = self.max_u * tf.tanh(
+                mlp(input_pi, [self.hidden] * self.layers + [self.dimu])
+            )
+        with tf.compat.v1.variable_scope("Q"):
             # for policy training
             input_q = tf.concat(axis=1, values=[obs, goals, self.pi_tf / self.max_u])
             self.q_pi_tf = mlp(input_q, [self.hidden] * self.layers + [1])

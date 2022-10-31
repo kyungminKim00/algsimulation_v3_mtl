@@ -39,19 +39,26 @@ import util
 from util import get_domain_on_CDSW_env
 import numpy as np
 
+
 def refine_jason_list(zip_info, MAX_HISTORICAL_MODELS=5):
     tmp_json_location_list = list()
     tmp_json_location_list_2 = list()
     for it in zip_info:
-        if (it[3]==1) or (it[3]==True):
-            tmp_json_location_list.append(it[:-1])  # tuple is hashable, but list and dict
+        if (it[3] == 1) or (it[3] == True):
+            tmp_json_location_list.append(
+                it[:-1]
+            )  # tuple is hashable, but list and dict
         else:
             tmp_json_location_list_2.append(it[:-1])
 
     if len(tmp_json_location_list_2) > MAX_HISTORICAL_MODELS:
         tmp_json_location_list_2 = tmp_json_location_list_2[-MAX_HISTORICAL_MODELS:]
     aa = np.array(list(set(tmp_json_location_list + tmp_json_location_list_2)))
-    return aa[:, 0].tolist(), aa[:, 1].tolist(), np.where(aa[:, 2]=='False', False, True).tolist()
+    return (
+        aa[:, 0].tolist(),
+        aa[:, 1].tolist(),
+        np.where(aa[:, 2] == "False", False, True).tolist(),
+    )
 
 
 def get_f_model_from_base(model_results, base_f_model):
@@ -283,7 +290,7 @@ if __name__ == "__main__":
         ).update_args()
 
         if args.performed_date is not None:
-            time_now = ''.join(performed_date.split('-'))
+            time_now = "".join(performed_date.split("-"))
         enable_confidence = False  # Disalbe for the sevice, (computation cost issue)
         # re-write RUNHEADER
         if bool(args.actual_inference):
@@ -298,7 +305,12 @@ if __name__ == "__main__":
                 RUNHEADER.use_historical_model,
             )
             if type(json_location_list) is str:
-                json_location_list, f_test_model_list, current_period_list, init_model_repo_list = (
+                (
+                    json_location_list,
+                    f_test_model_list,
+                    current_period_list,
+                    init_model_repo_list,
+                ) = (
                     [json_location_list],
                     [f_test_model_list],
                     [current_period_list],
@@ -306,8 +318,18 @@ if __name__ == "__main__":
                 )
 
             selected_model = None
-            json_location_list, f_test_model_list, current_period_list = refine_jason_list(
-                zip(json_location_list, f_test_model_list, current_period_list, init_model_repo_list), MAX_HISTORICAL_MODELS=5
+            (
+                json_location_list,
+                f_test_model_list,
+                current_period_list,
+            ) = refine_jason_list(
+                zip(
+                    json_location_list,
+                    f_test_model_list,
+                    current_period_list,
+                    init_model_repo_list,
+                ),
+                MAX_HISTORICAL_MODELS=5,
             )
             performence_stacks = list()
             for idx in range(len(json_location_list) + 1):

@@ -19,7 +19,7 @@ if __name__ == "__main__":
     X = "./datasets/rawdata/index_data/Synced_D_FilledData_new_080.csv"
     sample1, sample2 = 70, 750
     num_indices = 101
-    
+
     for length in [sample1, sample2]:
         data = pd.read_csv(X)
         data = data.values[-length:, 1:num_indices]

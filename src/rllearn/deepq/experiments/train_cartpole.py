@@ -15,11 +15,11 @@ def callback(lcl, _glb):
     :return: (bool) is solved
     """
     # stop training if reward exceeds 199
-    if len(lcl['episode_rewards'][-101:-1]) == 0:
+    if len(lcl["episode_rewards"][-101:-1]) == 0:
         mean_100ep_reward = -np.inf
     else:
-        mean_100ep_reward = round(float(np.mean(lcl['episode_rewards'][-101:-1])), 1)
-    is_solved = lcl['self'].num_timesteps > 100 and mean_100ep_reward >= 199
+        mean_100ep_reward = round(float(np.mean(lcl["episode_rewards"][-101:-1])), 1)
+    is_solved = lcl["self"].num_timesteps > 100 and mean_100ep_reward >= 199
     return not is_solved
 
 
@@ -44,8 +44,10 @@ def main(args):
     model.save("cartpole_model.pkl")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train DQN on cartpole")
-    parser.add_argument('--max-timesteps', default=100000, type=int, help="Maximum number of timesteps")
+    parser.add_argument(
+        "--max-timesteps", default=100000, type=int, help="Maximum number of timesteps"
+    )
     args = parser.parse_args()
     main(args)

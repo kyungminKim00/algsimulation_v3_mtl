@@ -29,8 +29,10 @@ def main(args):
             break
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Enjoy trained DQN on cartpole")
-    parser.add_argument('--no-render', default=False, action="store_true", help="Disable rendering")
+    parser.add_argument(
+        "--no-render", default=False, action="store_true", help="Disable rendering"
+    )
     args = parser.parse_args()
     main(args)

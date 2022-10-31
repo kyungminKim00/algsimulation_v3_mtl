@@ -35,13 +35,35 @@ class GAIL(ActorCriticRLModel):
         WARNING: this logging can take a lot of space quickly
     """
 
-    def __init__(self, policy, env, pretrained_weight=False, hidden_size_adversary=100, adversary_entcoeff=1e-3,
-                 expert_dataset=None, save_per_iter=1, checkpoint_dir="/tmp/gail/ckpt/", g_step=1, d_step=1,
-                 task_name="task_name", d_stepsize=3e-4, verbose=0, _init_setup_model=True, **kwargs):
-        super().__init__(policy=policy, env=env, verbose=verbose, requires_vec_env=False,
-                         _init_setup_model=_init_setup_model)
+    def __init__(
+        self,
+        policy,
+        env,
+        pretrained_weight=False,
+        hidden_size_adversary=100,
+        adversary_entcoeff=1e-3,
+        expert_dataset=None,
+        save_per_iter=1,
+        checkpoint_dir="/tmp/gail/ckpt/",
+        g_step=1,
+        d_step=1,
+        task_name="task_name",
+        d_stepsize=3e-4,
+        verbose=0,
+        _init_setup_model=True,
+        **kwargs
+    ):
+        super().__init__(
+            policy=policy,
+            env=env,
+            verbose=verbose,
+            requires_vec_env=False,
+            _init_setup_model=_init_setup_model,
+        )
 
-        self.trpo = TRPO(policy, env, verbose=verbose, _init_setup_model=False, **kwargs)
+        self.trpo = TRPO(
+            policy, env, verbose=verbose, _init_setup_model=False, **kwargs
+        )
         self.trpo.using_gail = True
         self.trpo.pretrained_weight = pretrained_weight
         self.trpo.expert_dataset = expert_dataset
@@ -62,15 +84,33 @@ class GAIL(ActorCriticRLModel):
         self.trpo.set_env(env)
 
     def setup_model(self):
-        assert issubclass(self.policy, ActorCriticPolicy), "Error: the input policy for the GAIL model must be an " \
-                                                           "instance of common.policies.ActorCriticPolicy."
-        assert isinstance(self.action_space, gym.spaces.Box), "Error: GAIL requires a continuous action space."
+        assert issubclass(self.policy, ActorCriticPolicy), (
+            "Error: the input policy for the GAIL model must be an "
+            "instance of common.policies.ActorCriticPolicy."
+        )
+        assert isinstance(
+            self.action_space, gym.spaces.Box
+        ), "Error: GAIL requires a continuous action space."
 
         self.trpo.setup_model()
 
-    def learn(self, total_timesteps, callback=None, seed=None, log_interval=100, tb_log_name="GAIL",
-              reset_num_timesteps=True):
-        self.trpo.learn(total_timesteps, callback, seed, log_interval, tb_log_name, reset_num_timesteps)
+    def learn(
+        self,
+        total_timesteps,
+        callback=None,
+        seed=None,
+        log_interval=100,
+        tb_log_name="GAIL",
+        reset_num_timesteps=True,
+    ):
+        self.trpo.learn(
+            total_timesteps,
+            callback,
+            seed,
+            log_interval,
+            tb_log_name,
+            reset_num_timesteps,
+        )
         return self
 
     def predict(self, observation, state=None, mask=None, deterministic=False):

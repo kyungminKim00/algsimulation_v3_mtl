@@ -32,49 +32,46 @@ import pandas as pd
 import shutil
 
 # model_repo_meta information
-base_dir = './save/model_repo_meta'
-base_dir2 = './save/model/rllearn'
+base_dir = "./save/model_repo_meta"
+base_dir2 = "./save/model/rllearn"
 stored_models = list()
 for it in os.listdir(base_dir):
-    fp = open(base_dir + '/' + it, 'rb')
+    fp = open(base_dir + "/" + it, "rb")
     model_dict = pickle.load(fp)
     fp.close()
 
     for item in model_dict:
-        if item['model_name'] is not None:
-            tmp_dir = '/'.join([base_dir2, item['m_name']])
-            tmp_file = item['model_name']
-            s_file = '/'.join([tmp_dir, tmp_file])
+        if item["model_name"] is not None:
+            tmp_dir = "/".join([base_dir2, item["m_name"]])
+            tmp_file = item["model_name"]
+            s_file = "/".join([tmp_dir, tmp_file])
 
             stored_models.append([tmp_dir, tmp_file])
             b_test = os.path.isfile(s_file)
             if not b_test:
-                print('File Not exist: {}: {}'.format(s_file, b_test))
+                print("File Not exist: {}: {}".format(s_file, b_test))
 
 
 # delete files
 for base_dir, model in stored_models:
     try:
         for c_model in os.listdir(base_dir):
-            if '.pkl' in c_model and c_model != model:
-                os.remove('/'.join([base_dir, c_model]))
-                print('Delete dummy files: {}'.format('/'.join([base_dir, c_model])))
+            if ".pkl" in c_model and c_model != model:
+                os.remove("/".join([base_dir, c_model]))
+                print("Delete dummy files: {}".format("/".join([base_dir, c_model])))
     except FileNotFoundError:
         pass
 
 # delete folders
 for t_dir in os.listdir(base_dir2):
     delete = True
-    if t_dir == 'buffer_save':
+    if t_dir == "buffer_save":
         delete = False
     else:
         for ch in stored_models:
-            if t_dir == ch[0].split('/')[-1]:
+            if t_dir == ch[0].split("/")[-1]:
                 delete = False
-    
-    if delete:
-        shutil.rmtree('/'.join([base_dir2, t_dir]), ignore_errors=True)
-        print('Delete dummy folder {} : {}'.format(base_dir2, t_dir))
-    
 
-    
+    if delete:
+        shutil.rmtree("/".join([base_dir2, t_dir]), ignore_errors=True)
+        print("Delete dummy folder {} : {}".format(base_dir2, t_dir))

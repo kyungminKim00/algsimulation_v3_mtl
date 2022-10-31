@@ -46,11 +46,24 @@ class SBuffer(object):
         self.next_idx = 0
         self.num_in_buffer = 0
 
-    def put(self, enc_obs, actions, rewards, values, states, masks, suessor,
-            selected_action, diff_selected_action, returns_info, hit, env_idx):
+    def put(
+        self,
+        enc_obs,
+        actions,
+        rewards,
+        values,
+        states,
+        masks,
+        suessor,
+        selected_action,
+        diff_selected_action,
+        returns_info,
+        hit,
+        env_idx,
+    ):
         """
         Adds a frame to the buffer
-        
+
         :param env_idx:
         :param buffer_th:
         :param hit: ([float])
@@ -79,44 +92,69 @@ class SBuffer(object):
         try:
             if len(env_idx) > 0:
                 if self.enc_obs is None:
-                    self.enc_obs = np.empty([self.n_env] + [self.n_steps] + list(enc_obs.shape[1:]), dtype=self.obs_dtype)
-                    self.actions = np.empty([self.n_env] + [self.n_steps] + list(actions.shape[1:]), dtype=np.int32)
-                    self.rewards = np.empty([self.n_env, self.n_steps], dtype=np.float32)
+                    self.enc_obs = np.empty(
+                        [self.n_env] + [self.n_steps] + list(enc_obs.shape[1:]),
+                        dtype=self.obs_dtype,
+                    )
+                    self.actions = np.empty(
+                        [self.n_env] + [self.n_steps] + list(actions.shape[1:]),
+                        dtype=np.int32,
+                    )
+                    self.rewards = np.empty(
+                        [self.n_env, self.n_steps], dtype=np.float32
+                    )
                     self.values = np.empty([self.n_env, self.n_steps], dtype=np.float32)
-                    self.states = np.empty([self.n_env] + list(states.shape[1:]), dtype=np.float32)
+                    self.states = np.empty(
+                        [self.n_env] + list(states.shape[1:]), dtype=np.float32
+                    )
                     self.masks = np.empty([self.n_env, self.n_steps], dtype=np.bool)
 
                     # Blow are dummy variables for session run.. Not in use, even tensorboard
                     self.suessor = np.empty([self.n_env], dtype=np.int32)
-                    self.selected_action = np.empty([self.n_env, self.n_steps], dtype=np.int32)
-                    self.diff_selected_action = np.empty([self.n_env, self.n_steps], dtype=np.int32)
+                    self.selected_action = np.empty(
+                        [self.n_env, self.n_steps], dtype=np.int32
+                    )
+                    self.diff_selected_action = np.empty(
+                        [self.n_env, self.n_steps], dtype=np.int32
+                    )
 
-                    self.returns_info = np.empty([self.n_env, self.n_steps], dtype=np.float32)
+                    self.returns_info = np.empty(
+                        [self.n_env, self.n_steps], dtype=np.float32
+                    )
                     self.hit = np.empty([self.n_env, self.n_steps], dtype=np.float32)
 
                 for idx in env_idx:
-                    self.enc_obs[self.next_idx] = np.reshape(enc_obs,
-                                                             [self.n_env, self.n_steps] + list(enc_obs.shape[1:]))[idx]
-                    self.actions[self.next_idx] = np.reshape(actions,
-                                                             [self.n_env, self.n_steps] + list(actions.shape[1:]))[idx]
-                    self.rewards[self.next_idx] = np.reshape(rewards,
-                                                             [self.n_env, self.n_steps])[idx]
-                    self.values[self.next_idx] = np.reshape(values,
-                                                            [self.n_env, self.n_steps])[idx]
-                    self.masks[self.next_idx] = np.reshape(masks,
-                                                           [self.n_env, self.n_steps])[idx]
+                    self.enc_obs[self.next_idx] = np.reshape(
+                        enc_obs, [self.n_env, self.n_steps] + list(enc_obs.shape[1:])
+                    )[idx]
+                    self.actions[self.next_idx] = np.reshape(
+                        actions, [self.n_env, self.n_steps] + list(actions.shape[1:])
+                    )[idx]
+                    self.rewards[self.next_idx] = np.reshape(
+                        rewards, [self.n_env, self.n_steps]
+                    )[idx]
+                    self.values[self.next_idx] = np.reshape(
+                        values, [self.n_env, self.n_steps]
+                    )[idx]
+                    self.masks[self.next_idx] = np.reshape(
+                        masks, [self.n_env, self.n_steps]
+                    )[idx]
                     self.states[self.next_idx] = states[idx]
 
                     self.suessor[self.next_idx] = suessor[idx]
 
-                    self.selected_action[self.next_idx] = np.reshape(selected_action,
-                                                            [self.n_env, self.n_steps])[idx]
-                    self.diff_selected_action[self.next_idx] = np.reshape(diff_selected_action,
-                                                            [self.n_env, self.n_steps])[idx]
-                    self.returns_info[self.next_idx] = np.reshape(returns_info,
-                                                            [self.n_env, self.n_steps])[idx]
-                    self.hit[self.next_idx] = np.reshape(hit,
-                                                            [self.n_env, self.n_steps])[idx]
+                    self.selected_action[self.next_idx] = np.reshape(
+                        selected_action, [self.n_env, self.n_steps]
+                    )[idx]
+                    self.diff_selected_action[self.next_idx] = np.reshape(
+                        diff_selected_action, [self.n_env, self.n_steps]
+                    )[idx]
+                    self.returns_info[self.next_idx] = np.reshape(
+                        returns_info, [self.n_env, self.n_steps]
+                    )[idx]
+                    self.hit[self.next_idx] = np.reshape(
+                        hit, [self.n_env, self.n_steps]
+                    )[idx]
 
                     self.next_idx = (self.next_idx + 1) % self.n_env
                     self.num_in_buffer = min(self.n_env, self.num_in_buffer + 1)
@@ -127,7 +165,7 @@ class SBuffer(object):
     def take(self, arr, idx, envx, dummy=False):
         """
         Reads a frame from a list and index for the asked environment ids
-        
+
         :param arr: (np.ndarray) the array that is read
         :param idx: ([int]) the idx that are read
         :param envx: ([int]) the idx for the environments
@@ -150,7 +188,7 @@ class SBuffer(object):
     def get(self):
         """
         randomly read a frame from the buffer
-        
+
         :return: ([float], [float], [float], [float], [bool], [float])
                  observations, actions, rewards, mus, dones, maskes
         """
@@ -165,7 +203,9 @@ class SBuffer(object):
         envx = np.arange(n_env)
 
         selected_action = self.take(self.selected_action, idx, envx, dummy=True)
-        diff_selected_action = self.take(self.diff_selected_action, idx, envx, dummy=True)
+        diff_selected_action = self.take(
+            self.diff_selected_action, idx, envx, dummy=True
+        )
         returns_info = self.take(self.returns_info, idx, envx, dummy=True)
         hit = self.take(self.hit, idx, envx, dummy=True)
         suessor = self.take(self.suessor, idx, envx, dummy=True)
@@ -177,29 +217,86 @@ class SBuffer(object):
         obs = self.take(self.enc_obs, idx, envx)
         # obs = self.decode(enc_obs)
 
-        obs, actions, rewards, values, states, masks, selected_action, \
-        diff_selected_action, returns_info, hit, suessor = \
-            self.reshape(obs, actions, rewards, values, states, masks, selected_action,
-                         diff_selected_action, returns_info, hit, suessor)
+        (
+            obs,
+            actions,
+            rewards,
+            values,
+            states,
+            masks,
+            selected_action,
+            diff_selected_action,
+            returns_info,
+            hit,
+            suessor,
+        ) = self.reshape(
+            obs,
+            actions,
+            rewards,
+            values,
+            states,
+            masks,
+            selected_action,
+            diff_selected_action,
+            returns_info,
+            hit,
+            suessor,
+        )
 
-        return obs, actions, rewards, values, states, masks, suessor, selected_action, \
-               diff_selected_action, returns_info, hit
+        return (
+            obs,
+            actions,
+            rewards,
+            values,
+            states,
+            masks,
+            suessor,
+            selected_action,
+            diff_selected_action,
+            returns_info,
+            hit,
+        )
 
-    def reshape(self, obs, actions, rewards, values, states, masks, selected_action,
-                diff_selected_action, returns_info, hit, suessor):
-        obs = np.reshape(obs, [self.n_env*self.n_steps] + list(obs.shape[2:]))
-        actions = np.reshape(actions, [self.n_env*self.n_steps] + list(actions.shape[2:]))
-        rewards = np.reshape(rewards, [self.n_env*self.n_steps])
-        values = np.reshape(values, [self.n_env*self.n_steps])
+    def reshape(
+        self,
+        obs,
+        actions,
+        rewards,
+        values,
+        states,
+        masks,
+        selected_action,
+        diff_selected_action,
+        returns_info,
+        hit,
+        suessor,
+    ):
+        obs = np.reshape(obs, [self.n_env * self.n_steps] + list(obs.shape[2:]))
+        actions = np.reshape(
+            actions, [self.n_env * self.n_steps] + list(actions.shape[2:])
+        )
+        rewards = np.reshape(rewards, [self.n_env * self.n_steps])
+        values = np.reshape(values, [self.n_env * self.n_steps])
         states = np.reshape(states, states.shape)
-        masks = np.reshape(masks, [self.n_env*self.n_steps])
-        selected_action = np.reshape(selected_action, [self.n_env*self.n_steps])
-        diff_selected_action = np.reshape(diff_selected_action, [self.n_env*self.n_steps])
-        returns_info = np.reshape(returns_info, [self.n_env*self.n_steps])
-        hit = np.reshape(hit, [self.n_env*self.n_steps])
+        masks = np.reshape(masks, [self.n_env * self.n_steps])
+        selected_action = np.reshape(selected_action, [self.n_env * self.n_steps])
+        diff_selected_action = np.reshape(
+            diff_selected_action, [self.n_env * self.n_steps]
+        )
+        returns_info = np.reshape(returns_info, [self.n_env * self.n_steps])
+        hit = np.reshape(hit, [self.n_env * self.n_steps])
         suessor = np.reshape(suessor, [self.n_env])
 
-        return obs, actions, rewards, values, states, masks, selected_action, \
-               diff_selected_action, returns_info, hit, suessor
-
-
+        return (
+            obs,
+            actions,
+            rewards,
+            values,
+            states,
+            masks,
+            selected_action,
+            diff_selected_action,
+            returns_info,
+            hit,
+            suessor,
+        )

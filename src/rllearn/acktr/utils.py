@@ -1,10 +1,18 @@
 import tensorflow as tf
 
 
-def dense(input_tensor, size, name, weight_init=None, bias_init=0, weight_loss_dict=None, reuse=None):
+def dense(
+    input_tensor,
+    size,
+    name,
+    weight_init=None,
+    bias_init=0,
+    weight_loss_dict=None,
+    reuse=None,
+):
     """
     A dense Layer
-    
+
     :param input_tensor: ([TensorFlow Tensor]) input
     :param size: (int) number of hidden neurons
     :param name: (str) layer name
@@ -15,18 +23,27 @@ def dense(input_tensor, size, name, weight_init=None, bias_init=0, weight_loss_d
     :return: ([TensorFlow Tensor]) the output of the dense Layer
     """
     with tf.compat.v1.variable_scope(name, reuse=reuse):
-        assert len(tf.compat.v1.get_variable_scope().name.split('/')) == 2
+        assert len(tf.compat.v1.get_variable_scope().name.split("/")) == 2
 
-        weight = tf.compat.v1.get_variable("w", [input_tensor.get_shape()[1], size], initializer=weight_init)
-        bias = tf.compat.v1.get_variable("b", [size], initializer=tf.compat.v1.constant_initializer(bias_init))
+        weight = tf.compat.v1.get_variable(
+            "w", [input_tensor.get_shape()[1], size], initializer=weight_init
+        )
+        bias = tf.compat.v1.get_variable(
+            "b", [size], initializer=tf.compat.v1.constant_initializer(bias_init)
+        )
         weight_decay_fc = 3e-4
 
         if weight_loss_dict is not None:
-            weight_decay = tf.multiply(tf.nn.l2_loss(weight), weight_decay_fc, name='weight_decay_loss')
+            weight_decay = tf.multiply(
+                tf.nn.l2_loss(weight), weight_decay_fc, name="weight_decay_loss"
+            )
             weight_loss_dict[weight] = weight_decay_fc
             weight_loss_dict[bias] = 0.0
 
-            tf.compat.v1.add_to_collection(tf.compat.v1.get_variable_scope().name.split('/')[0] + '_' + 'losses', weight_decay)
+            tf.compat.v1.add_to_collection(
+                tf.compat.v1.get_variable_scope().name.split("/")[0] + "_" + "losses",
+                weight_decay,
+            )
 
         return tf.nn.bias_add(tf.matmul(input_tensor, weight), bias)
 
@@ -34,7 +51,7 @@ def dense(input_tensor, size, name, weight_init=None, bias_init=0, weight_loss_d
 def kl_div(action_dist1, action_dist2, action_size):
     """
     Kullback leiber divergence
-    
+
     :param action_dist1: ([TensorFlow Tensor]) action distribution 1
     :param action_dist2: ([TensorFlow Tensor]) action distribution 2
     :param action_size: (int) the shape of an action
@@ -46,4 +63,6 @@ def kl_div(action_dist1, action_dist2, action_size):
     numerator = tf.square(mean1 - mean2) + tf.square(std1) - tf.square(std2)
     denominator = 2 * tf.square(std2) + 1e-8
     return tf.reduce_sum(
-        input_tensor=numerator / denominator + tf.math.log(std2) - tf.math.log(std1), axis=-1)
+        input_tensor=numerator / denominator + tf.math.log(std2) - tf.math.log(std1),
+        axis=-1,
+    )

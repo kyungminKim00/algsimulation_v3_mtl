@@ -1,7 +1,9 @@
 import numpy as np
 
 
-def conjugate_gradient(f_ax, b_vec, cg_iters=10, callback=None, verbose=False, residual_tol=1e-10):
+def conjugate_gradient(
+    f_ax, b_vec, cg_iters=10, callback=None, verbose=False, residual_tol=1e-10
+):
     """
     conjugate gradient calculation (Ax = b), bases on
     https://epubs.siam.org/doi/book/10.1137/1.9781611971446 Demmel p 312

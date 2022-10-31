@@ -10,25 +10,32 @@ import pickle
 import numpy as np
 import RUNHEADER
 
-class DataSet:
-    def __init__(self, dataset_dir='../save/tf_record/fund_selection', file_pattern='fs_v0_cv%02d_%s.pkl',
-                 split_name='test', cv_number=0, n_batch_size=1):
 
-        if split_name not in ['train', 'validation', 'test']:
-            raise ValueError('split_name is one of train, validation, test')
+class DataSet:
+    def __init__(
+        self,
+        dataset_dir="../save/tf_record/fund_selection",
+        file_pattern="fs_v0_cv%02d_%s.pkl",
+        split_name="test",
+        cv_number=0,
+        n_batch_size=1,
+    ):
+
+        if split_name not in ["train", "validation", "test"]:
+            raise ValueError("split_name is one of train, validation, test")
 
         file_pattern = os.path.join(dataset_dir, file_pattern % (cv_number, split_name))
 
         # get number of agents
         m_name = RUNHEADER.m_name
-        _model_location = './save/model/rllearn/' + m_name
-        with open(_model_location + '/meta', mode='rb') as fp:
+        _model_location = "./save/model/rllearn/" + m_name
+        with open(_model_location + "/meta", mode="rb") as fp:
             meta = pickle.load(fp)
             fp.close()
-        self.n_cpu = meta['_n_cpu']
+        self.n_cpu = meta["_n_cpu"]
         # self._n_step = meta['_n_step']
 
-        with open(file_pattern, 'rb') as fp:
+        with open(file_pattern, "rb") as fp:
             dataset = pickle.load(fp)
             fp.close()
 
@@ -38,7 +45,7 @@ class DataSet:
         self.epoch_progress_train = None
         self.epoch_done = False
 
-        if split_name == 'train':  # adopt rolling window
+        if split_name == "train":  # adopt rolling window
             self.dataset = rolling_window(np.array(dataset), n_batch_size)
             self.n_episode = int(len(self.dataset))
             self.shuffled_episode = np.random.permutation(np.arange(self.n_episode))
@@ -53,7 +60,7 @@ class DataSet:
         self.shuffled_episode = np.random.permutation(np.arange(self.n_episode))
 
     def extract_samples(self, sample_idx=0):
-        if self.split_name == 'train':
+        if self.split_name == "train":
             # self.distribute_same_example = self.distribute_same_example + 1
             try:
                 eoe = False
@@ -95,11 +102,11 @@ class DataSet:
 
         # just information
         self.epoch_progress_train = {
-            'contain_dates': [item['date/base_date_label'] for item in examples],
-            'current_sample': sample_idx,
-            'total_episode': self.n_episode,
-            'n_epoch': (self.n_epoch / self.n_cpu),
-            'epoch_done': self.epoch_done,
+            "contain_dates": [item["date/base_date_label"] for item in examples],
+            "current_sample": sample_idx,
+            "total_episode": self.n_episode,
+            "n_epoch": (self.n_epoch / self.n_cpu),
+            "epoch_done": self.epoch_done,
         }
 
         return examples, self.epoch_progress_train, eoe

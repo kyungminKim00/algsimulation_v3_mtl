@@ -4,7 +4,9 @@ import numpy as np
 
 
 class ReplayBuffer:
-    def __init__(self, buffer_shapes, size_in_transitions, time_horizon, sample_transitions):
+    def __init__(
+        self, buffer_shapes, size_in_transitions, time_horizon, sample_transitions
+    ):
         """
         Creates a replay buffer.
 
@@ -19,8 +21,9 @@ class ReplayBuffer:
         self.sample_transitions = sample_transitions
 
         # self.buffers is {key: array(size_in_episodes x T or T+1 x dim_key)}
-        self.buffers = {key: np.empty([self.size, *shape])
-                        for key, shape in buffer_shapes.items()}
+        self.buffers = {
+            key: np.empty([self.size, *shape]) for key, shape in buffer_shapes.items()
+        }
 
         # memory management
         self.current_size = 0
@@ -45,14 +48,14 @@ class ReplayBuffer:
         with self.lock:
             assert self.current_size > 0
             for key in self.buffers.keys():
-                buffers[key] = self.buffers[key][:self.current_size]
+                buffers[key] = self.buffers[key][: self.current_size]
 
-        buffers['o_2'] = buffers['o'][:, 1:, :]
-        buffers['ag_2'] = buffers['ag'][:, 1:, :]
+        buffers["o_2"] = buffers["o"][:, 1:, :]
+        buffers["ag_2"] = buffers["ag"][:, 1:, :]
 
         transitions = self.sample_transitions(buffers, batch_size)
 
-        for key in (['r', 'o_2', 'ag_2'] + list(self.buffers.keys())):
+        for key in ["r", "o_2", "ag_2"] + list(self.buffers.keys()):
             assert key in transitions, "key %s missing from transitions" % key
 
         return transitions

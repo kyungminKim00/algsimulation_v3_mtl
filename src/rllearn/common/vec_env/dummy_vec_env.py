@@ -12,7 +12,7 @@ class DummyVecEnv(VecEnv):
 
     :param env_fns: ([Gym Environment]) the list of environments to vectorize
     """
-    
+
     def __init__(self, env_fns):
         self.envs = [fn() for fn in env_fns]
         env = self.envs[0]
@@ -32,7 +32,10 @@ class DummyVecEnv(VecEnv):
             dtypes[key] = box.dtype
             self.keys.append(key)
 
-        self.buf_obs = {k: np.zeros((self.num_envs,) + tuple(shapes[k]), dtype=dtypes[k]) for k in self.keys}
+        self.buf_obs = {
+            k: np.zeros((self.num_envs,) + tuple(shapes[k]), dtype=dtypes[k])
+            for k in self.keys
+        }
         self.buf_dones = np.zeros((self.num_envs,), dtype=np.bool)
         self.buf_rews = np.zeros((self.num_envs,), dtype=np.float32)
         self.buf_infos = [{} for _ in range(self.num_envs)]
@@ -43,13 +46,21 @@ class DummyVecEnv(VecEnv):
 
     def step_wait(self):
         for env_idx in range(self.num_envs):
-            obs, self.buf_rews[env_idx], self.buf_dones[env_idx], self.buf_infos[env_idx] =\
-                self.envs[env_idx].step(self.actions[env_idx])
+            (
+                obs,
+                self.buf_rews[env_idx],
+                self.buf_dones[env_idx],
+                self.buf_infos[env_idx],
+            ) = self.envs[env_idx].step(self.actions[env_idx])
             if self.buf_dones[env_idx]:
                 obs = self.envs[env_idx].reset()
             self._save_obs(env_idx, obs)
-        return (np.copy(self._obs_from_buf()), np.copy(self.buf_rews), np.copy(self.buf_dones),
-                self.buf_infos.copy())
+        return (
+            np.copy(self._obs_from_buf()),
+            np.copy(self.buf_rews),
+            np.copy(self.buf_dones),
+            self.buf_infos.copy(),
+        )
 
     def reset(self):
         for env_idx in range(self.num_envs):
@@ -61,7 +72,7 @@ class DummyVecEnv(VecEnv):
         return
 
     def get_images(self):
-        return [env.render(mode='rgb_array') for env in self.envs]
+        return [env.render(mode="rgb_array") for env in self.envs]
 
     def render(self, *args, **kwargs):
         if self.num_envs == 1:
@@ -91,7 +102,10 @@ class DummyVecEnv(VecEnv):
         :param method_kwargs: (dict) Any keyword arguments to provide in the call
         :return: (list) List of items retured by the environment's method call
         """
-        return [getattr(env_i, method_name)(*method_args, **method_kwargs) for env_i in self.envs]
+        return [
+            getattr(env_i, method_name)(*method_args, **method_kwargs)
+            for env_i in self.envs
+        ]
 
     def get_attr(self, attr_name):
         """
@@ -115,4 +129,7 @@ class DummyVecEnv(VecEnv):
             indices = range(len(self.envs))
         elif isinstance(indices, int):
             indices = [indices]
-        return [setattr(env_i, attr_name, value) for env_i in [self.envs[i] for i in indices]]
+        return [
+            setattr(env_i, attr_name, value)
+            for env_i in [self.envs[i] for i in indices]
+        ]

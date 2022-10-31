@@ -69,7 +69,7 @@ class ProbabilityDistribution(object):
         :param x: (str) the labels of each index
         :return: ([float]) The log likelihood of the distribution
         """
-        return - self.neglogp(x)
+        return -self.neglogp(x)
 
 
 class ProbabilityDistributionType(object):
@@ -95,7 +95,9 @@ class ProbabilityDistributionType(object):
         """
         return self.probability_distribution_class()(flat)
 
-    def proba_distribution_from_latent(self, pi_latent_vector, vf_latent_vector, init_scale=1.0, init_bias=0.0):
+    def proba_distribution_from_latent(
+        self, pi_latent_vector, vf_latent_vector, init_scale=1.0, init_bias=0.0
+    ):
         """
         returns the probability distribution from latent values
 
@@ -139,7 +141,9 @@ class ProbabilityDistributionType(object):
         :param name: (str) the placeholder name
         :return: (TensorFlow Tensor) the placeholder
         """
-        return tf.compat.v1.placeholder(dtype=tf.float32, shape=prepend_shape + self.param_shape(), name=name)
+        return tf.compat.v1.placeholder(
+            dtype=tf.float32, shape=prepend_shape + self.param_shape(), name=name
+        )
 
     def sample_placeholder(self, prepend_shape, name=None):
         """
@@ -149,7 +153,11 @@ class ProbabilityDistributionType(object):
         :param name: (str) the placeholder name
         :return: (TensorFlow Tensor) the placeholder
         """
-        return tf.compat.v1.placeholder(dtype=self.sample_dtype(), shape=prepend_shape + self.sample_shape(), name=name)
+        return tf.compat.v1.placeholder(
+            dtype=self.sample_dtype(),
+            shape=prepend_shape + self.sample_shape(),
+            name=name,
+        )
 
 
 class CategoricalProbabilityDistributionType(ProbabilityDistributionType):
@@ -164,9 +172,23 @@ class CategoricalProbabilityDistributionType(ProbabilityDistributionType):
     def probability_distribution_class(self):
         return CategoricalProbabilityDistribution
 
-    def proba_distribution_from_latent(self, pi_latent_vector, vf_latent_vector, init_scale=1.0, init_bias=0.0):
-        pdparam = linear(pi_latent_vector, 'pi', self.n_cat, init_scale=init_scale, init_bias=init_bias)
-        q_values = linear(vf_latent_vector, 'q', self.n_cat, init_scale=init_scale, init_bias=init_bias)
+    def proba_distribution_from_latent(
+        self, pi_latent_vector, vf_latent_vector, init_scale=1.0, init_bias=0.0
+    ):
+        pdparam = linear(
+            pi_latent_vector,
+            "pi",
+            self.n_cat,
+            init_scale=init_scale,
+            init_bias=init_bias,
+        )
+        q_values = linear(
+            vf_latent_vector,
+            "q",
+            self.n_cat,
+            init_scale=init_scale,
+            init_bias=init_bias,
+        )
         return self.proba_distribution_from_flat(pdparam), pdparam, q_values
 
     def param_shape(self):
@@ -197,9 +219,23 @@ class MultiCategoricalProbabilityDistributionType(ProbabilityDistributionType):
     def proba_distribution_from_flat(self, flat):
         return MultiCategoricalProbabilityDistribution(self.n_vec, flat)
 
-    def proba_distribution_from_latent(self, pi_latent_vector, vf_latent_vector, init_scale=1.0, init_bias=0.0):
-        pdparam = linear(pi_latent_vector, 'pi', sum(self.n_vec), init_scale=init_scale, init_bias=init_bias)
-        q_values = linear(vf_latent_vector, 'q', sum(self.n_vec), init_scale=init_scale, init_bias=init_bias)
+    def proba_distribution_from_latent(
+        self, pi_latent_vector, vf_latent_vector, init_scale=1.0, init_bias=0.0
+    ):
+        pdparam = linear(
+            pi_latent_vector,
+            "pi",
+            sum(self.n_vec),
+            init_scale=init_scale,
+            init_bias=init_bias,
+        )
+        q_values = linear(
+            vf_latent_vector,
+            "q",
+            sum(self.n_vec),
+            init_scale=init_scale,
+            init_bias=init_bias,
+        )
         return self.proba_distribution_from_flat(pdparam), pdparam, q_values
 
     def param_shape(self):
@@ -233,11 +269,25 @@ class DiagGaussianProbabilityDistributionType(ProbabilityDistributionType):
         """
         return self.probability_distribution_class()(flat)
 
-    def proba_distribution_from_latent(self, pi_latent_vector, vf_latent_vector, init_scale=1.0, init_bias=0.0):
-        mean = linear(pi_latent_vector, 'pi', self.size, init_scale=init_scale, init_bias=init_bias)
-        logstd = tf.compat.v1.get_variable(name='pi/logstd', shape=[1, self.size], initializer=tf.compat.v1.zeros_initializer())
+    def proba_distribution_from_latent(
+        self, pi_latent_vector, vf_latent_vector, init_scale=1.0, init_bias=0.0
+    ):
+        mean = linear(
+            pi_latent_vector,
+            "pi",
+            self.size,
+            init_scale=init_scale,
+            init_bias=init_bias,
+        )
+        logstd = tf.compat.v1.get_variable(
+            name="pi/logstd",
+            shape=[1, self.size],
+            initializer=tf.compat.v1.zeros_initializer(),
+        )
         pdparam = tf.concat([mean, mean * 0.0 + logstd], axis=1)
-        q_values = linear(vf_latent_vector, 'q', self.size, init_scale=init_scale, init_bias=init_bias)
+        q_values = linear(
+            vf_latent_vector, "q", self.size, init_scale=init_scale, init_bias=init_bias
+        )
         return self.proba_distribution_from_flat(pdparam), mean, q_values
 
     def param_shape(self):
@@ -262,9 +312,19 @@ class BernoulliProbabilityDistributionType(ProbabilityDistributionType):
     def probability_distribution_class(self):
         return BernoulliProbabilityDistribution
 
-    def proba_distribution_from_latent(self, pi_latent_vector, vf_latent_vector, init_scale=1.0, init_bias=0.0):
-        pdparam = linear(pi_latent_vector, 'pi', self.size, init_scale=init_scale, init_bias=init_bias)
-        q_values = linear(vf_latent_vector, 'q', self.size, init_scale=init_scale, init_bias=init_bias)
+    def proba_distribution_from_latent(
+        self, pi_latent_vector, vf_latent_vector, init_scale=1.0, init_bias=0.0
+    ):
+        pdparam = linear(
+            pi_latent_vector,
+            "pi",
+            self.size,
+            init_scale=init_scale,
+            init_bias=init_bias,
+        )
+        q_values = linear(
+            vf_latent_vector, "q", self.size, init_scale=init_scale, init_bias=init_bias
+        )
         return self.proba_distribution_from_flat(pdparam), pdparam, q_values
 
     def param_shape(self):
@@ -298,21 +358,30 @@ class CategoricalProbabilityDistribution(ProbabilityDistribution):
         #       the implementation does not allow second-order derivatives...
         one_hot_actions = tf.one_hot(x, self.logits.get_shape().as_list()[-1])
         return tf.nn.softmax_cross_entropy_with_logits(
-            logits=self.logits,
-            labels=tf.stop_gradient(one_hot_actions))
+            logits=self.logits, labels=tf.stop_gradient(one_hot_actions)
+        )
 
     def kl(self, other):
-        a_0 = self.logits - tf.reduce_max(input_tensor=self.logits, axis=-1, keepdims=True)
-        a_1 = other.logits - tf.reduce_max(input_tensor=other.logits, axis=-1, keepdims=True)
+        a_0 = self.logits - tf.reduce_max(
+            input_tensor=self.logits, axis=-1, keepdims=True
+        )
+        a_1 = other.logits - tf.reduce_max(
+            input_tensor=other.logits, axis=-1, keepdims=True
+        )
         exp_a_0 = tf.exp(a_0)
         exp_a_1 = tf.exp(a_1)
         z_0 = tf.reduce_sum(input_tensor=exp_a_0, axis=-1, keepdims=True)
         z_1 = tf.reduce_sum(input_tensor=exp_a_1, axis=-1, keepdims=True)
         p_0 = exp_a_0 / z_0
-        return tf.reduce_sum(input_tensor=p_0 * (a_0 - tf.math.log(z_0) - a_1 + tf.math.log(z_1)), axis=-1)
+        return tf.reduce_sum(
+            input_tensor=p_0 * (a_0 - tf.math.log(z_0) - a_1 + tf.math.log(z_1)),
+            axis=-1,
+        )
 
     def entropy(self):
-        a_0 = self.logits - tf.reduce_max(input_tensor=self.logits, axis=-1, keepdims=True)
+        a_0 = self.logits - tf.reduce_max(
+            input_tensor=self.logits, axis=-1, keepdims=True
+        )
         exp_a_0 = tf.exp(a_0)
         z_0 = tf.reduce_sum(input_tensor=exp_a_0, axis=-1, keepdims=True)
         p_0 = exp_a_0 / z_0
@@ -320,15 +389,23 @@ class CategoricalProbabilityDistribution(ProbabilityDistribution):
 
     # original
     def sample_origin(self):
-        uniform = tf.random.uniform(tf.shape(input=self.logits), dtype=self.logits.dtype)
-        return tf.argmax(input=self.logits - tf.math.log(-tf.math.log(uniform)), axis=-1)
+        uniform = tf.random.uniform(
+            tf.shape(input=self.logits), dtype=self.logits.dtype
+        )
+        return tf.argmax(
+            input=self.logits - tf.math.log(-tf.math.log(uniform)), axis=-1
+        )
 
     # numbers of action sampling
     def sample(self, ratio=None, first_step_episode=None):
-        random_samples = lambda: \
-        tf.random.categorical(logits=tf.math.log([[1 - ratio, ratio]]), num_samples=tf.shape(input=self.logits)[0])[0]
+        random_samples = lambda: tf.random.categorical(
+            logits=tf.math.log([[1 - ratio, ratio]]),
+            num_samples=tf.shape(input=self.logits)[0],
+        )[0]
         default_fn = lambda: self._sample(ratio)
-        samples = tf.case([(tf.equal(first_step_episode, True), random_samples)], default=default_fn)
+        samples = tf.case(
+            [(tf.equal(first_step_episode, True), random_samples)], default=default_fn
+        )
 
         return samples
 
@@ -337,9 +414,13 @@ class CategoricalProbabilityDistribution(ProbabilityDistribution):
         th = tf.squeeze(tf.constant([0.5]))
 
         distribution_sample = lambda: tf.argmax(input=self.logits, axis=-1)
-        random_samples = lambda: \
-        tf.random.categorical(logits=tf.math.log([[1 - ratio, ratio]]), num_samples=tf.shape(input=self.logits)[0])[0]
-        samples = tf.case([(tf.greater(cond, th), random_samples)], default=distribution_sample)
+        random_samples = lambda: tf.random.categorical(
+            logits=tf.math.log([[1 - ratio, ratio]]),
+            num_samples=tf.shape(input=self.logits)[0],
+        )[0]
+        samples = tf.case(
+            [(tf.greater(cond, th), random_samples)], default=distribution_sample
+        )
 
         return samples
 
@@ -363,19 +444,27 @@ class MultiCategoricalProbabilityDistribution(ProbabilityDistribution):
         :param flat: ([float]) the categorical logits input
         """
         self.flat = flat
-        self.categoricals = list(map(CategoricalProbabilityDistribution, tf.split(flat, nvec, axis=-1)))
+        self.categoricals = list(
+            map(CategoricalProbabilityDistribution, tf.split(flat, nvec, axis=-1))
+        )
 
     def flatparam(self):
         return self.flat
 
     def mode(self):
-        return tf.cast(tf.stack([p.mode() for p in self.categoricals], axis=-1), tf.int32)
+        return tf.cast(
+            tf.stack([p.mode() for p in self.categoricals], axis=-1), tf.int32
+        )
 
     def neglogp(self, x):
-        return tf.add_n([p.neglogp(px) for p, px in zip(self.categoricals, tf.unstack(x, axis=-1))])
+        return tf.add_n(
+            [p.neglogp(px) for p, px in zip(self.categoricals, tf.unstack(x, axis=-1))]
+        )
 
     def kl(self, other):
-        return tf.add_n([p.kl(q) for p, q in zip(self.categoricals, other.categoricals)])
+        return tf.add_n(
+            [p.kl(q) for p, q in zip(self.categoricals, other.categoricals)]
+        )
 
     def entropy(self):
         return tf.add_n([p.entropy() for p in self.categoricals])
@@ -384,16 +473,19 @@ class MultiCategoricalProbabilityDistribution(ProbabilityDistribution):
         target_num_action = tf.random.uniform(shape=(), minval=10, maxval=70)
         total_action = len(self.categoricals)
         ratio = target_num_action / total_action
-        actions_from_uniform = tf.stack([p.sample(ratio, first_step_episode) for p in self.categoricals], axis=-1)
+        actions_from_uniform = tf.stack(
+            [p.sample(ratio, first_step_episode) for p in self.categoricals], axis=-1
+        )
 
         return tf.cast(actions_from_uniform, tf.int32)
-
 
     def _sample(self, first_step_episode):
         target_num_action = tf.random.uniform(shape=(), minval=10, maxval=70)
         total_action = len(self.categoricals)
         ratio = target_num_action / total_action
-        actions_from_uniform = tf.stack([p.sample(ratio, first_step_episode) for p in self.categoricals], axis=-1)
+        actions_from_uniform = tf.stack(
+            [p.sample(ratio, first_step_episode) for p in self.categoricals], axis=-1
+        )
 
         return tf.cast(actions_from_uniform, tf.int32)
 
@@ -416,7 +508,9 @@ class DiagGaussianProbabilityDistribution(ProbabilityDistribution):
         :param flat: ([float]) the multivariate gaussian input data
         """
         self.flat = flat
-        mean, logstd = tf.split(axis=len(flat.shape) - 1, num_or_size_splits=2, value=flat)
+        mean, logstd = tf.split(
+            axis=len(flat.shape) - 1, num_or_size_splits=2, value=flat
+        )
         self.mean = mean
         self.logstd = logstd
         self.std = tf.exp(logstd)
@@ -429,22 +523,37 @@ class DiagGaussianProbabilityDistribution(ProbabilityDistribution):
         return self.mean
 
     def neglogp(self, x):
-        return 0.5 * tf.reduce_sum(input_tensor=tf.square((x - self.mean) / self.std), axis=-1) \
-               + 0.5 * np.log(2.0 * np.pi) * tf.cast(tf.shape(input=x)[-1], dtype=tf.float32) \
-               + tf.reduce_sum(input_tensor=self.logstd, axis=-1)
+        return (
+            0.5
+            * tf.reduce_sum(input_tensor=tf.square((x - self.mean) / self.std), axis=-1)
+            + 0.5
+            * np.log(2.0 * np.pi)
+            * tf.cast(tf.shape(input=x)[-1], dtype=tf.float32)
+            + tf.reduce_sum(input_tensor=self.logstd, axis=-1)
+        )
 
     def kl(self, other):
         assert isinstance(other, DiagGaussianProbabilityDistribution)
-        return tf.reduce_sum(input_tensor=other.logstd - self.logstd + (tf.square(self.std) + tf.square(self.mean - other.mean)) /
-                             (2.0 * tf.square(other.std)) - 0.5, axis=-1)
+        return tf.reduce_sum(
+            input_tensor=other.logstd
+            - self.logstd
+            + (tf.square(self.std) + tf.square(self.mean - other.mean))
+            / (2.0 * tf.square(other.std))
+            - 0.5,
+            axis=-1,
+        )
 
     def entropy(self):
-        return tf.reduce_sum(input_tensor=self.logstd + .5 * np.log(2.0 * np.pi * np.e), axis=-1)
+        return tf.reduce_sum(
+            input_tensor=self.logstd + 0.5 * np.log(2.0 * np.pi * np.e), axis=-1
+        )
 
     def sample(self):
         # Bounds are taken into acount outside this class (during training only)
         # Otherwise, it changes the distribution and breaks PPO2 for instance
-        return self.mean + self.std * tf.random.normal(tf.shape(input=self.mean), dtype=self.mean.dtype)
+        return self.mean + self.std * tf.random.normal(
+            tf.shape(input=self.mean), dtype=self.mean.dtype
+        )
 
     @classmethod
     def fromflat(cls, flat):
@@ -474,22 +583,39 @@ class BernoulliProbabilityDistribution(ProbabilityDistribution):
         return tf.round(self.probabilities)
 
     def neglogp(self, x):
-        return tf.reduce_sum(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.logits, labels=tf.cast(x, dtype=tf.float32)),
-                             axis=-1)
+        return tf.reduce_sum(
+            input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=self.logits, labels=tf.cast(x, dtype=tf.float32)
+            ),
+            axis=-1,
+        )
 
     def kl(self, other):
-        return tf.reduce_sum(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(logits=other.logits,
-                                                                     labels=self.probabilities), axis=-1) - \
-               tf.reduce_sum(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.logits,
-                                                                     labels=self.probabilities), axis=-1)
+        return tf.reduce_sum(
+            input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=other.logits, labels=self.probabilities
+            ),
+            axis=-1,
+        ) - tf.reduce_sum(
+            input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=self.logits, labels=self.probabilities
+            ),
+            axis=-1,
+        )
 
     def entropy(self):
-        return tf.reduce_sum(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(logits=self.logits,
-                                                                     labels=self.probabilities), axis=-1)
+        return tf.reduce_sum(
+            input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=self.logits, labels=self.probabilities
+            ),
+            axis=-1,
+        )
 
     def sample(self):
         samples_from_uniform = tf.random.uniform(tf.shape(input=self.probabilities))
-        return tf.cast(math_ops.less(samples_from_uniform, self.probabilities), dtype=tf.float32)
+        return tf.cast(
+            math_ops.less(samples_from_uniform, self.probabilities), dtype=tf.float32
+        )
 
     @classmethod
     def fromflat(cls, flat):
@@ -519,9 +645,12 @@ def make_proba_dist_type(ac_space):
     elif isinstance(ac_space, spaces.MultiBinary):
         return BernoulliProbabilityDistributionType(ac_space.n)
     else:
-        raise NotImplementedError("Error: probability distribution, not implemented for action space of type {}."
-                                  .format(type(ac_space)) +
-                                  " Must be of type Gym Spaces: Box, Discrete, MultiDiscrete or MultiBinary.")
+        raise NotImplementedError(
+            "Error: probability distribution, not implemented for action space of type {}.".format(
+                type(ac_space)
+            )
+            + " Must be of type Gym Spaces: Box, Discrete, MultiDiscrete or MultiBinary."
+        )
 
 
 def shape_el(tensor, index):

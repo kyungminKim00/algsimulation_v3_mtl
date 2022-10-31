@@ -36,7 +36,7 @@ def fmt_item(item, min_width):
         item = item.item()
     if isinstance(item, (float, np.float32, np.float64)):
         value = abs(item)
-        if (value < 1e-4 or value > 1e+4) and value > 0:
+        if (value < 1e-4 or value > 1e4) and value > 0:
             rep = "%7.2e" % item
         else:
             rep = "%7.5f" % item
@@ -54,7 +54,7 @@ COLOR_TO_NUM = dict(
     magenta=35,
     cyan=36,
     white=37,
-    crimson=38
+    crimson=38,
 )
 
 
@@ -74,5 +74,5 @@ def colorize(string, color, bold=False, highlight=False):
         num += 10
     attr.append(str(num))
     if bold:
-        attr.append('1')
-    return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), string)
+        attr.append("1")
+    return "\x1b[%sm%s\x1b[0m" % (";".join(attr), string)

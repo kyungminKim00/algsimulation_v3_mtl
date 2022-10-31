@@ -9,4 +9,4 @@ for i in range(100):
     # )
     # sys.stdout.flush()
 
-    print_flush('\r>> test: {}'.format(i))
+    print_flush("\r>> test: {}".format(i))
