@@ -308,7 +308,7 @@ class IndexForecastingEnv(gym.Env):
     def get_main_replay_start(self):
         return self.so.get_main_replay_start()
 
-    def reset(self):
+    def reset(self, **kwargs):
         if self.steps_beyond_done == 0:  # done==True
             self.steps_beyond_done = None
             raise ValueError("Disable for now")
