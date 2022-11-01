@@ -87,8 +87,12 @@ disable=raw-checker-failed,
         broad-except,
         too-many-arguments,
         too-many-locals,
+        too-many-branches,
         import-outside-toplevel,
         duplicate-code,
+        redefined-builtin,
+        not-context-manager,
+        unused-argument,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option

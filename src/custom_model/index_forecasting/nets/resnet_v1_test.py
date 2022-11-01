@@ -24,7 +24,8 @@ import tensorflow as tf
 from custom_model.index_forecasting.nets import resnet_utils
 from custom_model.index_forecasting.nets import resnet_v1
 
-slim = tf_slim
+import tf_slim as slim
+#slim = tf_slim
 
 
 def create_test_input(batch_size, height, width, channels):

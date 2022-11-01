@@ -1,13 +1,13 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
-from custom_model.index_forecasting.common.utils import conv, linear, conv_to_fc
-import header.index_forecasting.RUNHEADER as RUNHEADER
 
 # slim = tf_slim  # call keras
 import tf_slim as slim  # call tf.layers
+from custom_model.index_forecasting.common.utils import conv, conv_to_fc, linear
+from header.index_forecasting import RUNHEADER
+
+# import header.index_forecasting.RUNHEADER as RUNHEADER
 
 
 def ShakeShake(x, is_training=False):
@@ -88,7 +88,7 @@ def create_residual_shortcut(net, filters, stride, is_training=False):
         normalizer_params={},
     )
 
-    net = tf.concat([x1, x2], axis=3)
+    net = tf.concat([x1, x2], 3)
     net = slim.batch_norm(
         net,
         decay=RUNHEADER.m_batch_decay,
@@ -124,7 +124,7 @@ def create_residual_shortcut2(net, filters, stride, is_training=False):
         normalizer_params={},
     )
 
-    net = tf.concat([x1, x2], axis=3)
+    net = tf.concat([x1, x2], 3)
     net = slim.batch_norm(
         net,
         decay=RUNHEADER.m_batch_decay,
@@ -156,7 +156,7 @@ def create_residual_block(net, filters, stride=None, is_training=False):
 
 def block_residual_layer(net, filters, blocks, stride, is_training=False):
     net = create_residual_block(net, filters, stride, is_training=is_training)
-    for i in range(1, blocks):
+    for _ in range(1, blocks):
         net = create_residual_block(net, filters, [1, 1], is_training=is_training)
     return net
 
@@ -238,7 +238,7 @@ def shakenet(scaled_images, is_training=False, **kwargs):
             layer_3_5 = block_stem(scaled_images_3, 16, 16, "Stem3")
 
             # concat 5 x 20 x 32, 32, 16
-            net = tf.concat([layer_1_5, layer_2_5, layer_3_5], axis=3)
+            net = tf.concat([layer_1_5, layer_2_5, layer_3_5], 3)
             net = channel_wise_attn_layer(net, "multi_modal_concat")
 
             # 5 X 20 X 80

@@ -14,17 +14,14 @@
 # ==============================================================================
 """Tests for slim.custom_model.nets.resnet_v2."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import tensorflow as tf
+import tf_slim as slim
+from custom_model.index_forecasting.nets import resnet_utils, resnet_v2
 
-from custom_model.index_forecasting.nets import resnet_utils
-from custom_model.index_forecasting.nets import resnet_v2
-
-slim = tf_slim
+# slim = tf_slim
 
 
 def create_test_input(batch_size, height, width, channels):

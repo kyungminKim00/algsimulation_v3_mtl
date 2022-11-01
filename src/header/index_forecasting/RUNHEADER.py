@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 import numpy as np
 
@@ -212,7 +212,26 @@ def init_var(args) -> Tuple[int, str, str]:
     return m_target_index, target_name, m_name
 
 
-def target_id2name(m_target_index):
+def target_id2name(
+    m_target_index,
+) -> Literal[
+    "INX",
+    "KS",
+    "Gold",
+    "US10YT",
+    "FTSE",
+    "GDAXI",
+    "SSEC",
+    "BVSP",
+    "N225",
+    "GB10YT",
+    "DE10YT",
+    "KR10YT",
+    "CN10YT",
+    "JP10YT",
+    "BR10YT",
+    "",
+]:
     target_name: str = ""
     if m_target_index == 0:
         target_name = "INX"

@@ -49,7 +49,7 @@ jobs:
           pytest
       - name: Linting with pylint
         run: |
-          pylint $(git ls-files '*.py' | grep -Ev 'src/custom_model/index_forecasting/common|rllearn')
+          pylint $(git ls-files '*.py' | grep -Ev 'src/custom_model/index_forecasting/common|rllearn|nets')
       # - name: type check with mypy
       #   run: |
       #     mypy --strict ./src
