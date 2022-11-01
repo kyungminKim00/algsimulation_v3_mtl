@@ -1,5 +1,6 @@
-from gym.envs.registration import register
 import pickle
+
+from gym.envs.registration import register
 
 with open("./g", "rb") as fp:
     g = pickle.load(fp)

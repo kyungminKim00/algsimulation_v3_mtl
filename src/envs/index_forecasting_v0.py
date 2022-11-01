@@ -1,11 +1,12 @@
+import pickle
+import warnings
+from functools import lru_cache
+
 import gym
+import header.index_forecasting.RUNHEADER as RUNHEADER
+import numpy as np
 from gym import spaces
 from gym.utils import seeding
-import numpy as np
-import warnings
-import pickle
-import header.index_forecasting.RUNHEADER as RUNHEADER
-from functools import lru_cache
 
 
 class IndexForecastingEnv(gym.Env):
@@ -58,8 +59,9 @@ class IndexForecastingEnv(gym.Env):
         self.m_buffer_size = None
         self.m_main_replay_start = None
 
-        # Todo: cheek it later
-        global data_low, data_high
+        # cheek it later
+        # global data_low, data_high
+
         # diff
         # data_low = -0.35
         # data_high = 0.2
@@ -91,10 +93,9 @@ class IndexForecastingEnv(gym.Env):
 
     def step(self, action):
         done = None
-        assert self.action_space.contains(action), "%r (%s) invalid" % (
-            action,
-            type(action),
-        )
+        assert self.action_space.contains(action), f"{action} ({type(action)}) invalid"
+
+        assert self.action_space.contains(action), f"{action} ({type(action)}) invalid"
 
         if self.mode == "train":
             self.next_timestamp(self.current_episode_idx, self.current_step)
@@ -104,11 +105,11 @@ class IndexForecastingEnv(gym.Env):
         """fund index extraction with corresponding actions
         """
         # extract y corresponding actions
-        selected_action = np.squeeze(np.argwhere(action == 1))
+        # selected_action = np.squeeze(np.argwhere(action == 1))
 
-        """ extract data for reward calculation with action 
+        """ extract data for reward calculation with action
         """
-        # Todo: adopt allocation rate later...
+        # adopt allocation rate later...
         # extract data from given actions
         NoneType_Check = None
         target_index = RUNHEADER.m_target_index
@@ -159,7 +160,7 @@ class IndexForecastingEnv(gym.Env):
             target_index
         ]  # +0 index
 
-        """ Caution: not in use for training,  
+        """ Caution: not in use for training,
             used in performance calculation and tensor-board only
         """
         info = {
@@ -215,7 +216,7 @@ class IndexForecastingEnv(gym.Env):
                     expectation = y_return_seq_ratio[
                         np.random.randint(0, y_return_seq_ratio.shape[0])
                     ]
-                done_cond = np.sum(np.abs(action - y_return)) > 0
+                # done_cond = np.sum(np.abs(action - y_return)) > 0
                 done_cond2 = (
                     np.abs(action - y_return)[0] > 0
                     or np.sum(np.abs(action - y_return)) > 1
@@ -311,9 +312,9 @@ class IndexForecastingEnv(gym.Env):
         if self.steps_beyond_done == 0:  # done==True
             self.steps_beyond_done = None
             raise ValueError("Disable for now")
-            return np.array(
-                self.next_timestamp(self.current_episode_idx, self.current_step)[0]
-            )
+            # return np.array(
+            #     self.next_timestamp(self.current_episode_idx, self.current_step)[0]
+            # )
         else:  # when init stage
             self.steps_beyond_done = 0
             if self.mode == "train":
@@ -332,7 +333,7 @@ class IndexForecastingEnv(gym.Env):
             return np.array(self.state)
 
     def render(self, mode="human"):
-        if self.state is None:
+        if self.state and mode == "human" is None:
             return None
         return None
 

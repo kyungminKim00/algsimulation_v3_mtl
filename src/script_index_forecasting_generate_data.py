@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 16 14:21:21 2018
@@ -9,20 +5,19 @@ Created on Mon Apr 16 14:21:21 2018
 @author: kim KyungMin
 """
 
-import header.index_forecasting.RUNHEADER as RUNHEADER
-import sc_parameters as scp
+from __future__ import absolute_import, division, print_function
 
-if RUNHEADER.release:
-    from libs.datasets import convert_if_v0  # Index_forecasting
-    from libs.datasets import convert_if_v1  # Index_forecasting - Add mask (opt)
-else:
-    from datasets import convert_if_v0  # Index_forecasting
-    from datasets import convert_if_v1  # Index_forecasting - Add mask (opt)
-
-import tensorflow as tf
 import argparse
 
+import tensorflow as tf
+
+import sc_parameters as scp
+from datasets import convert_if_v0  # Index_forecasting
+from datasets import convert_if_v1  # Index_forecasting - Add mask (opt)
 from datasets.if_data_header import configure_header
+
+# import header.index_forecasting.RUNHEADER as RUNHEADER
+from header.index_forecasting import RUNHEADER
 from util import get_domain_on_CDSW_env
 
 
@@ -249,16 +244,16 @@ if __name__ == "__main__":
 
         dataset_version = None
         if RUNHEADER.objective == "FS":
-            dataset_version = "fs_x0_20_y{}_{}".format(
-                args.forward_ndx, RUNHEADER.dataset_version
+            dataset_version = (
+                f"fs_x0_20_y{args.forward_ndx}_{RUNHEADER.dataset_version}"
             )
         if RUNHEADER.objective == "IF":
-            dataset_version = "if_x0_20_y{}_{}".format(
-                args.forward_ndx, RUNHEADER.dataset_version
+            dataset_version = (
+                f"if_x0_20_y{args.forward_ndx}_{RUNHEADER.dataset_version}"
             )
         if RUNHEADER.objective == "MT":
-            dataset_version = "mt_x0_20_y{}_{}".format(
-                args.forward_ndx, RUNHEADER.dataset_version
+            dataset_version = (
+                f"mt_x0_20_y{args.forward_ndx}_{RUNHEADER.dataset_version}"
             )
         tf.compat.v1.app.flags.DEFINE_string(
             "dataset_name", dataset_version, "Data set name"
@@ -273,15 +268,15 @@ if __name__ == "__main__":
         4. 독립 변수간의 유클리디안 거리(t 상관계수 벡터 분석)를 활용하여 대표 변수를 찾고 그룹내 나머지 변수는 0으로 마스킹 한다.
         5. 마스킹이 0이 아닌 원소에 대해, |상관계수| 값을 마스크에 채워 넣는다.
 
-        OPT. 
+        OPT.
         [다중공선성] 1. 배치내의 W와 랜덤 벡터 R 간의 거리를 측정하여, W를 군집화하고 군집에 속한 갯수만큼 나누어 주어 Update가 덜 되도록한다(순전파에 영향을 덜 주도록 한다)
         [변수 선택 ] 2. X(입력)M(마스크 벡터)W(변수선택 가중치) + X(입력)W(컨볼루션 가중치) - 마스크의 가중치가 입력값을 왜곡 시키기 때문에 두 번째 텀을 더 하여 줌. 더 고민해 보기
 
             - 마스크의 가중치가 입력값을 왜곡 시키기 때문에 두 번째 텀을 더 하여 줌. 더 고민해 보기
-            # (1[X] * 0.5[M]) 와 (0.5 * 1) 는 해석적으로 비대칭적이다. 
+            # (1[X] * 0.5[M]) 와 (0.5 * 1) 는 해석적으로 비대칭적이다.
         """
 
         tf.compat.v1.app.run()
     except Exception as e:
-        print("\n{}".format(e))
+        print(f"\n{e}")
         exit(1)

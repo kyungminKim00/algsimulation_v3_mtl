@@ -1,8 +1,10 @@
-import re
-import os
-from PIL import Image
 import glob
+import os
 import platform
+import re
+
+from PIL import Image
+
 import header.index_forecasting.RUNHEADER as RUNHEADER
 
 
@@ -23,7 +25,7 @@ def animate_gif(source_dir, duration=200):
             fp_out = t_dir + "/" + dir_name + "_" + mode + ".gif"
 
             try:
-                print("Reading:{}".format(fp_in))
+                print(f"Reading:{fp_in}")
                 img, *imgs = [
                     Image.open(f).resize((int(width), int(height)))
                     for f in sorted(glob.glob(fp_in))
@@ -37,8 +39,7 @@ def animate_gif(source_dir, duration=200):
                 )
                 img.close()
             except ValueError:
-                print("ValueError:{}".format(fp_in))
-                pass
+                print(f"ValueError:{fp_in}")
 
 
 if __name__ == "__main__":
