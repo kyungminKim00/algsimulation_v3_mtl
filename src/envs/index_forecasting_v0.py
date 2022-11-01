@@ -333,7 +333,7 @@ class IndexForecastingEnv(gym.Env):
             return np.array(self.state)
 
     def render(self, mode="human"):
-        if self.state and mode == "human" is None:
+        if self.state is None and mode == "human":
             return None
         return None
 
