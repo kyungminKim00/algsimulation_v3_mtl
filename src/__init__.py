@@ -1,16 +1,13 @@
 import pickle
+from typing import Any, Literal
 
 from gym.envs.registration import register
 
 with open("./g", "rb") as fp:
-    g = pickle.load(fp)
+    g: Any = pickle.load(fp)
     fp.close()
-[
-    register(
-        id=k,
-        entry_point=v,
-    )
-    for k, v in g.items()
-]
+    for k, v in g.items():
+        register(id=k, entry_point=v)
 
-__version__ = "2.4.1"
+
+__version__: Literal["2.4.1"] = "2.4.1"

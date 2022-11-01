@@ -1,18 +1,17 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 16 14:21:21 2018
 
 @author: kim KyungMin
 """
+from __future__ import absolute_import, division, print_function
+
+import datetime
+import pickle
+from typing import Any, Dict, List, Tuple
+
 import header.index_forecasting.RUNHEADER as RUNHEADER
 import util
-
-import pickle
-import datetime
 
 # from multiprocessing.managers import BaseManager
 # import shutil
@@ -22,9 +21,9 @@ import datetime
 
 
 class Script:
-    def __init__(self, so=None, so_validation=None):
-        self.so = so
-        self.so_validation = so_validation
+    def __init__(self, so=None, so_validation=None) -> None:
+        self.so: Any = so
+        self.so_validation: Any = so_validation
 
     def run(
         self,
@@ -39,26 +38,26 @@ class Script:
         n_step=None,
         total_timesteps=None,
         log_interval=None,
-    ):
+    ) -> None:
 
         # save learning parameters
         self.learning_parameter(model_location)
 
         # import modules
         dump_header = convert_pickable(RUNHEADER)
+        from custom_model.index_forecasting.a2c import A2C
+        from custom_model.index_forecasting.common import SubprocVecEnv
         from custom_model.index_forecasting.policies.policies_index_forecasting import (
             CnnLnLstmPolicy,
         )
-        from custom_model.index_forecasting.a2c import A2C
-        from custom_model.index_forecasting.common import SubprocVecEnv
 
         # generate environments
         if RUNHEADER.m_online_buffer == 1:
-            env = SubprocVecEnv(
+            env: SubprocVecEnv = SubprocVecEnv(
                 [[lambda: util.make(env_name), dump_header] for i in range(n_cpu)]
             )  # fork running RUNHEADER.py version
         else:
-            env = SubprocVecEnv(
+            env: SubprocVecEnv = SubprocVecEnv(
                 [[lambda: util.make(env_name), dump_header] for i in range(1)]
             )  # fork running RUNHEADER.py version
 
@@ -69,7 +68,7 @@ class Script:
         env.set_attr("current_episode_idx", 0)
         env.set_attr("current_step", 0)
         if RUNHEADER.m_train_mode == 0:  # call network graph
-            model = A2C(
+            model: A2C = A2C(
                 CnnLnLstmPolicy,
                 env,
                 verbose=verbose,
@@ -84,7 +83,7 @@ class Script:
             )
         else:  # use pre-trained model
             print("\nloading model ")
-            model = A2C.load(RUNHEADER.m_pre_train_model, env)
+            model: A2C = A2C.load(RUNHEADER.m_pre_train_model, env)
 
         # seed=0 fix seed
         model.learn(
@@ -96,15 +95,13 @@ class Script:
         model.save(model_location)
         del model  # remove to demonstrate saving and loading
 
-    def learning_parameter(self, model_location):
+    def learning_parameter(self, model_location) -> None:
         keys = get_keys(RUNHEADER)
 
         # Export to txt
         with open(model_location + "/agent_parameter.txt", "w") as f_out:
             for element in keys:
-                print(
-                    "{} : {}".format(element, RUNHEADER.__dict__[element]), file=f_out
-                )
+                print(f"{element} : {RUNHEADER.__dict__[element]}", file=f_out)
         f_out.close()
 
         # Save to json
@@ -117,7 +114,7 @@ class Script:
 def recent_procedure(file_name, process_id, mode):
     json_file_location = ""
 
-    with open("{}{}.txt".format(file_name, str(process_id)), mode) as _f_out:
+    with open(f"{file_name}{str(process_id)}.txt", mode) as _f_out:
         if mode == "w":
             print(RUNHEADER.m_name, file=_f_out)
         elif mode == "r":
@@ -129,14 +126,14 @@ def recent_procedure(file_name, process_id, mode):
 
 
 def configure_header(args):
-    time_now = (
+    time_now: str = (
         str(datetime.datetime.now())[:-10]
         .replace(":", "-")
         .replace("-", "")
         .replace(" ", "_")
     )
-    selected_x_dict = {}
-    json_location = ""
+    selected_x_dict: Dict = {}
+    json_location: str = ""
 
     # set from arguments parser
     RUNHEADER.__dict__["m_online_buffer"] = args.m_online_buffer
@@ -151,15 +148,10 @@ def configure_header(args):
         RUNHEADER.__dict__["forward_ndx"] = args.forward_ndx
         RUNHEADER.__dict__[
             "m_dataset_dir"
-        ] = "./save/tf_record/{}/{}_x0_20_y{}_{}".format(
-            str(RUNHEADER.tf_record_location),
-            str(RUNHEADER.l_objective),
-            str(RUNHEADER.forward_ndx),
-            args.dataset_version,
-        )
+        ] = f"./save/tf_record/{str(RUNHEADER.tf_record_location)}/{str(RUNHEADER.l_objective)}_x0_20_y{str(RUNHEADER.forward_ndx)}_{args.dataset_version}"
         RUNHEADER.__dict__["m_total_example"] = 0
         with open(RUNHEADER.m_dataset_dir + "/meta", mode="rb") as fp_meta:
-            info = pickle.load(fp_meta)
+            info: Any = pickle.load(fp_meta)
             fp_meta.close()
         assert (RUNHEADER.__dict__["forward_ndx"]) == (
             info["forecast"]
@@ -169,9 +161,9 @@ def configure_header(args):
             RUNHEADER.__dict__["m_name"] = (
                 RUNHEADER.m_name + "_T" + str(RUNHEADER.forward_ndx) + "_" + time_now
             )
-            # Todo: modify code .. Add random pick
             selected_x_dict = util.json2dict(RUNHEADER.m_dataset_dir + "/x_index.json")
-            selected_x_dict = selected_x_dict  # Add Logic
+            # modify code .. Add random pick, later on
+            # selected_x_dict = selected_x_dict  # Add Logic
         else:
             RUNHEADER.__dict__["m_name"] = (
                 RUNHEADER.m_name + "_T" + str(RUNHEADER.forward_ndx) + "_" + time_now
@@ -209,8 +201,8 @@ def configure_header(args):
         json_location = recent_procedure(
             "./agent_log/buffer_generate_model_p", args.process_id, "r"
         )
-        dict_RUNHEADER = util.json2dict(
-            "./save/model/rllearn/{}/agent_parameter.json".format(json_location)
+        dict_RUNHEADER: Any = util.json2dict(
+            f"./save/model/rllearn/{json_location}/agent_parameter.json"
         )
         # load RUNHEADER
         for key in dict_RUNHEADER.keys():
@@ -242,7 +234,7 @@ def configure_header(args):
         #     RUNHEADER.__dict__['m_buffer_size'] = int(
         #         RUNHEADER.m_total_example * RUNHEADER.m_n_cpu * RUNHEADER.m_n_step * 0.5)
 
-        # Todo: Add more code for search
+        # Specifiy parameter: Add more code for search
         if args.search_parameter == 0:  # fix fix fix
             RUNHEADER.__dict__[
                 "default_net"
@@ -680,7 +672,7 @@ def configure_header(args):
             RUNHEADER.__dict__["default_net"] = "s3dg_v1"
         recent_procedure("./agent_log/working_model_p", args.process_id, "w")
 
-    print("model name: {}".format(RUNHEADER.m_name))
+    print(f"model name: {RUNHEADER.m_name}")
     return selected_x_dict, json_location
 
 
@@ -702,6 +694,6 @@ def convert_pickable(module_name):
     return dict(_dict)
 
 
-def init_start(header):
+def init_start(header) -> None:
     for key in header.keys():
         RUNHEADER.__dict__[key] = header[key]

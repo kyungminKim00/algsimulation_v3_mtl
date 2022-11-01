@@ -1,33 +1,31 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+# case: indexforecasting
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 16 14:21:21 2018
 
 @author: kim KyungMin
 """
+from __future__ import absolute_import, division, print_function
 
-import header.index_forecasting.RUNHEADER as RUNHEADER  # case: indexforecasting
+from header.index_forecasting import RUNHEADER
 
 
-def configure_header(args):
-    def _print():
+def configure_header(args) -> None:
+    def _print() -> None:
         print("\n===Load info===")
-        print("X: {}".format(RUNHEADER.raw_x))
-        print("X_2: {}".format(RUNHEADER.raw_x2))
-        print("Y: {}".format(RUNHEADER.target_name))
-        print("dataset_version: {}".format(RUNHEADER.dataset_version))
-        print("gen_var: {}".format(RUNHEADER.gen_var))
-        print("use_c_name: {}".format(RUNHEADER.use_c_name))
-        print("use_var_mask: {}".format(RUNHEADER.use_var_mask))
-        print("objective: {}".format(RUNHEADER.objective))
-        print("max_x: {}".format(RUNHEADER.max_x))
-        print("s_test: {}".format(RUNHEADER.s_test))
-        print("e_test: {}".format(RUNHEADER.e_test))
+        print(f"X: {RUNHEADER.raw_x}")
+        print(f"X_2: {RUNHEADER.raw_x2}")
+        print(f"Y: {RUNHEADER.target_name}")
+        print(f"dataset_version: {RUNHEADER.dataset_version}")
+        print(f"gen_var: {RUNHEADER.gen_var}")
+        print(f"use_c_name: {RUNHEADER.use_c_name}")
+        print(f"use_var_mask: {RUNHEADER.use_var_mask}")
+        print(f"objective: {RUNHEADER.objective}")
+        print(f"max_x: {RUNHEADER.max_x}")
+        print(f"s_test: {RUNHEADER.s_test}")
+        print(f"e_test: {RUNHEADER.e_test}")
 
-    def get_file_name(m_target_index, file_data_vars):
+    def get_file_name(m_target_index, file_data_vars) -> str:
         return (
             file_data_vars
             + RUNHEADER.target_id2name(m_target_index)
@@ -92,4 +90,3 @@ def configure_header(args):
         RUNHEADER.__dict__["m_target_index"]
     )
     _print()
-    return None, None

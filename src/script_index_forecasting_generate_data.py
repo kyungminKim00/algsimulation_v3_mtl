@@ -25,116 +25,12 @@ def main(_):
     if not FLAGS.dataset_name:
         raise ValueError("You must supply the dataset name with --dataset_name")
 
-    # if FLAGS.dataset_name == 'fs_x0_20_y5_v0':
-    #     convert_fs_v0.run('./save/tf_record/fund_selection/fs_x0_20_y5_v0', 'fs_v0_cv%02d_%s.tfrecord')
-    # elif FLAGS.dataset_name == 'fs_x0_20_y5_v1':
-    #     convert_fs_v1.run('./save/tf_record/fund_selection/fs_x0_20_y5_v1', 'fs_v1_cv%02d_%s.tfrecord')
-    # elif FLAGS.dataset_name == 'fs_x0_20_y5_v2':  # Complete
-    #     convert_fs_v2.run('./save/tf_record/fund_selection/fs_x0_20_y5_v2', 'fs_v2_cv%02d_%s.tfrecord')
-    # elif FLAGS.dataset_name == 'fs_x0_20_y5_v3':  # Complete
-    #     convert_fs_v3.run('./save/tf_record/fund_selection/fs_x0_20_y5_v3', 'fs_v3_cv%02d_%s.tfrecord')
-    # elif FLAGS.dataset_name == 'fs_x0_20_y5_v4':
-    #     convert_fs_v4.run('./save/tf_record/fund_selection/fs_x0_20_y5_v4', 'fs_v4_cv%02d_%s.tfrecord')
     if "_v0" in FLAGS.dataset_name:
         convert_if_v0.run(
             "./save/tf_record/index_forecasting/" + FLAGS.dataset_name,
             "if_v0_cv%02d_%s.tfrecord",
             s_test=FLAGS.s_test,
             e_test=FLAGS.e_test,
-        )
-    elif FLAGS.dataset_name == "if_x0_20_y20_v0":
-        convert_if_v0.run(
-            "./save/tf_record/index_forecasting/if_x0_20_y20_v0",
-            "if_v0_cv%02d_%s.tfrecord",
-            s_test=FLAGS.s_test,
-            e_test=FLAGS.e_test,
-        )
-    elif FLAGS.dataset_name == "if_x0_20_y20_v1":
-        convert_if_v1.run(
-            "./save/tf_record/index_forecasting/if_x0_20_y20_v1",
-            "if_v1_cv%02d_%s.tfrecord",
-            s_test=FLAGS.s_test,
-            e_test=FLAGS.e_test,
-            _forward_ndx=int(FLAGS.forward_ndx),
-            operation_mode=int(FLAGS.operation_mode),
-        )
-    elif FLAGS.dataset_name == "if_x0_20_y20_v2":
-        convert_if_v1.run(
-            "./save/tf_record/index_forecasting/if_x0_20_y20_v2",
-            "if_v2_cv%02d_%s.tfrecord",
-            s_test=FLAGS.s_test,
-            e_test=FLAGS.e_test,
-            _forward_ndx=int(FLAGS.forward_ndx),
-            operation_mode=int(FLAGS.operation_mode),
-        )
-    elif FLAGS.dataset_name == "if_x0_20_y20_v3":
-        convert_if_v1.run(
-            "./save/tf_record/index_forecasting/if_x0_20_y20_v3",
-            "if_v3_cv%02d_%s.tfrecord",
-            s_test=FLAGS.s_test,
-            e_test=FLAGS.e_test,
-            _forward_ndx=int(FLAGS.forward_ndx),
-            operation_mode=int(FLAGS.operation_mode),
-        )
-    elif FLAGS.dataset_name == "if_x0_20_y20_v4":  # Merged_New stride 3, mask off
-        convert_if_v1.run(
-            "./save/tf_record/index_forecasting/if_x0_20_y20_v4",
-            "if_v4_cv%02d_%s.tfrecord",
-            s_test=FLAGS.s_test,
-            e_test=FLAGS.e_test,
-            _forward_ndx=int(FLAGS.forward_ndx),
-            operation_mode=int(FLAGS.operation_mode),
-        )
-    elif FLAGS.dataset_name == "if_x0_20_y20_v5":  # Merged_New stride 2, mask off
-        convert_if_v1.run(
-            "./save/tf_record/index_forecasting/if_x0_20_y20_v5",
-            "if_v5_cv%02d_%s.tfrecord",
-            s_test=FLAGS.s_test,
-            e_test=FLAGS.e_test,
-            _forward_ndx=int(FLAGS.forward_ndx),
-            operation_mode=int(FLAGS.operation_mode),
-        )
-    elif FLAGS.dataset_name == "if_x0_20_y20_v6":  # Merged_New stride 2, mask on
-        convert_if_v1.run(
-            "./save/tf_record/index_forecasting/if_x0_20_y20_v6",
-            "if_v6_cv%02d_%s.tfrecord",
-            s_test=FLAGS.s_test,
-            e_test=FLAGS.e_test,
-            _forward_ndx=int(FLAGS.forward_ndx),
-            operation_mode=int(FLAGS.operation_mode),
-        )
-    elif (
-        FLAGS.dataset_name == "if_x0_20_y20_v7"
-    ):  # Synced_D_FilledData stride 2, mask on, Gold
-        convert_if_v1.run(
-            "./save/tf_record/index_forecasting/if_x0_20_y20_v7",
-            "if_v7_cv%02d_%s.tfrecord",
-            s_test=FLAGS.s_test,
-            e_test=FLAGS.e_test,
-            _forward_ndx=int(FLAGS.forward_ndx),
-            operation_mode=int(FLAGS.operation_mode),
-        )
-    elif (
-        FLAGS.dataset_name == "if_x0_20_y20_v8"
-    ):  # Synced_D_FilledData stride 2, mask on, S&P
-        convert_if_v1.run(
-            "./save/tf_record/index_forecasting/if_x0_20_y20_v8",
-            "if_v8_cv%02d_%s.tfrecord",
-            s_test=FLAGS.s_test,
-            e_test=FLAGS.e_test,
-            _forward_ndx=int(FLAGS.forward_ndx),
-            operation_mode=int(FLAGS.operation_mode),
-        )
-    elif (
-        FLAGS.dataset_name == "if_x0_20_y20_v9"
-    ):  # Synced_D_FilledData stride 2, mask on, KOSPI
-        convert_if_v1.run(
-            "./save/tf_record/index_forecasting/if_x0_20_y20_v9",
-            "if_v9_cv%02d_%s.tfrecord",
-            s_test=FLAGS.s_test,
-            e_test=FLAGS.e_test,
-            _forward_ndx=int(FLAGS.forward_ndx),
-            operation_mode=int(FLAGS.operation_mode),
         )
     else:
         # for online test
@@ -152,33 +48,35 @@ def main(_):
 
 if __name__ == "__main__":
     try:
-        parser = argparse.ArgumentParser("")
-        # # init args
+        parser: argparse.ArgumentParser = argparse.ArgumentParser("")
+        # # init args - 운영서버
         # parser.add_argument("--s_test", type=str, default=None)
         # parser.add_argument("--e_test", type=str, default=None)
         # parser.add_argument(
         #     "--dataset_version", type=str, default=None
         # )  # save as v7 'v7'
         # parser.add_argument("--verbose", type=int, default=None)
-        # parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2]
+        # parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2 | etc.]
         # parser.add_argument("--gen_var", type=int, default=None)  # [True | False]
         # parser.add_argument("--forward_ndx", type=int, default=None)
         # parser.add_argument("--operation_mode", type=int, default=None)
         # parser.add_argument("--domain", type=str, required=True)
         # parser.add_argument("--performed_date", type=str, default=None)
 
-        # # Demo v0
-        # parser.add_argument("--s_test", type=str, default=None)
-        # parser.add_argument("--e_test", type=str, default=None)
-        # parser.add_argument("--dataset_version", type=str, default='v0')
-        # # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
-        # parser.add_argument("--verbose", type=int, default=None)
-        # parser.add_argument("--m_target_index", type=int, default=4)  # [0 | 1 | 2]
-        # parser.add_argument("--gen_var", type=int, default=1)  # [True | False]
-        # parser.add_argument("--forward_ndx", type=int, default=None)
-        # parser.add_argument("--operation_mode", type=int, default=None)
-        # parser.add_argument("--domain", type=str, default=None)
-        # parser.add_argument("--performed_date", type=str, default=None)
+        # Demo v0 - Generate Variable
+        parser.add_argument("--s_test", type=str, default=None)
+        parser.add_argument("--e_test", type=str, default=None)
+        parser.add_argument("--dataset_version", type=str, default="v0")
+        # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
+        parser.add_argument("--verbose", type=int, default=None)
+        parser.add_argument(
+            "--m_target_index", type=int, default=4
+        )  # [0 | 1 | 2 | etc.]
+        parser.add_argument("--gen_var", type=int, default=1)  # [True | False]
+        parser.add_argument("--forward_ndx", type=int, default=None)
+        parser.add_argument("--operation_mode", type=int, default=None)
+        parser.add_argument("--domain", type=str, default=None)
+        parser.add_argument("--performed_date", type=str, default=None)
 
         # # for online test - Demo
         # parser.add_argument("--s_test", type=str, default=None)
@@ -186,27 +84,27 @@ if __name__ == "__main__":
         # parser.add_argument("--dataset_version", type=str, default=None)
         # # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
         # parser.add_argument("--verbose", type=int, default=3)
-        # parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2]
+        # parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2 | etc.]
         # parser.add_argument("--gen_var", type=int, default=None)  # [True | False]
         # parser.add_argument("--forward_ndx", type=int, default=None)
         # parser.add_argument("--operation_mode", type=int, default=1)
         # parser.add_argument("--domain", type=str, default='INX_20')
         # parser.add_argument("--performed_date", type=str, default='2021-07-09')
 
-        # for online test - Demo
-        parser.add_argument("--s_test", type=str, default="2014-01-01")
-        parser.add_argument("--e_test", type=str, default="2017-04-01")
-        parser.add_argument("--dataset_version", type=str, default="v0")
-        # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
-        parser.add_argument("--verbose", type=int, default=3)
-        parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2]
-        parser.add_argument("--gen_var", type=int, default=None)  # [True | False]
-        parser.add_argument("--forward_ndx", type=int, default=None)
-        parser.add_argument("--operation_mode", type=int, default=0)
-        parser.add_argument("--domain", type=str, default="INX_20")
-        parser.add_argument("--performed_date", type=str, default=None)
+        # # for online test - Demo
+        # parser.add_argument("--s_test", type=str, default="2014-01-01")
+        # parser.add_argument("--e_test", type=str, default="2017-04-01")
+        # parser.add_argument("--dataset_version", type=str, default=None)
+        # # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
+        # parser.add_argument("--verbose", type=int, default=3)
+        # parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2 | etc.]
+        # parser.add_argument("--gen_var", type=int, default=None)  # [True | False]
+        # parser.add_argument("--forward_ndx", type=int, default=None)
+        # parser.add_argument("--operation_mode", type=int, default=0)
+        # parser.add_argument("--domain", type=str, default="INX_20")
+        # parser.add_argument("--performed_date", type=str, default=None)
 
-        args = parser.parse_args()
+        args: argparse.Namespace = parser.parse_args()
         if args.dataset_version == "v0":
             assert (args.m_target_index is not None) and (
                 args.gen_var is not None
@@ -220,7 +118,7 @@ if __name__ == "__main__":
             RUNHEADER.__dict__["target_name"],
             RUNHEADER.__dict__["m_name"],
         ) = RUNHEADER.init_var(args)
-        _, _ = configure_header(args)
+        configure_header(args)
 
         FLAGS = tf.compat.v1.app.flags.FLAGS
         tf.compat.v1.app.flags.DEFINE_string(
@@ -242,18 +140,10 @@ if __name__ == "__main__":
             "performed_date", str(args.performed_date), "performed_date"
         )
 
-        dataset_version = None
-        if RUNHEADER.objective == "FS":
-            dataset_version = (
-                f"fs_x0_20_y{args.forward_ndx}_{RUNHEADER.dataset_version}"
-            )
+        dataset_version: str = None
         if RUNHEADER.objective == "IF":
             dataset_version = (
                 f"if_x0_20_y{args.forward_ndx}_{RUNHEADER.dataset_version}"
-            )
-        if RUNHEADER.objective == "MT":
-            dataset_version = (
-                f"mt_x0_20_y{args.forward_ndx}_{RUNHEADER.dataset_version}"
             )
         tf.compat.v1.app.flags.DEFINE_string(
             "dataset_name", dataset_version, "Data set name"
