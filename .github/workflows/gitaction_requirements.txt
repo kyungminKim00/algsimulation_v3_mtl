@@ -2,3 +2,5 @@ numpy
 gym
 pandas
 tensorflow
+tf_slim
+gym==0.26.2
