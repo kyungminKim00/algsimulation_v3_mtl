@@ -1,18 +1,21 @@
 import pickle
 import warnings
 from functools import lru_cache
+from typing import Any, Dict, List, Tuple
 
 import gym
-import header.index_forecasting.RUNHEADER as RUNHEADER
 import numpy as np
 from gym import spaces
 from gym.utils import seeding
+
+# import header.index_forecasting.RUNHEADER as RUNHEADER
+from header.index_forecasting import RUNHEADER
 
 
 class IndexForecastingEnv(gym.Env):
     def __init__(self, write_file=False):
 
-        self.write_file = write_file
+        self.write_file: bool = write_file
         if self.write_file:
             self.fp_expectation = open("./expectation.txt", "a")
             self.fp_y_return = open("./y_return.txt", "a")
@@ -23,12 +26,12 @@ class IndexForecastingEnv(gym.Env):
             self.fp_cov = open("./cov.txt", "a")
 
         with open(RUNHEADER.m_dataset_dir + "/meta", "rb") as fp:
-            meta = pickle.load(fp)
+            meta: Any = pickle.load(fp)
             fp.close()
 
-        self.num_y_index = meta["num_y_index"]
-        self.num_index = meta["x_variables"]
-        self.window_size = meta["x_seq"]
+        self.num_y_index: int = meta["num_y_index"]
+        self.num_index: int = meta["x_variables"]
+        self.window_size: int = meta["x_seq"]
         self.num_of_datatype_obs = meta[
             "num_of_datatype_obs"
         ]  # e.g. diff, diff_ma5, ... , diff_ma60
@@ -36,21 +39,21 @@ class IndexForecastingEnv(gym.Env):
         self.action_to_y_index = meta["action_to_y_index"]
         self.y_index_to_action = meta["y_index_to_action"]
 
-        self.so = None
-        self.so_validation = None
-        self.n_episode = None
-        self.current_episode_idx = None
-        self.current_step = None
+        self.so: None = None
+        self.so_validation: None = None
+        self.n_episode: int = None
+        self.current_episode_idx: int = None
+        self.current_step: int = None
         self.episode = None
         self.sample = None
         self.mode = None
-        self.eoe = False
-        self.eof = False
-        self.progress_info = False
-        self.reward_list = list()
-        self.h_factor = RUNHEADER.m_h_factor
-        self.factor = RUNHEADER.m_factor
-        self.cov_factor = RUNHEADER.m_cov_factor
+        self.eoe: bool = False
+        self.eof: bool = False
+        self.progress_info: bool = False
+        self.reward_list: List = []
+        self.h_factor: float = RUNHEADER.m_h_factor
+        self.factor: float = RUNHEADER.m_factor
+        self.cov_factor: int = RUNHEADER.m_cov_factor
 
         # static information
         self.m_total_example = None
@@ -67,8 +70,8 @@ class IndexForecastingEnv(gym.Env):
         # data_high = 0.2
 
         # normal
-        data_low = -np.inf
-        data_high = np.inf
+        data_low: float = -np.inf
+        data_high: float = np.inf
 
         # self.action_space = spaces.Discrete(self.num_y_index)  # number os funds
         # self.action_space = spaces.Box(low=0, high=1, shape=(self.num_y_index))
@@ -211,7 +214,7 @@ class IndexForecastingEnv(gym.Env):
                 Expectation
                 """
                 if RUNHEADER.m_n_cpu == 1:  # use mean
-                    expectation = np.mean(y_return_seq_ratio)
+                    expectation: np.floating = np.mean(y_return_seq_ratio)
                 else:
                     expectation = y_return_seq_ratio[
                         np.random.randint(0, y_return_seq_ratio.shape[0])
@@ -237,7 +240,7 @@ class IndexForecastingEnv(gym.Env):
                 # if is_zero_action:
                 #     expectation = 0
 
-                reward = expectation
+                reward: np.floating = expectation
             except Warning:
                 pass
                 # raise ValueError('Check reward calculation!!!')
@@ -332,12 +335,12 @@ class IndexForecastingEnv(gym.Env):
 
             return np.array(self.state)
 
-    def render(self, mode="human"):
+    def render(self, mode="human") -> None:
         if self.state is None and mode == "human":
             return None
         return None
 
-    def close(self):
+    def close(self) -> None:
         return None
 
     def get_progress_info(self):
@@ -348,7 +351,7 @@ class IndexForecastingEnv(gym.Env):
         return sample["structure/predefined_observation_total"]
 
     @lru_cache(maxsize=RUNHEADER.m_n_step)
-    def next_timestamp(self, current_episode_idx=0, current_step=0, init=False):
+    def next_timestamp(self, current_episode_idx=0, current_step=0, init=False) -> None:
         self.sample = None
 
         if init:
@@ -380,8 +383,8 @@ class IndexForecastingEnv(gym.Env):
         )
         return self._get_observation_from_sample(self.episode[self.current_step])
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         self.next_timestamp.cache_clear()
 
-    def clear_cache_test_step(self):
+    def clear_cache_test_step(self) -> None:
         self.test_step.cache_clear()
