@@ -55,12 +55,13 @@ def configure_header(args) -> None:
             RUNHEADER.__dict__[
                 "raw_x"
             ] = "./datasets/rawdata/index_data/Synced_D_FilledData_new_097.csv"  # th > 0.97 (memory error for US10YT)
+            # # Disable - Generate derived vars
             # Data set for derived vars calculation
-            RUNHEADER.__dict__["raw_x"] = (
-                "./datasets/rawdata/index_data/Synced_D_FilledData_new_"
-                + str(RUNHEADER.derived_vars_th[0])
-                + ".csv"
-            )
+            # RUNHEADER.__dict__["raw_x"] = (
+            #     "./datasets/rawdata/index_data/Synced_D_FilledData_new_"
+            #     + str(RUNHEADER.derived_vars_th[0])
+            #     + ".csv"
+            # )
             RUNHEADER.__dict__[
                 "raw_x2"
             ] = "./datasets/rawdata/index_data/Synced_D_FilledData.csv"  # whole data
@@ -80,7 +81,7 @@ def configure_header(args) -> None:
         ] = "./datasets/rawdata/index_data/Synced_D_FilledData.csv"
         RUNHEADER.__dict__[
             "max_x"
-        ] = 150  # US10YR 변경 사항 반영 전, KS11, Gold, S&P 는 이 세팅으로 실험 결과 산출 함
+        ] = 150  # US10YT 변경 사항 반영 전, KS11, Gold, S&P 는 이 세팅으로 실험 결과 산출 함
         RUNHEADER.__dict__[
             "max_x"
         ] = 500  # 500으로 변경 함, 1. 변경 실험결과 산출 필요 2. 네트워크 파라미터 변경이 필요 할 수 도 있음.

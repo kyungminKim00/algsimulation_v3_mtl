@@ -142,6 +142,9 @@ if __name__ == "__main__":
 
         dataset_version: str = None
         if RUNHEADER.objective == "IF":
+            if args.forward_ndx is None:
+                args.forward_ndx = ""
+
             dataset_version = (
                 f"if_x0_20_y{args.forward_ndx}_{RUNHEADER.dataset_version}"
             )

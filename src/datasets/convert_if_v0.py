@@ -1573,15 +1573,14 @@ def run(dataset_dir, file_pattern="fs_v0_cv%02d_%s.tfrecord", s_test=None, e_tes
 
     import header.index_forecasting.RUNHEADER as RUNHEADER
 
-    index_price = RUNHEADER.raw_x
-    y_index = RUNHEADER.raw_y
+    index_price: str = RUNHEADER.raw_x
+    y_index: str = RUNHEADER.raw_y
 
     # Set Test Date
-    blind_set_seq = RUNHEADER.blind_set_seq
+    blind_set_seq: int = RUNHEADER.blind_set_seq
     # s_test = RUNHEADER.s_test
     # e_test = RUNHEADER.e_test
 
-    # Version 1: using fund raw data (csv)
     (
         dates,
         sd_data,

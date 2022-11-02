@@ -41,15 +41,15 @@ def get_uniqueness(
     opt=None,
     th=0.975,
 ):
-    th = float(th)
+    th: float = float(th)
     if not from_file:
         assert _dict is not None, "variable name should be given"
 
     if from_file:
-        sd_data = pd.read_csv(file_name)
-        col_name = sd_data.columns
-        dates = np.array(sd_data["TradeDate"])
-        sd_data = sd_data.values[:, 1:]
+        sd_data: pd.DataFrame = pd.read_csv(file_name)
+        col_name: pd.Index = sd_data.columns
+        dates: np.ndarray = np.array(sd_data["TradeDate"])
+        sd_data: np.ndarray = sd_data.values[:, 1:]
 
         # # target  data
         # original_dates = dates
@@ -57,11 +57,13 @@ def get_uniqueness(
         # original_sd_data = sd_data
         # sd_data = sd_data[-500:]
     else:
-        c_vars = _dict if type(_dict) is list else list(_dict.values())
+        assert not isinstance(_dict, dict), "type error"
+        c_vars = list(_dict.values())
+
         col_name = ["TradeDate"] + c_vars
         dates = np.array(_data[:, 0])
         sd_data = _data[:, 1:]
-    original_num = sd_data.shape[1]
+    original_num: int = sd_data.shape[1]
 
     # target  data
     original_dates = dates
