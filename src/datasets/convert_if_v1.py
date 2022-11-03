@@ -8,52 +8,49 @@ The script should take about a minute to run.
 
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-import warnings
-
-import header.index_forecasting.RUNHEADER as RUNHEADER
-from util import (
-    funTime,
-    dict2json,
-    ordinary_return,
-    _replace_cond,
-    _remove_cond,
-    find_date,
-    current_y_unit,
-    get_manual_vars_additional,
-    trans_val,
-)
-from datasets.windowing import (
-    rolling_apply,
-    rolling_apply_cov,
-    rolling_apply_cross_cov,
-    fun_mean,
-    fun_cumsum,
-    fun_cov,
-    fun_cross_cov,
-)
-from datasets.x_selection import get_uniqueness, get_uniqueness_without_dates
-from datasets.decoder import pkexample_type_A, pkexample_type_B, pkexample_type_C
-
-import math
-import sys
-import tensorflow as tf
-import numpy as np
-import pandas as pd
-
-from datasets import dataset_utils
-import pickle
+from __future__ import absolute_import, division, print_function
 
 import datetime
+import math
 import os
+import pickle
+import sys
+import warnings
 from collections import OrderedDict
+
+import header.index_forecasting.RUNHEADER as RUNHEADER
+import numpy as np
+import pandas as pd
+import tensorflow as tf
 from sklearn.preprocessing import RobustScaler
+from util import (
+    _remove_cond,
+    _replace_cond,
+    current_y_unit,
+    dict2json,
+    find_date,
+    funTime,
+    get_manual_vars_additional,
+    ordinary_return,
+    trans_val,
+)
+
+from datasets import dataset_utils
+from datasets.decoder import pkexample_type_A, pkexample_type_B, pkexample_type_C
 from datasets.unit_datetype_des_check import (
     write_var_desc,
     write_var_desc_with_correlation,
 )
+from datasets.windowing import (
+    fun_cov,
+    fun_cross_cov,
+    fun_cumsum,
+    fun_mean,
+    rolling_apply,
+    rolling_apply_cov,
+    rolling_apply_cross_cov,
+)
+from datasets.x_selection import get_uniqueness, get_uniqueness_without_dates
 
 
 class ReadData(object):
@@ -1722,8 +1719,8 @@ def run(
     dates_new, s_test, e_test, blind_set_seq = configure_inference_dates(
         operation_mode, dates, s_test, e_test
     )
-    RUNHEADER.m_pool_sample_start = -(len(dates) - s_test + forward_ndx + 250)
-    RUNHEADER.m_pool_sample_end = -(len(dates) - s_test)
+    # RUNHEADER.m_pool_sample_start = -(len(dates) - s_test + forward_ndx + 250)
+    # RUNHEADER.m_pool_sample_end = -(len(dates) - s_test)
 
     """Todo
     Add variables manualy, Common variables 

@@ -8,48 +8,44 @@ The script should take about a minute to run.
 
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+
+import datetime
+import math
+import os
+import pickle
+import sys
+from collections import OrderedDict
 
 import header.index_forecasting.RUNHEADER as RUNHEADER
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn.preprocessing import RobustScaler
 from util import (
-    funTime,
-    dict2json,
-    ordinary_return,
-    _replace_cond,
     _remove_cond,
-    find_date,
+    _replace_cond,
     current_y_unit,
+    dict2json,
+    find_date,
+    funTime,
     get_manual_vars_additional,
+    ordinary_return,
     trans_val,
 )
+
+from datasets import dataset_utils
+from datasets.decoder import pkexample_type_A, pkexample_type_B, pkexample_type_C
+from datasets.unit_datetype_des_check import write_var_desc
 from datasets.windowing import (
+    fun_cov,
+    fun_cross_cov,
+    fun_cumsum,
+    fun_mean,
     rolling_apply,
     rolling_apply_cov,
     rolling_apply_cross_cov,
-    fun_mean,
-    fun_cumsum,
-    fun_cov,
-    fun_cross_cov,
 )
-from datasets.x_selection import get_uniqueness, get_uniqueness_without_dates
-from datasets.decoder import pkexample_type_A, pkexample_type_B, pkexample_type_C
-
-import math
-import sys
-import tensorflow as tf
-import numpy as np
-import pandas as pd
-
-from datasets import dataset_utils
-import pickle
-
-import datetime
-import os
-from collections import OrderedDict
-from sklearn.preprocessing import RobustScaler
-from datasets.unit_datetype_des_check import write_var_desc
 
 
 class ReadData(object):
@@ -1048,90 +1044,6 @@ def _get_index_df(v, index_price, ids_to_var_names, target_data=None):
     if not is_exist:
         # assert is_exist, "could not find a given variable name: {}".format(v)
         return np.zeros(index_price.shape[0])
-
-
-# def _add_vars(index_price, ids_to_var_names, target_data):
-#     assert (
-#         index_price.shape[0] == target_data.shape[0]
-#     ), "the length of the dates for X, Y are different"
-#     assert index_price.shape[1] == len(
-#         ids_to_var_names
-#     ), "the length of X, Dict should be the same"
-#     assert target_data.ndim == 1, "Set target index!!!"
-#     base_first_momentum, num_cov_obs = 5, 40
-#     bin_size = num_cov_obs
-#     t1 = index_price[-(bin_size + num_cov_obs) :, :]
-#     t2 = target_data[-(bin_size + num_cov_obs) :]
-
-#     var_names = list()
-#     for idx in range(t1.shape[1]):
-#         cov = rolling_apply_cross_cov(fun_cross_cov, t1[:, idx], t2, num_cov_obs)
-#         cov = np.where(cov == 1, 0, cov)
-#         cov = cov[np.argwhere(np.isnan(cov))[-1][0] + 1 :]  # ignore nan
-
-#         if len(cov) > 0:
-#             _val_test = np.max(np.abs(np.mean(cov, axis=0).squeeze()))
-#             if (_val_test >= 0.8) and (_val_test < 0.96):
-#                 key = ids_to_var_names[idx]
-#                 sys.stdout.write(
-#                     "\r>> a extracted key as a additional variable: %s " % (key)
-#                 )
-#                 sys.stdout.flush()
-#                 var_names.append([key, _val_test])
-
-#     return list(OrderedDict(sorted(var_names, key=lambda x: x[1], reverse=True)).keys())
-
-
-def _add_vars(index_price, ids_to_var_names, target_data):
-    assert (
-        index_price.shape[0] == target_data.shape[0]
-    ), "the length of the dates for X, Y are different"
-    assert index_price.shape[1] == len(
-        ids_to_var_names
-    ), "the length of X, Dict should be the same"
-    assert target_data.ndim == 1, "Set target index!!!"
-    base_first_momentum, num_cov_obs = 5, 40
-    bin_size = num_cov_obs
-    t1 = index_price[-(bin_size + num_cov_obs) :, :]
-    t2 = target_data[-(bin_size + num_cov_obs) :]
-
-    t1 = rolling_apply(fun_mean, t1, base_first_momentum)
-    t2 = rolling_apply(fun_mean, t2, base_first_momentum)
-
-    var_names = list()
-    for idx in range(t1.shape[1]):
-        cov = rolling_apply_cross_cov(fun_cross_cov, t1[:, idx], t2, num_cov_obs)
-        cov = np.where(cov == 1, 0, cov)
-        cov = cov[np.argwhere(np.isnan(cov))[-1][0] + 1 :]  # ignore nan
-
-        if len(cov) > 0:
-            _val_test = np.max(np.abs(np.mean(cov, axis=0).squeeze()))
-            if (_val_test >= RUNHEADER.m_pool_corr_th) and (_val_test < 0.96):
-                key = ids_to_var_names[idx]
-                sys.stdout.write(
-                    "\r>> a extracted key as a additional variable: %s " % (key)
-                )
-                sys.stdout.flush()
-                var_names.append([key, _val_test])
-
-    alligned_dict = list(
-        OrderedDict(sorted(var_names, key=lambda x: x[1], reverse=True)).keys()
-    )
-    alligned_dict_idx = [
-        key
-        for t_val in alligned_dict
-        for key, val in ids_to_var_names.items()
-        if val == t_val
-    ]
-
-    _, alligned_dict = get_uniqueness_without_dates(
-        from_file=False,
-        _data=index_price[:, alligned_dict_idx],
-        _dict=alligned_dict,
-        opt="mva",
-    )
-
-    return alligned_dict
 
 
 def get_index_df(

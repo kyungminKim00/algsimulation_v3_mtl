@@ -7,6 +7,8 @@ Created on Mon Apr 16 14:21:21 2018
 """
 from __future__ import absolute_import, division, print_function
 
+from typing import Any, Dict, List, Tuple
+
 from header.index_forecasting import RUNHEADER
 
 
@@ -52,9 +54,13 @@ def configure_header(args) -> None:
     if RUNHEADER.dataset_version == "v0":
         RUNHEADER.__dict__["gen_var"] = args.gen_var
         if RUNHEADER.__dict__["gen_var"]:
+            # RUNHEADER.__dict__[
+            #     "raw_x"
+            # ] = "./datasets/rawdata/index_data/Synced_D_FilledData_new_094.csv"  # th > 0.97 (memory error for US10YT)
             RUNHEADER.__dict__[
                 "raw_x"
-            ] = "./datasets/rawdata/index_data/Synced_D_FilledData_new_097.csv"  # th > 0.97 (memory error for US10YT)
+            ] = "./datasets/rawdata/index_data/Synced_D_FilledData.csv"
+
             # # Disable - Generate derived vars
             # Data set for derived vars calculation
             # RUNHEADER.__dict__["raw_x"] = (

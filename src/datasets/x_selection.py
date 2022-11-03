@@ -1,11 +1,13 @@
-import numpy as np
-from scipy.stats import spearmanr
 import pickle
-import pandas as pd
 from collections import OrderedDict
 
 import header.index_forecasting.RUNHEADER as RUNHEADER
-from datasets.windowing import rolling_apply, fun_mean
+import numpy as np
+import pandas as pd
+from scipy.stats import spearmanr
+from util import find_date
+
+from datasets.windowing import fun_mean, rolling_apply
 
 
 def load_file(file_location, file_format):
@@ -39,7 +41,8 @@ def get_uniqueness(
     _data=None,
     _dict=None,
     opt=None,
-    th=0.975,
+    th=0.94,
+    eod=None,
 ):
     th: float = float(th)
     if not from_file:
@@ -47,15 +50,18 @@ def get_uniqueness(
 
     if from_file:
         sd_data: pd.DataFrame = pd.read_csv(file_name)
+        if eod is not None:
+            _dates = sd_data.values
+            e_test_idx = (
+                find_date(_dates, eod, -1)
+                if len(np.argwhere(_dates == eod)) == 0
+                else np.argwhere(_dates == eod)[0][0]
+            )
+            sd_data = sd_data.iloc[e_test_idx-750:e_test_idx, :]
         col_name: pd.Index = sd_data.columns
         dates: np.ndarray = np.array(sd_data["TradeDate"])
         sd_data: np.ndarray = sd_data.values[:, 1:]
 
-        # # target  data
-        # original_dates = dates
-        # dates = dates[-500:]
-        # original_sd_data = sd_data
-        # sd_data = sd_data[-500:]
     else:
         assert not isinstance(_dict, dict), "type error"
         c_vars = list(_dict.values())
@@ -67,8 +73,9 @@ def get_uniqueness(
 
     # target  data
     original_dates = dates
-    dates = dates[: RUNHEADER.m_pool_sample_end]
     original_sd_data = sd_data
+
+    dates = dates[: RUNHEADER.m_pool_sample_end]
     sd_data = sd_data[: RUNHEADER.m_pool_sample_end, :]
 
     if opt == "mva":

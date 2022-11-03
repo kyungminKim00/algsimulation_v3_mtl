@@ -54,7 +54,7 @@ max_x: int
 """
 _debug_on: bool = False
 _full_tensorboard_log: bool = False
-disable_derived_vars: bool = False
+disable_derived_vars: bool = True
 
 
 # data set related
@@ -189,10 +189,8 @@ m_pool_sample_num: int = 0
 m_pool_sample_ahead: int = 0
 m_pool_corr_th: float = 0.7
 m_mask_corr_th: float = 0.5
-explane_th: float = 0.5
-m_pool_sample_start: int = -(
-    m_pool_sample_num_test + m_pool_sample_ahead + m_pool_sample_num
-)
+explane_th: float = 0.25
+m_pool_sample_start: int = 0  # internaly init as len(dates) - 70
 m_pool_sample_end: int = -1
 
 m_train_mode: int = 0  # [0 | 1] 0: init train, 1: Transfer

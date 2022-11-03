@@ -9,39 +9,44 @@ The script should take about a minute to run.
 """
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+
+import datetime
+import math
+import os
+import pickle
+import sys
+from collections import OrderedDict
 
 import header.index_forecasting.RUNHEADER as RUNHEADER
-from util import funTime, dict2json, ordinary_return, _replace_cond, _remove_cond
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn.preprocessing import RobustScaler
+from util import (
+    _remove_cond,
+    _replace_cond,
+    current_y_unit,
+    dict2json,
+    find_date,
+    funTime,
+    ordinary_return,
+)
+
+import datasets.unit_datetype_des_check as unit_datetype
+from datasets import dataset_utils
+from datasets.dataset_utils import bytes_feature, float_feature, int64_feature
+from datasets.decoder import pkexample_type_A
 from datasets.windowing import (
+    fun_cov,
+    fun_cross_cov,
+    fun_cumsum,
+    fun_mean,
     rolling_apply,
     rolling_apply_cov,
     rolling_apply_cross_cov,
-    fun_mean,
-    fun_cumsum,
-    fun_cov,
-    fun_cross_cov,
 )
 from datasets.x_selection import get_uniqueness
-from datasets.decoder import pkexample_type_A
-
-import math
-import sys
-
-import tensorflow as tf
-import numpy as np
-import pandas as pd
-from datasets import dataset_utils
-from datasets.dataset_utils import float_feature, int64_feature, bytes_feature
-import pickle
-import datetime
-import os
-from collections import OrderedDict
-from sklearn.preprocessing import RobustScaler
-import datasets.unit_datetype_des_check as unit_datetype
-from util import current_y_unit
 
 
 class ReadData(object):
@@ -1060,8 +1065,17 @@ def remove_nan(values, target_col=None, axis=0):
     return _remove_cond(np.isnan, values, target_col=target_col, axis=axis)
 
 
-def data_from_csv(filename):
+def data_from_csv(filename, eod=None):
     index_df = pd.read_csv(filename)
+    if eod is not None:
+        _dates = index_df.values
+        e_test_idx = (
+            find_date(_dates, eod, -1)
+            if len(np.argwhere(_dates == eod)) == 0
+            else np.argwhere(_dates == eod)[0][0]
+        )
+        index_df = index_df.iloc[:e_test_idx, :]
+
     dates, data = get_working_dates(
         index_df.values[:, 0], np.array(index_df.values[:, 1:], dtype=np.float32)
     )
@@ -1069,18 +1083,18 @@ def data_from_csv(filename):
     return dates, data, ids_to_class_names
 
 
-def get_data_corresponding(index_price, y_index):
-    index_dates, index_values, ids_to_var_names = data_from_csv(index_price)
-    y_index_dates, y_index_values, ids_to_class_names = data_from_csv(y_index)
+def get_data_corresponding(index_price, y_index, eod=None):
+    index_dates, index_values, ids_to_var_names = data_from_csv(index_price, eod)
+    y_index_dates, y_index_values, ids_to_class_names = data_from_csv(y_index, eod)
 
     # get working dates
     index_dates, index_values = get_working_dates(index_dates, index_values)
     y_index_dates, y_index_values = get_working_dates(y_index_dates, y_index_values)
 
-    # replace nan for independent variables only
+    # replace nan with forward fill
     index_values = replace_nan(index_values)
 
-    # the conjunction of target and independent variables
+    # align dates of target and independent variables (the conjunction of target and independent variables)
     dates, data, y_index_dates, y_index_data = get_conjunction_dates_data_v3(
         index_dates, y_index_dates, index_values, y_index_values
     )
@@ -1094,15 +1108,25 @@ def get_data_corresponding(index_price, y_index):
     )
 
 
-def splite_rawdata_v1(index_price=None, y_index=None):
-    # update as is
-    if RUNHEADER.gen_var:
-        get_uniqueness(
-            file_name=RUNHEADER.raw_x2,
-            target_name=RUNHEADER.raw_x,
-            opt="mva",
-            th=float(RUNHEADER.derived_vars_th[1]),
-        )
+def splite_rawdata_v1(index_price=None, y_index=None, eod=None):
+    # # update as is
+    # if RUNHEADER.gen_var:
+    #     get_uniqueness(
+    #         file_name=RUNHEADER.raw_x2,
+    #         target_name=RUNHEADER.raw_x,
+    #         opt="mva",
+    #         th=float(RUNHEADER.derived_vars_th[1]),
+    #         eod=eod,
+    #     )
+
+    # (
+    #     dates,
+    #     sd_data,
+    #     y_index_dates,
+    #     y_index_data,
+    #     ids_to_var_names,
+    #     ids_to_class_names,
+    # ) = get_data_corresponding(index_price, y_index)
 
     (
         dates,
@@ -1111,21 +1135,24 @@ def splite_rawdata_v1(index_price=None, y_index=None):
         y_index_data,
         ids_to_var_names,
         ids_to_class_names,
-    ) = get_data_corresponding(index_price, y_index)
+    ) = get_data_corresponding(
+        index_price,
+        y_index,
+        eod=eod,
+    )
 
     # returns, Caution: this function assume that Y are index or price values
-    returns = ordinary_return(
-        matrix=y_index_data, unit=current_y_unit(RUNHEADER.target_name)
-    )
-
-    # dates, sd_data, y_index_data, returns = \
-    #     get_conjunction_dates_data_v2(index_dates, y_index_dates, index_values, y_index_values, returns)
+    # returns = ordinary_return(
+    #     matrix=y_index_data, unit=current_y_unit(RUNHEADER.target_name)
+    # )
 
     sd_data, ids_to_var_names, opts = gen_pool(
-        dates, sd_data, ids_to_var_names, y_index_data[:, RUNHEADER.m_target_index]
+        dates,
+        sd_data,
+        ids_to_var_names,
+        y_index_data[:, RUNHEADER.m_target_index],
+        eod=eod,
     )
-
-    return dates, sd_data, y_index_data, returns, ids_to_class_names, ids_to_var_names
 
 
 def _gen_spread(X, Y, ids_to_var_names, num_cov_obs, f_name):
@@ -1171,40 +1198,6 @@ def _gen_spread(X, Y, ids_to_var_names, num_cov_obs, f_name):
     return dict(ids_to_var_names_add)
 
 
-# def gen_spread_test(X, Y, ids_to_var_names, f_name):
-#     X_add = list()
-#     ids_to_var_names_add = list()
-#     num_cov_obs = 60
-#     corr_th = 0.6
-#     cnt = 0
-#     idx = 0
-#     eof = len(ids_to_var_names)
-
-#     f_out = open(f_name + '.csv', 'a')
-#     while cnt == 0:
-#         tmp_dict = {'{}-{}'.format(ids_to_var_names[cnt], ids_to_var_names[i]): X[:, i]
-#                     for i in range(cnt, eof, 1)}
-#         for key, val in tmp_dict.items():
-#             sys.stdout.write('\r>> [%d/%d] %s matrix calculation....!!!' % (cnt, eof - 1, key))
-#             sys.stdout.flush()
-#             cov = rolling_apply_cross_cov(fun_cross_cov, val, Y, num_cov_obs)  # 60days correlation matrix
-#             cov = np.where(cov == 1, 0, cov)
-#             cov = cov[np.argwhere(np.isnan(cov))[-1][0] + 1:]  # ignore nan
-
-#             print('{}'.format(np.max(np.abs(np.mean(cov, axis=0).squeeze()))), file=f_out)
-#             _val_test = np.max(np.abs(np.mean(cov, axis=0).squeeze()))
-#             if (_val_test >= corr_th) and (_val_test < 0.96):
-#                 ids_to_var_names_add.append([idx, key])
-#                 X_add.append(val)
-#                 idx = idx + 1
-
-#         cnt = cnt + 1
-#     print('idx: {}'.format(idx))
-#     f_out.close()
-#     os._exit(0)
-#     return np.array(X_add).T, dict(ids_to_var_names_add)
-
-
 def gen_spread(data, ids_to_var_names, num_sample_obs, base_first_momentum):
     # Examples
     ma_data = None
@@ -1217,15 +1210,6 @@ def gen_spread(data, ids_to_var_names, num_sample_obs, base_first_momentum):
     else:
         print("Caution: it contains test samples as well")
         ma_data = rolling_apply(fun_mean, data, base_first_momentum)
-
-    # # min max
-    # X = ma_data[:, :-1]
-    # X = X[np.argwhere(np.isnan(X))[-1][0] + 1:]  # ignore nan
-    # y = ma_data[:, -1]
-    # y = y[np.argwhere(np.isnan(y))[-1][0] + 1:]  # ignore nan
-    # assert len(X) == len(y), 'nan check error'
-    # X_ = (X - np.min(X, axis=0)) / (np.max(X, axis=0) - np.min(X, axis=0))
-    # y_ = (y - np.min(y)) / (np.max(y) - np.min(y))
 
     # centering
     scale_v = ma_data[np.argwhere(np.isnan(ma_data))[-1][0] + 1 :]  # ignore nan
@@ -1262,6 +1246,7 @@ def gen_spread_append(
     var_names_to_ids,
     num_sample_obs,
     base_first_momentum,
+    eod=None,
 ):
     # 1. Gen Spread & Append
     data = np.hstack([sd_data, np.expand_dims(target_data, axis=1)])
@@ -1275,7 +1260,9 @@ def gen_spread_append(
         assert len(ids_to_var_names_add) > 0, "None of variables would be added"
 
     _dates, _values, _, _, _ids_to_var_names, _ = get_data_corresponding(
-        RUNHEADER.raw_x2, RUNHEADER.raw_y
+        RUNHEADER.raw_x2,
+        RUNHEADER.raw_y,
+        eod,
     )
     assert (
         sd_data.shape[0] == _values.shape[0]
@@ -1398,10 +1385,11 @@ def pool_ordering_refine(
     return data, ids_to_var_names, var_names_to_ids
 
 
-def gen_pool(dates, sd_data, ids_to_var_names, target_data):
+def gen_pool(dates, sd_data, ids_to_var_names, target_data, eod=None):
     base_first_momentum = 5  # default 5
+    # RUNHEADER.m_pool_sample_start = (len(dates) - 750)  # for operation, it has been changed after a experimental
     RUNHEADER.m_pool_sample_start = (
-        len(dates) - 750
+        len(dates) - 70
     )  # for operation, it has been changed after a experimental
     RUNHEADER.m_pool_sample_end = len(dates)
     num_sample_obs = [RUNHEADER.m_pool_sample_start, RUNHEADER.m_pool_sample_end]
@@ -1431,9 +1419,6 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data):
         pd.DataFrame(
             data=_data, columns=["TradeDate"] + list(_ids_to_var_names.values())
         ).to_csv(file_name + _mode, index=None)
-        # # for demo test
-        # pd.DataFrame(data=_data[:500, :], columns=['TradeDate'] + list(_ids_to_var_names.values())). \
-        #         to_csv(file_name + _mode, index=None)
 
         print("save done {} ".format(file_name + _mode))
         os._exit(0)
@@ -1456,6 +1441,7 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data):
             var_names_to_ids,
             num_sample_obs,
             base_first_momentum,
+            eod,
         )
         print("Gen Data shape: {} ".format(data.shape))
         _save(dates, data, ids_to_var_names)
@@ -1492,47 +1478,6 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data):
         print("Pool Refine Done!!!")
         _save(dates, data, ids_to_var_names)
 
-    # cov = np.transpose(cov, (2, 0, 1))
-    # cov = cov[ordered_ids]
-    # opts = np.transpose(cov, (0, 1, 2))
-    #
-    # # approaches : mean cov
-    # mean_cov = np.nanmean(cov, axis=0)
-    # cov_dict = dict(zip(list(ids_to_var_names.values()), mean_cov.tolist()))
-    # cov_dict = dict(sorted(cov_dict.items(), key=lambda x: x[1]))
-    # if plot:  # for debug
-    #     y_target = data[:, -1]
-    #     x_target = data[:, :-1]
-    #     import matplotlib.pyplot as plt
-    #     for key_, val_ in tmp_dict.items():
-    #         for key, val in ids_to_var_names.items():
-    #             if key_ == val:
-    #                 if (val_ < 1) and (val_ > -1):
-    #                     x = x_target[:, key]
-    #                     x_title = val
-    #                     x_subtitle = cov_dict[x_title]
-    #                     title = '{}_{:3.2}'.format(x_title, x_subtitle)
-    #
-    #                     plt_manager = plt.get_current_fig_manager()
-    #                     plt_manager.resize(1860, 980)
-    #
-    #                     plt.subplot(3, 1, 1)
-    #                     plt.scatter(x, y_target, label=title)
-    #                     plt.xlabel(x_title)
-    #                     plt.ylabel(title)
-    #
-    #                     plt.subplot(3, 1, 2)
-    #                     plt.plot(x, color='r')
-    #
-    #                     plt.subplot(3, 1, 3)
-    #                     plt.plot(y_target, color='b')
-    #                     # plt.show()
-    #                     plt.pause(10)
-    #                     # plt.cla()
-    #                     plt.close()
-
-    return sd_data, ids_to_var_names, opts
-
 
 def ma(data):
     # windowing for sd_data, according to the price
@@ -1561,334 +1506,9 @@ def triangular_vector(data):
 
 
 def run(dataset_dir, file_pattern="fs_v0_cv%02d_%s.tfrecord", s_test=None, e_test=None):
-    """Conversion operation.
-    Args:
-    dataset_dir: The dataset directory where the dataset is stored.
-    """
-    # index_price = './datasets/rawdata/index_data/prep_index_df_20190821.csv'  # 145 variables
-    # index_price = './datasets/rawdata/index_data/01_KOSPI_20190911_176.csv'  # KOSPI
-    # index_price = './datasets/rawdata/index_data/KOSPI_20190911_Refine_New_159.csv'  # KOSPI
-    # index_price = './datasets/rawdata/index_data/INX_20190909_nonull.csv'  # S&P by jh
-    # y_index = './datasets/rawdata/index_data/gold_index.csv'
-
     import header.index_forecasting.RUNHEADER as RUNHEADER
 
     index_price: str = RUNHEADER.raw_x
     y_index: str = RUNHEADER.raw_y
 
-    # Set Test Date
-    blind_set_seq: int = RUNHEADER.blind_set_seq
-    # s_test = RUNHEADER.s_test
-    # e_test = RUNHEADER.e_test
-
-    (
-        dates,
-        sd_data,
-        y_index_data,
-        returns,
-        ids_to_class_names,
-        ids_to_var_names,
-    ) = splite_rawdata_v1(index_price=index_price, y_index=y_index)
-    ## delete next code
-    # y_index_dates = np.copy(dates)
-
-    # declare global variables
-    global sd_max, sd_min, sd_diff_max, sd_diff_min, sd_velocity_max, sd_velocity_min, dependent_var, _NUM_SHARDS, ref_forward_ndx, _FILE_PATTERN
-
-    _NUM_SHARDS = 5
-    _FILE_PATTERN = file_pattern
-    ref_forward_ndx = np.array([-10, -5, 5, 10], dtype=np.int)
-    ref_forward_ndx = np.array(
-        [-int(RUNHEADER.forward_ndx * 0.5), -int(RUNHEADER.forward_ndx * 0.25), 5, 10],
-        dtype=np.int,
-    )
-
-    """declare dataset meta information (part1)
-    """
-    only_train = True  # only train without validation set
-    x_seq = 20  # 20days
-    forward_ndx = RUNHEADER.forward_ndx
-    cut_off = 70
-    num_of_datatype_obs = 5
-    num_of_datatype_obs_total = 15  # 25 -> 15
-
-    dependent_var = "tri"
-    global g_x_seq, g_num_of_datatype_obs, g_x_variables, g_num_of_datatype_obs_total, decoder
-    decoder = pkexample_type_A
-
-    class_names_to_ids = dict(
-        zip(ids_to_class_names.values(), ids_to_class_names.keys())
-    )
-    var_names_to_ids = dict(zip(ids_to_var_names.values(), ids_to_var_names.keys()))
-    if os.path.isdir(dataset_dir):
-        dataset_utils.write_label_file(
-            ids_to_class_names, dataset_dir, filename="y_index.txt"
-        )
-        dataset_utils.write_label_file(
-            ids_to_var_names, dataset_dir, filename="x_index.txt"
-        )
-        dict2json(dataset_dir + "/y_index.json", ids_to_class_names)
-        dict2json(dataset_dir + "/x_index.json", ids_to_var_names)
-    else:
-        ValueError("Dir location does not exist")
-
-    """Generate re-fined data from raw data
-    :param
-        input: dates and raw data
-    :return
-        output: Date aligned raw data
-    """
-    # # refined raw data from raw data.. Date aligned raw data
-    # sd_dates, sd_data, y_index_data = get_read_data(dates, y_index_dates, sd_data, y_index_data)
-
-    """declare dataset meta information (part2)
-    """
-    x_variables = len(sd_data[0])
-    num_y_index = len(y_index_data[0])
-    assert x_variables == len(
-        ids_to_var_names
-    ), "the numbers of x variables are different"
-
-    # init global variables
-    g_x_seq, g_num_of_datatype_obs, g_x_variables, g_num_of_datatype_obs_total = (
-        x_seq,
-        num_of_datatype_obs,
-        x_variables,
-        num_of_datatype_obs_total,
-    )
-
-    """Define primitive inputs
-        1.price, 2.ratio, 3.velocity
-    """
-    # calculate statistics for re-fined data
-    sd_max = np.max(sd_data, axis=0)
-    sd_max = sd_max + sd_max * 0.3  # Buffer
-    sd_min = np.min(sd_data, axis=0)
-    sd_min = sd_min - sd_min * 0.3  # Buffer
-    # differential data
-    sd_diff = ordinary_return(matrix=sd_data)
-    # sd_diff = np.diff(sd_data, axis=0)
-    # sd_diff = (sd_diff / (np.abs(sd_data[:-1, :]) + 1E-15)) * 100
-    # sd_diff = np.append([np.zeros(sd_diff.shape[1])], sd_diff, axis=0)
-    sd_diff_max = np.max(sd_diff, axis=0)
-    sd_diff_min = np.min(sd_diff, axis=0)
-    # velocity data
-    sd_velocity = np.diff(sd_diff, axis=0)
-    # sd_velocity = sd_velocity / sd_data[1:, :]
-    sd_velocity = np.append([np.zeros(sd_velocity.shape[1])], sd_velocity, axis=0)
-    sd_velocity_max = np.max(sd_velocity, axis=0)
-    sd_velocity_min = np.min(sd_velocity, axis=0)
-    # index min-max normalization
-    sd_min_max_nor = (sd_data - sd_min) / (sd_max - sd_min)  # for min-max normalization
-
-    """Define inputs
-    """
-    # according to the price, difference, velocity, performs windowing
-    sd_ma_data_5, sd_ma_data_10, sd_ma_data_20, sd_ma_data_60 = ma(sd_data)
-    sd_diff_ma_data_5, sd_diff_ma_data_10, sd_diff_ma_data_20, sd_diff_ma_data_60 = ma(
-        sd_diff
-    )
-    (
-        sd_velocity_ma_data_5,
-        sd_velocity_ma_data_10,
-        sd_velocity_ma_data_20,
-        sd_velocity_ma_data_60,
-    ) = ma(sd_velocity)
-    (
-        sd_min_max_nor_ma_data_5,
-        sd_min_max_nor_ma_data_10,
-        sd_min_max_nor_ma_data_20,
-        sd_min_max_nor_ma_data_60,
-    ) = ma(sd_min_max_nor)
-
-    # windowing for extra data
-    fund_his_30 = rolling_apply(fun_cumsum, returns, 30)  # 30days cumulative sum
-    fund_cov_60 = rolling_apply_cov(fun_cov, returns, 60)  # 60days correlation matrix
-    extra_cor_60 = rolling_apply_cov(fun_cov, sd_diff, 60)  # 60days correlation matrix
-    extra_cor_60 = triangular_vector(extra_cor_60)
-
-    # set cut-off
-    if s_test is not None:
-        s_test = np.argwhere(dates == s_test)[0][0]
-        e_test = np.argwhere(dates == e_test)[0][0]
-
-    # data set split
-    sd_dates_train, sd_dates_test = cut_off_data(
-        dates, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_data_train, sd_data_test = cut_off_data(
-        sd_data, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_diff_data_train, sd_diff_data_test = cut_off_data(
-        sd_diff, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_velocity_data_train, sd_velocity_data_test = cut_off_data(
-        sd_velocity, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_min_max_nor_data_train, sd_min_max_nor_data_test = cut_off_data(
-        sd_min_max_nor, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_ma_data_5_train, sd_ma_data_5_test = cut_off_data(
-        sd_ma_data_5, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_ma_data_10_train, sd_ma_data_10_test = cut_off_data(
-        sd_ma_data_10, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_ma_data_20_train, sd_ma_data_20_test = cut_off_data(
-        sd_ma_data_20, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_ma_data_60_train, sd_ma_data_60_test = cut_off_data(
-        sd_ma_data_60, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_diff_ma_data_5_train, sd_diff_ma_data_5_test = cut_off_data(
-        sd_diff_ma_data_5, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_diff_ma_data_10_train, sd_diff_ma_data_10_test = cut_off_data(
-        sd_diff_ma_data_10, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_diff_ma_data_20_train, sd_diff_ma_data_20_test = cut_off_data(
-        sd_diff_ma_data_20, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_diff_ma_data_60_train, sd_diff_ma_data_60_test = cut_off_data(
-        sd_diff_ma_data_60, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_velocity_ma_data_5_train, sd_velocity_ma_data_5_test = cut_off_data(
-        sd_velocity_ma_data_5, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_velocity_ma_data_10_train, sd_velocity_ma_data_10_test = cut_off_data(
-        sd_velocity_ma_data_10, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_velocity_ma_data_20_train, sd_velocity_ma_data_20_test = cut_off_data(
-        sd_velocity_ma_data_20, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_velocity_ma_data_60_train, sd_velocity_ma_data_60_test = cut_off_data(
-        sd_velocity_ma_data_60, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_min_max_nor_ma_data_5_train, sd_min_max_nor_ma_data_5_test = cut_off_data(
-        sd_min_max_nor_ma_data_5, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_min_max_nor_ma_data_10_train, sd_min_max_nor_ma_data_10_test = cut_off_data(
-        sd_min_max_nor_ma_data_10, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_min_max_nor_ma_data_20_train, sd_min_max_nor_ma_data_20_test = cut_off_data(
-        sd_min_max_nor_ma_data_20, cut_off, blind_set_seq, s_test, e_test
-    )
-    sd_min_max_nor_ma_data_60_train, sd_min_max_nor_ma_data_60_test = cut_off_data(
-        sd_min_max_nor_ma_data_60, cut_off, blind_set_seq, s_test, e_test
-    )
-    fund_his_30_train, fund_his_30_test = cut_off_data(
-        fund_his_30, cut_off, blind_set_seq, s_test, e_test
-    )
-    fund_cov_60_train, fund_cov_60_test = cut_off_data(
-        fund_cov_60, cut_off, blind_set_seq, s_test, e_test
-    )
-    extra_cor_60_train, extra_cor_60_test = cut_off_data(
-        extra_cor_60, cut_off, blind_set_seq, s_test, e_test
-    )
-
-    target_data_train, target_data_test = None, None
-    if dependent_var == "returns":
-        target_data_train, target_data_test = cut_off_data(
-            returns, cut_off, blind_set_seq, s_test, e_test
-        )
-    elif dependent_var == "tri":
-        target_data_train, target_data_test = cut_off_data(
-            y_index_data, cut_off, blind_set_seq, s_test, e_test
-        )
-
-    """Write examples
-    """
-    # generate the training and validation sets.
-    if only_train:
-        _verbose = 2
-    else:
-        _verbose = 0
-
-    # Train
-    convert_dataset(
-        sd_dates_train,
-        sd_data_train,
-        sd_ma_data_5_train,
-        sd_ma_data_10_train,
-        sd_ma_data_20_train,
-        sd_ma_data_60_train,
-        sd_diff_data_train,
-        sd_diff_ma_data_5_train,
-        sd_diff_ma_data_10_train,
-        sd_diff_ma_data_20_train,
-        sd_diff_ma_data_60_train,
-        sd_velocity_data_train,
-        sd_velocity_ma_data_5_train,
-        sd_velocity_ma_data_10_train,
-        sd_velocity_ma_data_20_train,
-        sd_velocity_ma_data_60_train,
-        sd_min_max_nor_data_train,
-        sd_min_max_nor_ma_data_5_train,
-        sd_min_max_nor_ma_data_10_train,
-        sd_min_max_nor_ma_data_20_train,
-        sd_min_max_nor_ma_data_60_train,
-        target_data_train,
-        fund_his_30_train,
-        fund_cov_60_train,
-        extra_cor_60_train,
-        x_seq,
-        forward_ndx,
-        class_names_to_ids,
-        dataset_dir,
-        verbose=_verbose,
-    )
-
-    # Blind set
-    convert_dataset(
-        sd_dates_test,
-        sd_data_test,
-        sd_ma_data_5_test,
-        sd_ma_data_10_test,
-        sd_ma_data_20_test,
-        sd_ma_data_60_test,
-        sd_diff_data_test,
-        sd_diff_ma_data_5_test,
-        sd_diff_ma_data_10_test,
-        sd_diff_ma_data_20_test,
-        sd_diff_ma_data_60_test,
-        sd_velocity_data_test,
-        sd_velocity_ma_data_5_test,
-        sd_velocity_ma_data_10_test,
-        sd_velocity_ma_data_20_test,
-        sd_velocity_ma_data_60_test,
-        sd_min_max_nor_data_test,
-        sd_min_max_nor_ma_data_5_test,
-        sd_min_max_nor_ma_data_10_test,
-        sd_min_max_nor_ma_data_20_test,
-        sd_min_max_nor_ma_data_60_test,
-        target_data_test,
-        fund_his_30_test,
-        fund_cov_60_test,
-        extra_cor_60_test,
-        x_seq,
-        forward_ndx,
-        class_names_to_ids,
-        dataset_dir,
-        verbose=1,
-    )
-
-    # write meta information for data set
-    meta = {
-        "x_seq": x_seq,
-        "x_variables": x_variables,
-        "forecast": forward_ndx,
-        "num_y_index": num_y_index,
-        "num_of_datatype_obs": g_num_of_datatype_obs,
-        "num_of_datatype_obs_total": g_num_of_datatype_obs_total,
-        "action_to_y_index": ids_to_class_names,
-        "y_index_to_action": class_names_to_ids,
-        "idx_to_variable": ids_to_var_names,
-        "variable_to_idx": var_names_to_ids,
-    }
-    with open(dataset_dir + "/meta", "wb") as fp:
-        pickle.dump(meta, fp)
-        fp.close()
-
-    print("\nFinished converting the dataset!")
-    print("\n Location: {0}".format(dataset_dir))
-    os._exit(0)
+    splite_rawdata_v1(index_price=index_price, y_index=y_index, eod=e_test)
