@@ -1,10 +1,10 @@
-import header.index_forecasting.RUNHEADER as RUNHEADER
-from util import get_unique_list
-
-import pandas as pd
-from collections import OrderedDict
-import numpy as np
 import datetime
+from collections import OrderedDict
+
+import header.index_forecasting.RUNHEADER as RUNHEADER
+import numpy as np
+import pandas as pd
+from util import get_unique_list
 
 
 def add_item(
@@ -112,36 +112,27 @@ def script_run(f_name=None):
         else:
             var_list = add_item(it, d_f_summary, var_list, b_percent_except=True)
 
-    # merge & save
-    source_1_head = get_unique_list(var_list)[: int(max_x * 0.5)]  # none derived vars
-    source_2_head = get_unique_list(d_f_index)[: int(max_x * 0.5)]
-    source_1_tail = get_unique_list(d_f_index)[int(max_x * 0.5) :]
+    # # merge & save - with derived variables
+    # source_1_head = get_unique_list(var_list)[: int(max_x * 0.5)]  # none derived vars
+    # source_2_head = get_unique_list(d_f_index)[: int(max_x * 0.5)]
+    # source_1_tail = get_unique_list(d_f_index)[int(max_x * 0.5) :]
+    # my_final_list = OrderedDict.fromkeys(source_1_head + source_2_head)
+    # my_final_list = list(my_final_list) + source_1_tail
+    # pd.DataFrame(data=my_final_list, columns=["VarName"]).to_csv(
+    #     f_index, index=None, header=None
+    # )
 
-    my_final_list = OrderedDict.fromkeys(source_1_head + source_2_head)
-    my_final_list = list(my_final_list) + source_1_tail
-    pd.DataFrame(data=my_final_list, columns=["VarName"]).to_csv(
+    # merge & save - without derived variables
+    source_1_head = get_unique_list(var_list)
+    my_final_list = OrderedDict.fromkeys(source_1_head)
+    pd.DataFrame(data=list(my_final_list.keys()), columns=["VarName"]).to_csv(
         f_index, index=None, header=None
     )
-    print("{} has been saved".format(f_index))
+    print(f"{f_index} has been saved")
 
     # save desc
     basename = f_index.split(".csv")[0]
     write_var_desc(my_final_list, d_f_summary, basename)
-
-    # var_desc = list()
-    # for it in my_final_list:
-    #     if '-' in it:
-    #         for cnt in range(2):
-    #             Condition = d_f_summary['var_name'] == it.split('-')[cnt]
-    #             tmp = d_f_summary[Condition].values.squeeze().tolist()[1:]
-    #             var_desc.append(tmp)
-    #     else:
-    #         Condition = d_f_summary['var_name'] == it
-    #         tmp = d_f_summary[Condition].values.squeeze().tolist()[1:]
-    #         var_desc.append(tmp)
-    # pd.DataFrame(data=var_desc, columns=d_f_summary.keys()[1:]). \
-    #     to_csv(basename + '_desc.csv')
-    # print('{} has been saved'.format(f_index.split('.csv')[0] + '_desc.csv'))
 
 
 def write_var_desc(my_final_list, d_f_summary, basename):
@@ -160,7 +151,7 @@ def write_var_desc(my_final_list, d_f_summary, basename):
     pd.DataFrame(data=var_desc, columns=d_f_summary.keys()[1:]).to_csv(
         basename + "_desc.csv"
     )
-    print("{} has been saved".format(basename + "_desc.csv"))
+    print(f"{basename + '_desc.csv'} has been saved")
 
 
 def write_var_desc_with_correlation(
@@ -201,5 +192,5 @@ def write_var_desc_with_correlation(
     print("{} has been saved".format(basename))
 
 
-if __name__ == "__main__":
-    script_run()
+# if __name__ == "__main__":
+#     script_run()

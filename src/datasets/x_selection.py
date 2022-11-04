@@ -1,13 +1,18 @@
 import pickle
 from collections import OrderedDict
 
+import bottleneck as bn
 import header.index_forecasting.RUNHEADER as RUNHEADER
+import joblib
 import numpy as np
 import pandas as pd
+from ray.util.joblib import register_ray
 from scipy.stats import spearmanr
 from util import find_date
 
 from datasets.windowing import fun_mean, rolling_apply
+
+register_ray()
 
 
 def load_file(file_location, file_format):
@@ -51,19 +56,20 @@ def get_uniqueness(
     if from_file:
         sd_data: pd.DataFrame = pd.read_csv(file_name)
         if eod is not None:
+            assert False, "안쓰이는 걸로 생각 하고 있음. 로직 맞는지 생각 해 보기"
             _dates = sd_data.values
             e_test_idx = (
                 find_date(_dates, eod, -1)
                 if len(np.argwhere(_dates == eod)) == 0
                 else np.argwhere(_dates == eod)[0][0]
             )
-            sd_data = sd_data.iloc[e_test_idx - 750 : e_test_idx, :]
+            sd_data = sd_data.iloc[e_test_idx - 70 : e_test_idx, :]
         col_name: pd.Index = sd_data.columns
         dates: np.ndarray = np.array(sd_data["TradeDate"])
         sd_data: np.ndarray = sd_data.values[:, 1:]
 
     else:
-        assert not isinstance(_dict, dict), "type error"
+        assert isinstance(_dict, dict), "type error"
         c_vars = list(_dict.values())
 
         col_name = ["TradeDate"] + c_vars
@@ -80,13 +86,18 @@ def get_uniqueness(
 
     if opt == "mva":
         sd_data = sd_data.astype(float)
-        sd_data = rolling_apply(fun_mean, sd_data, 5)
+        sd_data = bn.move_mean(sd_data, window=5, min_count=1, axis=0)
 
     # # remove data
     # sd_data = rm_indx(sd_data, [17, 49])
     # write_file('./datasets/rawdata/fund_data/sdata_new.npy', sd_data, 'npy')
 
-    cor, p = spearmanr(sd_data, axis=0)
+    # cor, p = spearmanr(sd_data, axis=0)
+    # n_row, n_col = cor.shape
+    # data = cor
+
+    with joblib.parallel_backend("ray"):
+        cor, p = spearmanr(sd_data, axis=0)
     n_row, n_col = cor.shape
     data = cor
 
@@ -111,7 +122,7 @@ def get_uniqueness(
         tmp = data[j, :]
         if len(np.argwhere(tmp > -np.inf)) > 0:
             vs.append(j)
-    print("\n selected variables: {} from {}".format(len(vs), original_num))
+    print(f"\n selected variables: {len(vs)} from {original_num}")
     sd_data = original_sd_data[:, vs]
 
     """File save
@@ -153,9 +164,14 @@ def get_uniqueness_without_dates(
 
     if opt == "mva":
         sd_data = sd_data.astype(float)
-        sd_data = rolling_apply(fun_mean, sd_data, 5)
+        sd_data = bn.move_mean(sd_data, window=5, min_count=1, axis=0)
 
-    cor, p = spearmanr(sd_data, axis=0)
+    # cor, p = spearmanr(sd_data, axis=0)
+    # n_row, n_col = cor.shape
+    # data = cor
+
+    with joblib.parallel_backend("ray"):
+        cor, p = spearmanr(sd_data, axis=0)
     n_row, n_col = cor.shape
     data = cor
 

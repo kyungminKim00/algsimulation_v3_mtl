@@ -63,23 +63,25 @@ if __name__ == "__main__":
         # parser.add_argument("--domain", type=str, required=True)
         # parser.add_argument("--performed_date", type=str, default=None)
 
-        # Demo v0 - Generate Variable
-        parser.add_argument("--s_test", type=str, default=None)
+        # # Demo v0 - Select Variable
+        # parser.add_argument("--s_test", type=str, default=None)
         # parser.add_argument("--e_test", type=str, default=None)
-        parser.add_argument("--e_test", type=str, default="2010-01-01")
-        parser.add_argument("--dataset_version", type=str, default="v0")
-        # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
-        parser.add_argument("--verbose", type=int, default=None)
-        parser.add_argument(
-            "--m_target_index", type=int, default=4
-        )  # [0 | 1 | 2 | etc.]
-        parser.add_argument("--gen_var", type=int, default=0)  # [True | False]
-        parser.add_argument("--forward_ndx", type=int, default=None)
-        parser.add_argument("--operation_mode", type=int, default=None)
-        parser.add_argument("--domain", type=str, default=None)
-        parser.add_argument("--performed_date", type=str, default=None)
+        # # parser.add_argument("--e_test", type=str, default="2010-01-01")
+        # parser.add_argument("--dataset_version", type=str, default="v0")
+        # # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
+        # parser.add_argument("--verbose", type=int, default=None)
+        # parser.add_argument(
+        #     "--m_target_index", type=int, default=4
+        # )  # [0 | 1 | 2 | ~ | 14]
+        # parser.add_argument(
+        #     "--gen_var", type=int, default=0
+        # )  # 0 is only possblie value
+        # parser.add_argument("--forward_ndx", type=int, default=None)
+        # parser.add_argument("--operation_mode", type=int, default=None)
+        # parser.add_argument("--domain", type=str, default=None)
+        # parser.add_argument("--performed_date", type=str, default=None)
 
-        # # for online test - Demo
+        # # Demo 운영모드 파라미터
         # parser.add_argument("--s_test", type=str, default=None)
         # parser.add_argument("--e_test", type=str, default=None)
         # parser.add_argument("--dataset_version", type=str, default=None)
@@ -92,18 +94,20 @@ if __name__ == "__main__":
         # parser.add_argument("--domain", type=str, default='INX_20')
         # parser.add_argument("--performed_date", type=str, default='2021-07-09')
 
-        # # for online test - Demo
-        # parser.add_argument("--s_test", type=str, default="2014-01-01")
-        # parser.add_argument("--e_test", type=str, default="2017-04-01")
-        # parser.add_argument("--dataset_version", type=str, default=None)
-        # # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
-        # parser.add_argument("--verbose", type=int, default=3)
-        # parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2 | etc.]
-        # parser.add_argument("--gen_var", type=int, default=None)  # [True | False]
-        # parser.add_argument("--forward_ndx", type=int, default=None)
-        # parser.add_argument("--operation_mode", type=int, default=0)
-        # parser.add_argument("--domain", type=str, default="INX_20")
-        # parser.add_argument("--performed_date", type=str, default=None)
+        # for online test - Demo
+        parser.add_argument("--s_test", type=str, default="2014-01-01")
+        parser.add_argument("--e_test", type=str, default="2017-04-01")
+        parser.add_argument("--dataset_version", type=str, default=None)
+        # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
+        parser.add_argument("--verbose", type=int, default=3)
+        parser.add_argument(
+            "--m_target_index", type=int, default=None
+        )  # [0 | 1 | 2 | etc.]
+        parser.add_argument("--gen_var", type=int, default=None)  # [True | False]
+        parser.add_argument("--forward_ndx", type=int, default=None)
+        parser.add_argument("--operation_mode", type=int, default=0)
+        parser.add_argument("--domain", type=str, default="INX_20")
+        parser.add_argument("--performed_date", type=str, default=None)
 
         args: argparse.Namespace = parser.parse_args()
         if args.dataset_version == "v0":
