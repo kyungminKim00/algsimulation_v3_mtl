@@ -27,12 +27,12 @@ def configure_header(args) -> None:
         print(f"s_test: {RUNHEADER.s_test}")
         print(f"e_test: {RUNHEADER.e_test}")
 
-    # def get_file_name(m_target_index, file_data_vars) -> str:
-    #     return (
-    #         file_data_vars
-    #         + RUNHEADER.target_id2name(m_target_index)
-    #         + "_intermediate.csv"
-    #     )
+    def get_file_name(m_target_index, file_data_vars) -> str:
+        return (
+            file_data_vars
+            + RUNHEADER.target_id2name(m_target_index)
+            + "_intermediate.csv"
+        )
 
     RUNHEADER.__dict__["dataset_version"] = args.dataset_version
     RUNHEADER.__dict__["m_target_index"] = args.m_target_index
@@ -54,14 +54,24 @@ def configure_header(args) -> None:
     if RUNHEADER.dataset_version == "v0":
         RUNHEADER.__dict__["gen_var"] = args.gen_var
         if RUNHEADER.__dict__["gen_var"]:
-            assert False, "this features have been disabled !! (gen_var=1)"
-        else:
-            # RUNHEADER.__dict__["raw_x"] = get_file_name(
-            #     RUNHEADER.m_target_index, "./datasets/rawdata/index_data/data_vars_"
-            # )
             RUNHEADER.__dict__[
                 "raw_x"
-            ] = "./datasets/rawdata/index_data/Synced_D_FilledData.csv"
+            ] = "./datasets/rawdata/index_data/Synced_D_FilledData_new_094.csv"  # th > 0.97 (memory error for US10YT)
+
+            # # Disable - Generate derived vars
+            # Data set for derived vars calculation
+            # RUNHEADER.__dict__["raw_x"] = (
+            #     "./datasets/rawdata/index_data/Synced_D_FilledData_new_"
+            #     + str(RUNHEADER.derived_vars_th[0])
+            #     + ".csv"
+            # )
+            RUNHEADER.__dict__[
+                "raw_x2"
+            ] = "./datasets/rawdata/index_data/Synced_D_FilledData.csv"  # whole data
+        else:
+            RUNHEADER.__dict__["raw_x"] = get_file_name(
+                RUNHEADER.m_target_index, "./datasets/rawdata/index_data/data_vars_"
+            )
             RUNHEADER.__dict__["max_x"] = 500
 
     else:

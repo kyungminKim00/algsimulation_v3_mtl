@@ -1,8 +1,9 @@
-import numpy as np
-from sklearn.preprocessing import RobustScaler
-import warnings
 import sys
+import warnings
+
+import numpy as np
 from scipy.stats import spearmanr
+from sklearn.preprocessing import RobustScaler
 
 
 def rolling_apply_1d(fun, X, window_size):
@@ -40,6 +41,14 @@ def rolling_apply_cov(fun, X, window_size, b_scaler=True):
     return cov_matrix
 
 
+# @ray.remote
+# def ray_wrap_fun(fun, X, Y, window_size, i):
+#     return fun(
+#         X[(i - window_size + 1) : i + 1],
+#         Y[(i - window_size + 1) : i + 1],
+#     )
+
+
 def rolling_apply_cross_cov(fun, X, Y, window_size):
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore")
@@ -59,6 +68,28 @@ def rolling_apply_cross_cov(fun, X, Y, window_size):
         except Warning:
             assert False, "check !!!"
     return cov_matrix
+
+
+# def rolling_apply_cross_cov2(fun, X, Y, window_size):
+#     with warnings.catch_warnings():
+#         warnings.filterwarnings("ignore")
+#         try:
+#             r = np.empty([window_size - 1, 2, 2])
+#             r.fill(np.nan)
+#             cov_matrix = r.tolist()
+
+#             futures = [
+#                 ray_wrap_fun.remote(fun, X, Y, window_size, i)
+#                 for i in range(window_size - 1, X.shape[0])
+#             ]
+#             futures = ray.get(futures)
+#             cov_matrix = np.concatenate(
+#                 (np.array(cov_matrix), np.array(futures)), axis=0
+#             )
+
+#         except Warning:
+#             assert False, "check !!!"
+#     return cov_matrix
 
 
 def rolling_apply(fun, X, window_size):

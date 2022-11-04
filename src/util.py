@@ -3,33 +3,31 @@
 @author: kim KyungMin
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-import gym
-from gym.envs.registration import registry
-from contextlib import contextmanager
-import time
 import collections
-import numpy as np
-import pickle
-import pandas as pd
-import os
-import re
-
-# from sklearn.externals import joblib
-import joblib
-import cloudpickle
-import json
 import datetime
+import json
+import os
+import pickle
+import re
+import sys
+import time
+from contextlib import contextmanager
+from itertools import groupby
 
 # from memory_profiler import profile
 from operator import itemgetter
-from itertools import groupby
-import sklearn.metrics as metrics
-import collections
-import sys
+
+import cloudpickle
+import gym
+
+# from sklearn.externals import joblib
+import joblib
+import numpy as np
+import pandas as pd
+from gym.envs.registration import registry
+from sklearn import metrics
 
 
 def get_domain_on_CDSW_env(domain):
@@ -363,9 +361,9 @@ def make(_id):
 # time check
 @contextmanager
 def funTime(func_name):
-    start = time.clock()
+    start = time.time()
     yield
-    end = time.clock()
+    end = time.time()
     interval = end - start
     print("\n== Time cost for [{0}] : {1}".format(func_name, interval))
 

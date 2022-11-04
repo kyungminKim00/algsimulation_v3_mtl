@@ -16,14 +16,11 @@ import math
 import os
 import pickle
 import sys
-import time
 from collections import OrderedDict
 
-import bottleneck as bn
 import header.index_forecasting.RUNHEADER as RUNHEADER
 import numpy as np
 import pandas as pd
-import ray
 import tensorflow as tf
 from sklearn.preprocessing import RobustScaler
 from util import (
@@ -1068,17 +1065,8 @@ def remove_nan(values, target_col=None, axis=0):
     return _remove_cond(np.isnan, values, target_col=target_col, axis=axis)
 
 
-def data_from_csv(filename, eod=None):
+def data_from_csv(filename):
     index_df = pd.read_csv(filename)
-    if eod is not None:
-        _dates = index_df.values
-        e_test_idx = (
-            find_date(_dates, eod, -1)
-            if len(np.argwhere(_dates == eod)) == 0
-            else np.argwhere(_dates == eod)[0][0]
-        )
-        index_df = index_df.iloc[:e_test_idx, :]
-
     dates, data = get_working_dates(
         index_df.values[:, 0], np.array(index_df.values[:, 1:], dtype=np.float32)
     )
@@ -1086,9 +1074,9 @@ def data_from_csv(filename, eod=None):
     return dates, data, ids_to_class_names
 
 
-def get_data_corresponding(index_price, y_index, eod=None):
-    index_dates, index_values, ids_to_var_names = data_from_csv(index_price, eod)
-    y_index_dates, y_index_values, ids_to_class_names = data_from_csv(y_index, eod)
+def get_data_corresponding(index_price, y_index):
+    index_dates, index_values, ids_to_var_names = data_from_csv(index_price)
+    y_index_dates, y_index_values, ids_to_class_names = data_from_csv(y_index)
 
     # get working dates
     index_dates, index_values = get_working_dates(index_dates, index_values)
@@ -1111,25 +1099,15 @@ def get_data_corresponding(index_price, y_index, eod=None):
     )
 
 
-def splite_rawdata_v1(index_price=None, y_index=None, eod=None):
-    # # update as is
-    # if RUNHEADER.gen_var:
-    #     get_uniqueness(
-    #         file_name=RUNHEADER.raw_x2,
-    #         target_name=RUNHEADER.raw_x,
-    #         opt="mva",
-    #         th=float(RUNHEADER.derived_vars_th[1]),
-    #         eod=eod,
-    #     )
-
-    # (
-    #     dates,
-    #     sd_data,
-    #     y_index_dates,
-    #     y_index_data,
-    #     ids_to_var_names,
-    #     ids_to_class_names,
-    # ) = get_data_corresponding(index_price, y_index)
+def splite_rawdata_v1(index_price=None, y_index=None):
+    # update as is
+    if RUNHEADER.gen_var:
+        get_uniqueness(
+            file_name=RUNHEADER.raw_x2,
+            target_name=RUNHEADER.raw_x,
+            opt="mva",
+            th=float(RUNHEADER.derived_vars_th[1]),
+        )
 
     (
         dates,
@@ -1138,11 +1116,7 @@ def splite_rawdata_v1(index_price=None, y_index=None, eod=None):
         y_index_data,
         ids_to_var_names,
         ids_to_class_names,
-    ) = get_data_corresponding(
-        index_price,
-        y_index,
-        eod=eod,
-    )
+    ) = get_data_corresponding(index_price, y_index)
 
     # returns, Caution: this function assume that Y are index or price values
     # returns = ordinary_return(
@@ -1249,7 +1223,6 @@ def gen_spread_append(
     var_names_to_ids,
     num_sample_obs,
     base_first_momentum,
-    eod=None,
 ):
     # 1. Gen Spread & Append
     data = np.hstack([sd_data, np.expand_dims(target_data, axis=1)])
@@ -1265,7 +1238,6 @@ def gen_spread_append(
     _dates, _values, _, _, _ids_to_var_names, _ = get_data_corresponding(
         RUNHEADER.raw_x2,
         RUNHEADER.raw_y,
-        eod,
     )
     assert (
         sd_data.shape[0] == _values.shape[0]
@@ -1318,13 +1290,6 @@ def gen_spread_append(
     return data, ids_to_var_names, var_names_to_ids
 
 
-@ray.remote
-def ray_wrap_fun(fun, ma_data, idx, num_cov_obs):
-    return rolling_apply_cross_cov(fun, ma_data[:, idx], ma_data[:, -1], num_cov_obs)[
-        :, 0, 1
-    ]
-
-
 def pool_ordering_refine(
     data,
     target_data,
@@ -1338,133 +1303,25 @@ def pool_ordering_refine(
 ):
     data = np.hstack([data, np.expand_dims(target_data, axis=1)])
 
+    # 2. pool ordering
     latest_3y_samples = num_sample_obs[1] - (20 * 12 * 3)
-
-    # Todo: Speed Up
-    # ma_data = rolling_apply(
-    #     fun_mean, data[latest_3y_samples : num_sample_obs[1], :], base_first_momentum
-    # )
-
-    # moving mean
-    ma_data = bn.move_mean(
-        data[latest_3y_samples : num_sample_obs[1], :],
-        window=base_first_momentum,
-        min_count=1,
-        axis=0,
-    )
-
-    # cross corealation
-    print(f"[{ma_data.shape[1] - 1}] vectors calculation")
-    res = [
-        ray_wrap_fun.remote(fun_cross_cov, ma_data, idx, num_cov_obs)
-        for idx in range(ma_data.shape[1] - 1)
-    ]
-    new_cov = np.array(ray.get(res)).T
-
-    # 2-1. ordering
-    tmp_cov = np.where(np.isnan(new_cov), 0, new_cov)
-    # tmp_cov = np.where(tmp_cov == 1, 0, tmp_cov)
-    tmp_cov = np.abs(tmp_cov)
-    tmp_cov = np.where(tmp_cov >= RUNHEADER.m_pool_corr_th, 1, 0)
-    mean_cov = np.nanmean(tmp_cov, axis=0)
-    cov_dict = dict(zip(list(ids_to_var_names.values()), mean_cov.tolist()))
-    cov_dict = OrderedDict(sorted(cov_dict.items(), key=lambda x: x[1], reverse=True))
-    # cov_dict = [[k, v] for k, v in o_cov_dict.items()][::-1]
-
-    # 2-2. Refine
-    cov_dict = OrderedDict(
-        [[key, val] for key, val in cov_dict.items() if val > explane_th]
-    )
-    assert len(cov_dict) != 0, "empty list"
-    # 2-3. Re-assign Dict & Data
-    ordered_ids = [var_names_to_ids[name] for name in cov_dict.keys()]
-    # 2-3-1. Apply max_num of variables
-    print("the num of variables exceeding explane_th: {}".format(len(ordered_ids)))
-    num_variables = len(ordered_ids)
-    if num_variables > max_allowed_num_variables:
-        ordered_ids = ordered_ids[:max_allowed_num_variables]
-    # 2-3-2. re-assign
-    ids_to_var_names = OrderedDict(
-        zip(
-            np.arange(len(ordered_ids)).tolist(),
-            [ids_to_var_names[ids] for ids in ordered_ids],
-        )
-    )
-    var_names_to_ids = dict(
-        zip(list(ids_to_var_names.values()), list(ids_to_var_names.keys()))
-    )
-    data = data[:, :-1]
-    data = data.T[ordered_ids].T
-
-    return data, ids_to_var_names, var_names_to_ids
-
-
-def pool_ordering_refine_original(
-    data,
-    target_data,
-    ids_to_var_names,
-    var_names_to_ids,
-    base_first_momentum,
-    num_sample_obs,
-    num_cov_obs,
-    max_allowed_num_variables,
-    explane_th,
-):
-    data = np.hstack([data, np.expand_dims(target_data, axis=1)])
-
-    latest_3y_samples = num_sample_obs[1] - (20 * 12 * 3)
-
-    # Todo: Speed Up
-    # ma_data = rolling_apply(
-    #     fun_mean, data[latest_3y_samples : num_sample_obs[1], :], base_first_momentum
-    # )
-    ma_data = bn.move_mean(
-        data[latest_3y_samples : num_sample_obs[1], :],
-        window=base_first_momentum,
-        min_count=1,
-        axis=0,
+    ma_data = rolling_apply(
+        fun_mean, data[latest_3y_samples : num_sample_obs[1], :], base_first_momentum
     )
 
     # cov = rolling_apply_cov(fun_cov, ma_data, num_cov_obs)  # 60days correlation matrix
     # cov = cov[:, :, -1]
     # cov = cov[:, :-1]
     new_cov = np.zeros([ma_data.shape[0], ma_data.shape[1] - 1])
-    import time
-
-    start = time.time()
-    print(f"[{ma_data.shape[1] - 1}] vectors calculation")
     for idx in range(ma_data.shape[1] - 1):
-        # sys.stdout.write(
-        #     "\r>> [%d/%d] vectors calculation....!!!" % (idx, ma_data.shape[1] - 1)
-        # )
-        # sys.stdout.flush()
-
-        # Todo: Speed Up
+        sys.stdout.write(
+            "\r>> [%d/%d] vectors calculation....!!!" % (idx, ma_data.shape[1] - 1)
+        )
+        sys.stdout.flush()
         cov = rolling_apply_cross_cov(
             fun_cross_cov, ma_data[:, idx], ma_data[:, -1], num_cov_obs
         )  # 60days correlation matrix
         new_cov[:, idx] = cov[:, 0, 1]
-    end = time.time()
-    interval = end - start
-    print("\n== Time cost for [{0}] : {1}".format("rolling_apply_cross_cov", interval))
-
-    start = time.time()
-    print(f"[{ma_data.shape[1] - 1}] vectors calculation")
-    for idx in range(ma_data.shape[1] - 1):
-        # sys.stdout.write(
-        #     "\r>> [%d/%d] vectors calculation....!!!" % (idx, ma_data.shape[1] - 1)
-        # )
-        # sys.stdout.flush()
-
-        # Todo: Speed Up
-        cov = rolling_apply_cross_cov2(
-            fun_cross_cov, ma_data[:, idx], ma_data[:, -1], num_cov_obs
-        )  # 60days correlation matrix
-        new_cov[:, idx] = cov[:, 0, 1]
-    end = time.time()
-    interval = end - start
-    print("\n== Time cost for [{0}] : {1}".format("rolling_apply_cross_cov2", interval))
-
     # 2-1. ordering
     tmp_cov = np.where(np.isnan(new_cov), 0, new_cov)
     # tmp_cov = np.where(tmp_cov == 1, 0, tmp_cov)
@@ -1524,14 +1381,15 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data, eod=None):
         file_name = RUNHEADER.file_data_vars + RUNHEADER.target_name
         _data = np.append(np.expand_dims(_dates, axis=1), _data, axis=1)
         print("{} saving".format(file_name))
-
-        _mode = ".csv"
-        pd.DataFrame(data=list(_ids_to_var_names.values()), columns=["VarName"]).to_csv(
-            file_name + "_Indices.csv", index=None, header=None
-        )
-
-        # rewrite
-        unit_datetype.script_run(file_name + "_Indices.csv")
+        if RUNHEADER.gen_var:
+            _mode = "_intermediate.csv"
+        else:
+            _mode = ".csv"
+            pd.DataFrame(
+                data=list(_ids_to_var_names.values()), columns=["VarName"]
+            ).to_csv(file_name + "_Indices.csv", index=None, header=None)
+            # rewrite
+            unit_datetype.script_run(file_name + "_Indices.csv")
 
         pd.DataFrame(
             data=_data, columns=["TradeDate"] + list(_ids_to_var_names.values())
@@ -1540,31 +1398,59 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data, eod=None):
         print("save done {} ".format(file_name + _mode))
         os._exit(0)
 
-    data, ids_to_var_names, var_names_to_ids = pool_ordering_refine(
-        sd_data,
-        target_data,
-        ids_to_var_names,
-        var_names_to_ids,
-        base_first_momentum,
-        num_sample_obs,
-        num_cov_obs,
-        max_allowed_num_variables,
-        explane_th,
-    )
-    # ad-hoc process
-    # filtering with uniqueness
-    tmp_data = np.append(np.expand_dims(dates, axis=1), data, axis=1)
-    data, ids_to_var_names = _pool_adhoc1(
-        tmp_data, ids_to_var_names, opt="mva", th=0.92
-    )
+    # 1. Gen Spread & Append
+    # 1-1. Append
+    # 1-2. Re-assign Dictionary and Data
+    gen_spread = RUNHEADER.gen_var
+    if gen_spread:
+        # # 0. Analysing variables selection
+        # sd_data, ids_to_var_names, var_names_to_ids = pool_ordering_refine(sd_data, target_data, ids_to_var_names,
+        #                                                                    var_names_to_ids,
+        #                                                                    base_first_momentum, num_sample_obs,
+        #                                                                    num_cov_obs,
+        #                                                                    max_allowed_num_variables, explane_th)
+        data, ids_to_var_names, var_names_to_ids = gen_spread_append(
+            sd_data,
+            target_data,
+            ids_to_var_names,
+            var_names_to_ids,
+            num_sample_obs,
+            base_first_momentum,
+        )
+        print("Gen Data shape: {} ".format(data.shape))
+        _save(dates, data, ids_to_var_names)
+        # file_name = RUNHEADER.file_data_vars + RUNHEADER.target_name
+        # data = np.append(np.expand_dims(dates, axis=1), data, axis=1)
+        # pd.DataFrame(data=data, columns=['TradeDate'] + list(ids_to_var_names.values())). \
+        #     to_csv(file_name + '_intermediate.csv', index=None)
+        # exit()
+    else:
+        # 2. pool ordering
+        data, ids_to_var_names, var_names_to_ids = pool_ordering_refine(
+            sd_data,
+            target_data,
+            ids_to_var_names,
+            var_names_to_ids,
+            base_first_momentum,
+            num_sample_obs,
+            num_cov_obs,
+            max_allowed_num_variables,
+            explane_th,
+        )
+        # ad-hoc process
+        # filtering with uniqueness
+        tmp_data = np.append(np.expand_dims(dates, axis=1), data, axis=1)
+        data, ids_to_var_names = _pool_adhoc1(
+            tmp_data, ids_to_var_names, opt="mva", th=0.92
+        )
 
-    # quantising selected variables
-    data, ids_to_var_names = _pool_adhoc2(data, ids_to_var_names)
-    assert len(dates) == data.shape[0], "Type Check!!!"
-    assert len(ids_to_var_names) == data.shape[1], "Type Check!!!"
+        # quantising selected variables
+        data, ids_to_var_names = _pool_adhoc2(data, ids_to_var_names)
+        assert len(dates) == data.shape[0], "Type Check!!!"
+        assert len(ids_to_var_names) == data.shape[1], "Type Check!!!"
 
-    print("Pool Refine Done!!!")
-    _save(dates, data, ids_to_var_names)
+        print("Pool Refine Done!!!")
+        _save(dates, data, ids_to_var_names)
 
 
 def ma(data):
@@ -1599,4 +1485,4 @@ def run(dataset_dir, file_pattern="fs_v0_cv%02d_%s.tfrecord", s_test=None, e_tes
     index_price: str = RUNHEADER.raw_x
     y_index: str = RUNHEADER.raw_y
 
-    splite_rawdata_v1(index_price=index_price, y_index=y_index, eod=e_test)
+    splite_rawdata_v1(index_price=index_price, y_index=y_index)

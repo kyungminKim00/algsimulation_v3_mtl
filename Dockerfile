@@ -15,7 +15,7 @@ RUN apt-get install -y tzdata
 RUN apt-get autoremove -y
 RUN python3 -m pip install --upgrade pip
 RUN pip3 install --upgrade tf_slim
-RUN pip3 install gym==0.26.2
+RUN pip3 install gym==0.11.0
 RUN pip3 install --no-cache-dir -r /dev_env/requirements.txt
 RUN pip3 install --no-cache-dir -r /dev_env/ci_requirements.txt
 EXPOSE 6006

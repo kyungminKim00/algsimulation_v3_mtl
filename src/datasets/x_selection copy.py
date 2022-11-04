@@ -42,7 +42,6 @@ def get_uniqueness(
     _dict=None,
     opt=None,
     th=0.94,
-    eod=None,
 ):
     th: float = float(th)
     if not from_file:
@@ -50,14 +49,6 @@ def get_uniqueness(
 
     if from_file:
         sd_data: pd.DataFrame = pd.read_csv(file_name)
-        if eod is not None:
-            _dates = sd_data.values
-            e_test_idx = (
-                find_date(_dates, eod, -1)
-                if len(np.argwhere(_dates == eod)) == 0
-                else np.argwhere(_dates == eod)[0][0]
-            )
-            sd_data = sd_data.iloc[e_test_idx - 750 : e_test_idx, :]
         col_name: pd.Index = sd_data.columns
         dates: np.ndarray = np.array(sd_data["TradeDate"])
         sd_data: np.ndarray = sd_data.values[:, 1:]
