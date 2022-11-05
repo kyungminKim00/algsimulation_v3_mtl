@@ -19,18 +19,6 @@
 		"-v",
 		"${localEnv:DATAHOME}/algsimulation_v3_mtl/rawdata:/workspaces/algsimulation_v3_mtl/src/datasets/rawdata"
 	],
-// 	"runArgs": [
-// 		"--gpus",
-// 		"all",
-// 		"--shm-size=10.24gb",
-// 		"-v",
-// 		"${localEnv:DATAHOME}/algsimulation_v3_mtl/save:/workspaces/algsimulation_v3_mtl/src/save",
-// 		"-v",
-// 		"${localEnv:DATAHOME}/algsimulation_v3_mtl/agent_log:/workspaces/algsimulation_v3_mtl/src/agent_log",
-// 		"-v",
-// 		"${localEnv:DATAHOME}/algsimulation_v3_mtl/rawdata:/workspaces/algsimulation_v3_mtl/src/datasets/rawdata"
-// 	],
-
 	"remoteEnv": {"PYTHONPATH": "${containerEnv:PATH}:/workspaces/algsimulation_v3_mtl/src"},
 	
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
