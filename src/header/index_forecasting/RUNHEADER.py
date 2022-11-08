@@ -189,7 +189,7 @@ m_pool_sample_num: int = 0
 m_pool_sample_ahead: int = 0
 m_pool_corr_th: float = 0.7
 m_mask_corr_th: float = 0.5
-explane_th: float = 0.25
+explane_th: float = 0.5
 m_pool_sample_start: int = 0  # internaly init as len(dates) - 70
 m_pool_sample_end: int = -1
 

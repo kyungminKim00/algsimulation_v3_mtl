@@ -1,3 +1,4 @@
+import copy
 import pickle
 from collections import OrderedDict
 
@@ -159,12 +160,14 @@ def get_uniqueness_without_dates(
     if not from_file:
         assert _dict is not None, "variable name should be given"
 
-    sd_data = _data
-    original_sd_data = _data
+    # sd_data = _data
+    # original_sd_data = _data
+
+    sd_data = copy.deepcopy(_data)
+    original_sd_data = copy.deepcopy(_data)
 
     if opt == "mva":
-        sd_data = sd_data.astype(float)
-        sd_data = bn.move_mean(sd_data, window=5, min_count=1, axis=0)
+        sd_data = bn.move_mean(sd_data.astype(float), window=5, min_count=1, axis=0)
 
     # cor, p = spearmanr(sd_data, axis=0)
     # n_row, n_col = cor.shape
@@ -198,6 +201,7 @@ def get_uniqueness_without_dates(
             vs.append(j)
 
     # modifying
+    sd_data = None
     sd_data = original_sd_data[:, vs]
     col_name = [col_name[idx] for idx in vs]
 

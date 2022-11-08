@@ -89,8 +89,8 @@ def script_run(f_name=None):
     else:  # header configured
         f_index = f_name
         max_x = RUNHEADER.max_x
-        print("script_run - f_index: {}".format(f_index))
-        print("script_run - max_x: {}".format(max_x))
+        # print("script_run - f_index: {}".format(f_index))
+        # print("script_run - max_x: {}".format(max_x))
     f_summary = RUNHEADER.var_desc
 
     # load data
