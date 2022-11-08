@@ -4,7 +4,6 @@ from collections import OrderedDict
 import header.index_forecasting.RUNHEADER as RUNHEADER
 import numpy as np
 import pandas as pd
-from util import get_unique_list
 
 
 def add_item(
@@ -79,6 +78,10 @@ def quantising_vars(data, ids_to_var_names):
     data = data[:, selected_idxs]
     ids_to_var_names = OrderedDict(new_ids_to_var_names)
     return data, ids_to_var_names
+
+
+def get_unique_list(var_list):
+    return list(map(itemgetter(0), groupby(var_list)))
 
 
 def script_run(f_name=None):

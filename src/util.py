@@ -6,6 +6,7 @@
 from __future__ import absolute_import, division, print_function
 
 import collections
+import copy
 import datetime
 import json
 import os
@@ -13,12 +14,14 @@ import pickle
 import re
 import sys
 import time
+from collections import OrderedDict
 from contextlib import contextmanager
 from itertools import groupby
 
 # from memory_profiler import profile
 from operator import itemgetter
 
+import bottleneck as bn
 import cloudpickle
 import gym
 
@@ -29,10 +32,289 @@ import pandas as pd
 from gym.envs.registration import registry
 from sklearn import metrics
 
+from datasets.unit_datetype_des_check import write_var_desc
+from datasets.windowing import fun_cov, rolling_apply_cov
+from header.index_forecasting import RUNHEADER
+
+
+def _getcorr(
+    data, target_data, base_first_momentum, num_cov_obs, b_scaler=True, opt_mask=None
+):
+    _data = np.hstack([data, np.expand_dims(target_data, axis=1)])
+    ma_data = bn.move_mean(
+        _data, window=base_first_momentum, min_count=1, axis=0
+    )  # use whole train samples
+
+    # ray import
+    cov = rolling_apply_cov(fun_cov, ma_data, num_cov_obs, b_scaler)
+    cov = cov[:, :, -1]
+    cov = cov[:, :-1]
+
+    tmp_cov = np.where(np.isnan(cov), 0, cov)
+
+    # ray import liner regression.. 설명력이 어느정도 이상 0.5??
+
+    tmp_cov = np.abs(tmp_cov)
+
+    daily_cov_raw = tmp_cov
+    tmp_cov = np.where(tmp_cov >= opt_mask, 1, 0)
+
+    return tmp_cov, daily_cov_raw
+
+
+def get_corr(data, target_data, x_unit=None, b_scaler=True, opt_mask=None):
+    base_first_momentum, num_cov_obs = 5, 40  # default
+
+    # 15번 y 흘려 주기
+    tmp_cov, daily_cov_raw = _getcorr(
+        data, target_data, base_first_momentum, num_cov_obs, b_scaler, opt_mask
+    )
+
+    if x_unit is not None:
+        add_vol_index = np.array(x_unit) == "volatility"
+        tmp_cov = add_vol_index + tmp_cov
+        tmp_cov = np.where(tmp_cov >= 1, 1, 0)
+
+    # mean_cov = np.nanmean(tmp_cov, axis=0)
+    # cov_dict = dict(zip(list(ids_to_var_names.values()), mean_cov.tolist()))
+    # cov_dict = OrderedDict(sorted(cov_dict.items(), key=lambda x: x[1], reverse=True))
+    total_num = int(tmp_cov.shape[1] * np.mean(np.mean(tmp_cov)))
+    print("the average num of variables on daily: {}".format(total_num))
+    mask = tmp_cov
+    return mask, daily_cov_raw
+
+
+def ma(data):
+    # windowing for sd_data, according to the price
+    ma_data_5 = bn.move_mean(data, window=5, min_count=1, axis=0)
+    ma_data_10 = bn.move_mean(data, window=10, min_count=1, axis=0)
+    ma_data_20 = bn.move_mean(data, window=20, min_count=1, axis=0)
+    ma_data_60 = bn.move_mean(data, window=60, min_count=1, axis=0)
+
+    return ma_data_5, ma_data_10, ma_data_20, ma_data_60
+
+
+def normalized_spread(data, ma_data_5, ma_data_10, data_20, ma_data_60, X_unit):
+    f1, f2, f3, f4, f5 = (
+        np.zeros(data.shape, dtype=np.float32),
+        np.zeros(data.shape, dtype=np.float32),
+        np.zeros(data.shape, dtype=np.float32),
+        np.zeros(data.shape, dtype=np.float32),
+        np.zeros(data.shape, dtype=np.float32),
+    )
+    ma_data_3 = bn.move_mean(
+        data, window=3, min_count=1, axis=0
+    )  # 3days moving average
+
+    for idx, _unit in enumerate(X_unit):
+        f1[:, idx] = ordinary_return(
+            v_init=ma_data_3[:, idx], v_final=data[:, idx], unit=_unit
+        )
+        f2[:, idx] = ordinary_return(
+            v_init=ma_data_5[:, idx], v_final=data[:, idx], unit=_unit
+        )
+        f3[:, idx] = ordinary_return(
+            v_init=ma_data_10[:, idx], v_final=data[:, idx], unit=_unit
+        )
+        f4[:, idx] = ordinary_return(
+            v_init=data_20[:, idx], v_final=data[:, idx], unit=_unit
+        )
+        f5[:, idx] = ordinary_return(
+            v_init=ma_data_60[:, idx], v_final=data[:, idx], unit=_unit
+        )
+
+    return f1, f2, f3, f4, f5
+
+
+def _get_index_df(v, index_price, ids_to_var_names, target_data=None):
+    x1, x2 = None, None
+    is_exist = False
+
+    for idx, _ in enumerate(ids_to_var_names):
+        if v == ids_to_var_names[idx]:
+            return index_price[:, idx]
+
+    if not is_exist:
+        # assert is_exist, "could not find a given variable name: {}".format(v)
+        return np.zeros(index_price.shape[0])
+
+
+def get_index_df(index_price=None, ids_to_var_names=None, c_name=None):
+    visit_once = 0
+    for market in list(RUNHEADER.mkidx_mkname.values()):
+        if market in c_name:
+            target_name = market
+            visit_once = visit_once + 1
+            print(f"gather variables for {target_name}")
+
+            assert visit_once == 1, "not_allow_duplication"
+
+    c_name = pd.read_csv(c_name, header=None)
+    c_name = c_name.values.squeeze().tolist()
+
+    if RUNHEADER.re_assign_vars:
+        new_vars = []
+
+        if RUNHEADER.manual_vars_additional:
+            manual = pd.read_csv(f"{RUNHEADER.file_data_vars}MANUAL_Indices.csv")
+            manual_vars = list(manual.values.reshape(-1))
+            new_vars = c_name + manual_vars
+            new_vars = list(dict.fromkeys(new_vars))
+
+        c_name = OrderedDict(
+            sorted(zip(new_vars, range(len(new_vars))), key=lambda aa: aa[1])
+        )
+
+        # save var list
+        file_name = RUNHEADER.file_data_vars + target_name
+        pd.DataFrame(data=list(c_name.keys()), columns=["VarName"]).to_csv(
+            file_name + "_Indices_v1.csv",
+            index=None,
+            header=None,
+        )
+        print(f"{file_name}_Indices_v1.csv has been saved")
+
+        # save var desc
+        d_f_summary = pd.read_csv(RUNHEADER.var_desc)
+        basename = (file_name + "_Indices_v1.csv").split(".csv")[0]
+        write_var_desc(list(c_name.keys()), d_f_summary, basename)
+    else:
+        c_name = OrderedDict(
+            sorted(zip(c_name, range(len(c_name))), key=lambda aa: aa[1])
+        )
+
+    index_df = [_get_index_df(v, index_price, ids_to_var_names) for v in c_name.keys()]
+    index_df = np.array(index_df, dtype=np.float32).T
+
+    # check not in source
+    nis = np.sum(index_df, axis=0) == 0
+    c_nis = np.where(nis == True, False, True)
+    index_df = index_df[:, c_nis]
+    c_name = np.array(list(c_name.keys()))[c_nis].tolist()
+
+    return np.array(index_df, dtype=np.float32), OrderedDict(
+        sorted(zip(range(len(c_name)), c_name), key=lambda aa: aa[0])
+    )
+
+
+def splite_rawdata_v1(index_price=None, y_index=None, c_name=None):
+    index_df = pd.read_csv(index_price)
+    index_df = index_df.ffill(axis=0)
+    index_df = index_df.bfill(axis=0)
+    index_dates = index_df.values[:, 0]
+    index_values = np.array(index_df.values[:, 1:], dtype=np.float32)
+    ids_to_var_names = OrderedDict(
+        zip(range(len(index_df.keys()[1:])), index_df.keys()[1:])
+    )
+
+    y_index_df = pd.read_csv(y_index)
+    y_index_df = y_index_df.ffill(axis=0)
+    y_index_df = y_index_df.bfill(axis=0)
+    y_index_dates = y_index_df.values[:, 0]
+    y_index_values = np.array(y_index_df.values[:, 1:], dtype=np.float32)
+    ids_to_class_names = OrderedDict(
+        zip(range(len(y_index_df.keys()[1:])), y_index_df.keys()[1:])
+    )
+
+    # get working dates
+    index_dates, index_values = get_working_dates(index_dates, index_values)
+    y_index_dates, y_index_values = get_working_dates(y_index_dates, y_index_values)
+
+    # the conjunction of target and independent variables
+    dates, sd_data, y_index_dates, y_index_data = get_conjunction_dates_data_v3(
+        index_dates, y_index_dates, index_values, y_index_values
+    )
+    # according to the data type of dependent variables, generate return values
+    num_y_var = y_index_data.shape[1]
+    returns = np.zeros(y_index_data.shape)
+    for y_idx in range(num_y_var):
+        target_name = RUNHEADER.target_id2name(y_idx)
+        unit = current_y_unit(target_name)
+        rtn = ordinary_return(matrix=y_index_data, unit=unit)  # daily return
+        returns[:, y_idx] = rtn[:, y_idx]
+
+    rtn_tuple = (None, None, None, None, None, None)
+    if c_name is not None:
+        for c_name_var in c_name:
+            _sd_data, _ids_to_var_names = get_index_df(
+                sd_data, ids_to_var_names, c_name_var
+            )
+
+            if "data_vars_TOTAL_Indices.csv" in c_name_var:
+                rtn_tuple = (
+                    dates,
+                    copy.deepcopy(_sd_data),
+                    y_index_data,
+                    returns,
+                    ids_to_class_names,
+                    copy.deepcopy(_ids_to_var_names),
+                )
+
+    return rtn_tuple
+
+
+def check_nan(data, keys):
+    check = np.argwhere(np.sum(np.isnan(data), axis=0) == 1)
+    if len(check) > 0:
+        raise ValueError(f"{keys[check.reshape(len(check))]} contains nan values")
+
+
+def get_conjunction_dates_data_v3(sd_dates, y_index_dates, sd_data, y_index_data):
+    assert len(sd_dates) == len(sd_data), "length check"
+    assert len(y_index_dates) == len(y_index_data), "length check"
+    assert len(np.argwhere(np.isnan(sd_data))) == 0, ValueError("data contains nan")
+    assert y_index_dates.ndim == sd_dates.ndim, "check dimension"
+    assert y_index_dates.ndim == 1, "check dimension"
+
+    def _get_conjunction_dates_data_v3(s_dates, t_dates, t_data):
+        conjunctive_idx = [np.argwhere(t_dates == _dates) for _dates in s_dates]
+        conjunctive_idx = sorted(
+            [it[0][0] for it in conjunctive_idx if it.shape[0] == 1]
+        )
+        return t_data[conjunctive_idx], t_dates[conjunctive_idx]
+
+    sd_data, sd_dates = _get_conjunction_dates_data_v3(y_index_dates, sd_dates, sd_data)
+    y_index_data, y_index_dates = _get_conjunction_dates_data_v3(
+        sd_dates, y_index_dates, y_index_data
+    )
+    assert np.sum(sd_dates == y_index_dates) == len(y_index_dates), "check it"
+    assert len(sd_data) == len(y_index_data), "check it"
+
+    sd_data = np.array(sd_data, dtype=np.float32)
+    y_index_data = np.array(y_index_data, dtype=np.float32)
+
+    check_nan(sd_data, np.arange(sd_data.shape[1]))
+    check_nan(y_index_data, np.arange(y_index_data.shape[1]))
+
+    return sd_dates, sd_data, y_index_dates, y_index_data
+
+
+def get_working_dates(dates, data):
+    """Retrieve working days
+    Args:
+    path : raw data path
+
+    """
+    assert dates.shape[0] == data.shape[0], "the number of rows are different"
+
+    # the data from monday to friday
+    working_days_index = []
+    for i, val in enumerate(dates):
+        tmp_date = datetime.datetime.strptime(val, "%Y-%m-%d")
+        if tmp_date.weekday() < 5:  # keep working days
+            working_days_index.append(i)
+        dates[i] = tmp_date.strftime("%Y-%m-%d")
+
+    dates = dates[working_days_index]  # re-store working days
+    data = data[working_days_index]  # re-store working days
+    assert dates.shape[0] == data.shape[0], "the number of rows are different"
+
+    return dates, data
+
 
 def get_domain_on_CDSW_env(domain):
     for it in ["cdsw_20", "cdsw_60", "cdsw_120"]:
-        if it in domain:
+        if it in domain:  # experimental on CDSW environments
             fp = open("{}.txt".format(domain), "r")
             domain = fp.readline().replace("\n", "")
             fp.close()

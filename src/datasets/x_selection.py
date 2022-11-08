@@ -98,7 +98,7 @@ def get_uniqueness(
     # data = cor
 
     with joblib.parallel_backend("ray"):
-        cor, p = spearmanr(sd_data, axis=0)
+        cor, _ = spearmanr(sd_data, axis=0)
     n_row, n_col = cor.shape
     data = cor
 
@@ -151,10 +151,11 @@ def get_uniqueness_without_dates(
     th=0.975,
 ):
     assert (
-        (from_file == False) or (_data is not None) or (file_name is None)
+        (from_file is False) or (_data is not None) or (file_name is None)
     ), "None Defined method"
 
-    col_name = _dict if type(_dict) is list else list(_dict.values())
+    # col_name = _dict if type(_dict) is list else list(_dict.values())
+    col_name = _dict if isinstance(_dict, list) else list(_dict.values())
 
     th = float(th)
     if not from_file:
@@ -174,7 +175,7 @@ def get_uniqueness_without_dates(
     # data = cor
 
     with joblib.parallel_backend("ray"):
-        cor, p = spearmanr(sd_data, axis=0)
+        cor, _ = spearmanr(sd_data, axis=0)
     n_row, n_col = cor.shape
     data = cor
 

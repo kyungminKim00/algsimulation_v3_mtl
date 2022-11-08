@@ -1,43 +1,31 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 16 14:21:21 2018
 
 @author: kim KyungMin
 """
+from __future__ import absolute_import, division, print_function
 
-import header.index_forecasting.RUNHEADER as RUNHEADER
-import sc_parameters as scp
-
-if RUNHEADER.release:
-    from libs import index_forecasting_adhoc
-    from libs.datasets import generate_val_test_with_X
-else:
-    import index_forecasting_adhoc
-    from datasets import generate_val_test_with_X
-from datasets.index_forecasting_protobuf2pickle import DataSet
-import datasets.index_forecasting_protobuf2pickle as index_forecasting_protobuf2pickle
-
-import index_forecasting_test
-
-from multiprocessing.managers import BaseManager
-
-import pandas as pd
+import argparse
+import datetime
 import os
+import shutil
+from multiprocessing.managers import BaseManager
 
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+import index_forecasting_adhoc
+import index_forecasting_test
+import sc_parameters as scp
+import util
+from datasets import generate_val_test_with_X, index_forecasting_protobuf2pickle
+from header.index_forecasting import RUNHEADER
+from util import get_domain_on_CDSW_env
 
 matplotlib.use("agg")
-import shutil
-import argparse
-import datetime
-import util
-from util import get_domain_on_CDSW_env
-import numpy as np
 
 
 def refine_jason_list(zip_info, MAX_HISTORICAL_MODELS=5):

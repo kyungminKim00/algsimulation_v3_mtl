@@ -6,7 +6,8 @@ import numpy as np
 """
 release: bool = False
 use_historical_model: bool = True  # the historical best or the best model at the moment
-re_assign_vars: bool = True
+re_assign_vars: bool = True  # add forced variables
+manual_vars_additional: bool = True  # add forced variables
 b_select_model_batch: bool = False  # For experimentals
 dataset_version: str = None
 forward_ndx: int = None
@@ -33,7 +34,6 @@ m_main_replay_start: int = None
 m_target_index: int = None
 target_name: str = None
 m_name: str = None  # Caution: the directory would be deleted and then re-created
-manual_vars_additional: bool = True
 b_activate: bool = True  # check status before running the model selection script
 r_model_cnt: int = (
     7  # at least 10 models are required to run the model selection script
@@ -201,6 +201,77 @@ if m_train_mode == 1:
 
 """Declare functions
 """
+domain_search_parameter = {
+    "INX_20": 1,
+    "KS_20": 1,
+    "Gold_20": 1,
+    "FTSE_20": 1,
+    "GDAXI_20": 1,
+    "SSEC_20": 1,
+    "BVSP_20": 1,
+    "N225_20": 1,
+    "INX_60": 2,
+    "KS_60": 2,
+    "Gold_60": 2,
+    "FTSE_60": 2,
+    "GDAXI_60": 2,
+    "SSEC_60": 2,
+    "BVSP_60": 2,
+    "N225_60": 2,
+    "INX_120": 3,
+    "KS_120": 3,
+    "Gold_120": 3,
+    "FTSE_120": 3,
+    "GDAXI_120": 3,
+    "SSEC_120": 3,
+    "BVSP_120": 3,
+    "N225_120": 3,
+    "US10YT_20": 4,
+    "GB10YT_20": 4,
+    "DE10YT_20": 4,
+    "KR10YT_20": 4,
+    "CN10YT_20": 4,
+    "JP10YT_20": 4,
+    "BR10YT_20": 4,
+    "US10YT_60": 5,
+    "GB10YT_60": 5,
+    "DE10YT_60": 5,
+    "KR10YT_60": 5,
+    "CN10YT_60": 5,
+    "JP10YT_60": 5,
+    "BR10YT_60": 5,
+    "US10YT_120": 6,
+    "GB10YT_120": 6,
+    "DE10YT_120": 6,
+    "KR10YT_120": 6,
+    "CN10YT_120": 6,
+    "JP10YT_120": 6,
+    "BR10YT_120": 6,
+    "TOTAL_20": 7,
+    "TOTAL_60": 8,
+    "TOTAL_120": 9,
+}
+mkidx_mkname = {
+    0: "INX",
+    1: "KS",
+    2: "Gold",
+    3: "US10YT",
+    4: "FTSE",
+    5: "GDAXI",
+    6: "SSEC",
+    7: "BVSP",
+    8: "N225",
+    9: "GB10YT",
+    10: "DE10YT",
+    11: "KR10YT",
+    12: "CN10YT",
+    13: "JP10YT",
+    14: "BR10YT",
+    15: "TOTAL",
+}
+forward_map = {20: 1, 60: 2, 120: 3}
+mkname_mkidx = {v: k for k, v in mkidx_mkname.items()}
+mkname_dataset = {v: "v" + str(k + 11) for k, v in mkidx_mkname.items()}
 
 
 def init_var(args) -> Tuple[int, str, str]:
@@ -210,58 +281,8 @@ def init_var(args) -> Tuple[int, str, str]:
     return m_target_index, target_name, m_name
 
 
-def target_id2name(
-    m_target_index,
-) -> Literal[
-    "INX",
-    "KS",
-    "Gold",
-    "US10YT",
-    "FTSE",
-    "GDAXI",
-    "SSEC",
-    "BVSP",
-    "N225",
-    "GB10YT",
-    "DE10YT",
-    "KR10YT",
-    "CN10YT",
-    "JP10YT",
-    "BR10YT",
-    "",
-]:
-    target_name: str = ""
-    if m_target_index == 0:
-        target_name = "INX"
-    elif m_target_index == 1:
-        target_name = "KS"
-    elif m_target_index == 2:
-        target_name = "Gold"
-    elif m_target_index == 3:
-        target_name = "US10YT"
-    elif m_target_index == 4:
-        target_name = "FTSE"
-    elif m_target_index == 5:
-        target_name = "GDAXI"
-    elif m_target_index == 6:
-        target_name = "SSEC"
-    elif m_target_index == 7:
-        target_name = "BVSP"
-    elif m_target_index == 8:
-        target_name = "N225"
-    elif m_target_index == 9:
-        target_name = "GB10YT"
-    elif m_target_index == 10:
-        target_name = "DE10YT"
-    elif m_target_index == 11:
-        target_name = "KR10YT"
-    elif m_target_index == 12:
-        target_name = "CN10YT"
-    elif m_target_index == 13:
-        target_name = "JP10YT"
-    elif m_target_index == 14:
-        target_name = "BR10YT"
-    return target_name
+def target_id2name(m_target_index):
+    return mkidx_mkname[m_target_index]
 
 
 def get_file_name(m_target_index, file_data_vars) -> str:

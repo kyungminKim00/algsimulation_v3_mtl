@@ -10,10 +10,7 @@ import header.index_forecasting.RUNHEADER as RUNHEADER
 from util import funTime, json2dict
 from datasets.windowing import rolling_window
 
-if RUNHEADER.release:
-    from libs.datasets import generate_val_test_with_X
-else:
-    from datasets import generate_val_test_with_X
+from datasets import generate_val_test_with_X
 
 
 def get_x_dates(model_location, tf_record_location, forward_ndx):

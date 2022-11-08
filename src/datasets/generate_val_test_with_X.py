@@ -17,6 +17,7 @@ import pickle
 import sys
 from collections import OrderedDict
 
+import bottleneck as bn
 import header.index_forecasting.RUNHEADER as RUNHEADER
 import numpy as np
 import pandas as pd
@@ -26,26 +27,27 @@ from util import (
     _remove_cond,
     _replace_cond,
     current_y_unit,
-    dict2json,
-    find_date,
-    funTime,
-    get_manual_vars_additional,
+    get_corr,
+    ma,
+    normalized_spread,
     ordinary_return,
     trans_val,
 )
 
 from datasets import dataset_utils
-from datasets.decoder import pkexample_type_A, pkexample_type_B, pkexample_type_C
+from datasets.decoder import pkexample_type_A, pkexample_type_B
 from datasets.unit_datetype_des_check import write_var_desc
 from datasets.windowing import (
     fun_cov,
     fun_cross_cov,
     fun_cumsum,
-    fun_mean,
     rolling_apply,
     rolling_apply_cov,
     rolling_apply_cross_cov,
 )
+
+# import tf_slim as slim
+# slim.variable
 
 
 class ReadData(object):
@@ -307,20 +309,6 @@ class ReadData(object):
 
         # extract a patch
         self._get_patch(base_date, train_sample, historical_y)
-
-
-# def _get_dataset_filename(dataset_dir, split_name, cv_idx):
-#     if split_name == "test":
-#         output_filename = _FILE_PATTERN % (cv_idx, split_name)
-#     else:
-#         output_filename = _FILE_PATTERN % (cv_idx, split_name)
-
-#     return "{0}/{1}".format(dataset_dir, output_filename)
-
-
-import tf_slim as slim
-
-slim.variable
 
 
 def cv_index_configuration(date, verbose):
@@ -1095,102 +1083,66 @@ def splite_rawdata_v1(index_price=None, y_index=None, c_name=None):
     return dates, sd_data, y_index_data, returns, ids_to_class_names, ids_to_var_names
 
 
-def ma(data):
-    # windowing for sd_data, according to the price
-    ma_data_5 = rolling_apply(fun_mean, data, 5)  # 5days moving average
-    ma_data_10 = rolling_apply(fun_mean, data, 10)
-    ma_data_20 = rolling_apply(fun_mean, data, 20)
-    ma_data_60 = rolling_apply(fun_mean, data, 60)
-    return ma_data_5, ma_data_10, ma_data_20, ma_data_60
+# def triangular_vector(data):
+#     row, n_var, _ = data.shape
+#     data = data.reshape(row, n_var**2)
+
+#     # extract upper-triangular components
+#     del_idx = list()
+#     for n_idx in np.arange(n_var):
+#         if n_idx == 0:
+#             del_idx.append(0)
+#         else:
+#             for n_idx2 in np.arange(n_idx + 1):
+#                 del_idx.append(n_idx * n_var + n_idx2)
+#     triangular_idx = np.delete(np.arange(n_var**2), del_idx)
+
+#     return data[:, triangular_idx]
 
 
-# def normalized_spread(data, ma_data_5, ma_data_10, data_20, ma_data_60):
-#     return ma_data_5-data_20, data-ma_data_5, data-ma_data_10, data-data_20, data-ma_data_60
+# # dont move to util
+# def _getcorr(
+#     data, target_data, base_first_momentum, num_cov_obs, b_scaler=True, opt_mask=None
+# ):
+#     _data = np.hstack([data, np.expand_dims(target_data, axis=1)])
+#     ma_data = bn.move_mean(
+#         _data, window=base_first_momentum, min_count=1, axis=0
+#     )  # use whole train samples
+
+#     cov = rolling_apply_cov(fun_cov, ma_data, num_cov_obs, b_scaler)
+#     cov = cov[:, :, -1]
+#     cov = cov[:, :-1]
+
+#     tmp_cov = np.where(np.isnan(cov), 0, cov)
+#     tmp_cov = np.abs(tmp_cov)
+
+#     daily_cov_raw = tmp_cov
+#     tmp_cov = np.where(tmp_cov >= opt_mask, 1, 0)
+
+#     return tmp_cov, daily_cov_raw
 
 
-def normalized_spread(data, ma_data_5, ma_data_10, data_20, ma_data_60, X_unit):
-    f1, f2, f3, f4, f5 = (
-        np.zeros(data.shape, dtype=np.float32),
-        np.zeros(data.shape, dtype=np.float32),
-        np.zeros(data.shape, dtype=np.float32),
-        np.zeros(data.shape, dtype=np.float32),
-        np.zeros(data.shape, dtype=np.float32),
-    )
-    ma_data_3 = rolling_apply(fun_mean, data, 3)  # 3days moving average
+# # dont move to util
+# def get_corr(data, target_data, x_unit=None, b_scaler=True, opt_mask=None):
+#     base_first_momentum, num_cov_obs = 5, 40  # default
 
-    for idx in range(len(X_unit)):
-        f1[:, idx] = ordinary_return(
-            v_init=ma_data_3[:, idx], v_final=data[:, idx], unit=X_unit[idx]
-        )
-        f2[:, idx] = ordinary_return(
-            v_init=ma_data_5[:, idx], v_final=data[:, idx], unit=X_unit[idx]
-        )
-        f3[:, idx] = ordinary_return(
-            v_init=ma_data_10[:, idx], v_final=data[:, idx], unit=X_unit[idx]
-        )
-        f4[:, idx] = ordinary_return(
-            v_init=data_20[:, idx], v_final=data[:, idx], unit=X_unit[idx]
-        )
-        f5[:, idx] = ordinary_return(
-            v_init=ma_data_60[:, idx], v_final=data[:, idx], unit=X_unit[idx]
-        )
+#     # 15번 y 흘려 주기
+#     tmp_cov, daily_cov_raw = _getcorr(
+#         data, target_data, base_first_momentum, num_cov_obs, b_scaler, opt_mask
+#     )
 
-    return f1, f2, f3, f4, f5
+#     if x_unit is not None:
+#         add_vol_index = np.array(x_unit) == "volatility"
+#         tmp_cov = add_vol_index + tmp_cov
+#         tmp_cov = np.where(tmp_cov >= 1, 1, 0)
 
-
-def triangular_vector(data):
-    row, n_var, _ = data.shape
-    data = data.reshape(row, n_var**2)
-
-    # extract upper-triangular components
-    del_idx = list()
-    for n_idx in np.arange(n_var):
-        if n_idx == 0:
-            del_idx.append(0)
-        else:
-            for n_idx2 in np.arange(n_idx + 1):
-                del_idx.append(n_idx * n_var + n_idx2)
-    triangular_idx = np.delete(np.arange(n_var**2), del_idx)
-
-    return data[:, triangular_idx]
-
-
-def _getcorr(
-    data, target_data, base_first_momentum, num_cov_obs, b_scaler=True, opt_mask=None
-):
-    _data = np.hstack([data, np.expand_dims(target_data, axis=1)])
-    ma_data = rolling_apply(
-        fun_mean, _data, base_first_momentum
-    )  # use whole train samples
-    cov = rolling_apply_cov(fun_cov, ma_data, num_cov_obs, b_scaler)
-    cov = cov[:, :, -1]
-    cov = cov[:, :-1]
-
-    tmp_cov = np.where(np.isnan(cov), 0, cov)
-    tmp_cov = np.abs(tmp_cov)
-    tmp_cov = np.where(tmp_cov >= opt_mask, 1, 0)
-
-    return tmp_cov
-
-
-def get_corr(data, target_data, x_unit=None, y_unit=None, b_scaler=True, opt_mask=None):
-    base_first_momentum, num_cov_obs = 5, 40  # default
-    tmp_cov = _getcorr(
-        data, target_data, base_first_momentum, num_cov_obs, b_scaler, opt_mask
-    )
-
-    if x_unit is not None:
-        add_vol_index = np.array(x_unit) == "volatility"
-        tmp_cov = add_vol_index + tmp_cov
-        tmp_cov = np.where(tmp_cov >= 1, 1, 0)
-
-    # mean_cov = np.nanmean(tmp_cov, axis=0)
-    # cov_dict = dict(zip(list(ids_to_var_names.values()), mean_cov.tolist()))
-    # cov_dict = OrderedDict(sorted(cov_dict.items(), key=lambda x: x[1], reverse=True))
-    total_num = int(tmp_cov.shape[1] * np.mean(np.mean(tmp_cov)))
-    print("the average num of variables on daily: {}".format(total_num))
-
-    return tmp_cov
+#     # mean_cov = np.nanmean(tmp_cov, axis=0)
+#     # cov_dict = dict(zip(list(ids_to_var_names.values()), mean_cov.tolist()))
+#     # cov_dict = OrderedDict(sorted(cov_dict.items(), key=lambda x: x[1], reverse=True))
+#     total_num = int(tmp_cov.shape[1] * np.mean(np.mean(tmp_cov)))
+#     print("the average num of variables on daily: {}".format(total_num))
+#     mask = tmp_cov
+#     return mask, daily_cov_raw
 
 
 def configure_inference_dates(dates, s_test=None, e_test=None):
@@ -1233,8 +1185,6 @@ def run(
     """
     if domain == "index_forecasting":
         import header.index_forecasting.RUNHEADER as RUNHEADER
-    elif domain == "market_timing":
-        import header.market_timing.RUNHEADER as RUNHEADER
     else:
         assert False, "None Defined domain problem"
 
@@ -1376,13 +1326,15 @@ def run(
     sd_min = sd_min - sd_min * 0.3  # Buffer
     # differential data
     # sd_diff = ordinary_return(matrix=sd_data)  # daily return
-    sd_diff, y_diff, X_unit, Y_unit = trans_val(
+    sd_diff, _, X_unit, _ = trans_val(
         sd_data,
         y_index_data[:, RUNHEADER.m_target_index],
         ids_to_var_names,
         f_desc=RUNHEADER.var_desc,
         target_name=RUNHEADER.target_name,
     )  # daily return
+    y_diff = returns
+
     sd_diff_max = np.max(sd_diff, axis=0)
     sd_diff_min = np.min(sd_diff, axis=0)
     # historical observation for a dependency variable
@@ -1400,17 +1352,7 @@ def run(
     sd_diff_ma_data_5, sd_diff_ma_data_10, sd_diff_ma_data_20, sd_diff_ma_data_60 = ma(
         sd_diff
     )
-    # # Disable
-    # (
-    #     sd_velocity_ma_data_5,
-    #     sd_velocity_ma_data_10,
-    #     sd_velocity_ma_data_20,
-    #     sd_velocity_ma_data_60,
-    # ) = ma(sd_velocity)
 
-    # Normalized Spread
-    # new features - normalized spread (price data only, otherwise fill zeros)
-    # sd_velocity, sd_velocity_ma_data_5, sd_velocity_ma_data_10, sd_velocity_ma_data_20, sd_velocity_ma_data_60 = normalized_spread(sd_data, sd_ma_data_5, sd_ma_data_10, sd_ma_data_20, sd_ma_data_60)
     (
         sd_velocity,
         sd_velocity_ma_data_5,
@@ -1426,16 +1368,26 @@ def run(
         historical_ar_ma_data_10,
         historical_ar_ma_data_20,
         historical_ar_ma_data_60,
-    ) = ma(historical_ar)
+    ) = (
+        None,
+        None,
+        None,
+        None,
+    )
 
     # windowing for extra data
-    fund_his_30 = rolling_apply(fun_cumsum, returns, 30)  # 30days cumulative sum
-    fund_cov_60 = rolling_apply_cov(fun_cov, returns, 60)  # 60days correlation matrix
-    extra_cor_60 = rolling_apply_cov(fun_cov, sd_diff, 60)  # 60days correlation matrix
-    extra_cor_60 = triangular_vector(extra_cor_60)
+    # fund_his_30 = rolling_apply(fun_cumsum, returns, 30)  # 30days cumulative sum
+    # fund_cov_60 = rolling_apply_cov(fun_cov, returns, 60)  # 60days correlation matrix
+    # extra_cor_60 = rolling_apply_cov(fun_cov, sd_diff, 60)  # 60days correlation matrix
+    # extra_cor_60 = triangular_vector(extra_cor_60)
 
-    mask = get_corr(
-        sd_diff, y_diff, X_unit, Y_unit, False, RUNHEADER.m_mask_corr_th
+    fund_his_30 = None  # 30days cumulative sum
+    fund_cov_60 = None  # 60days correlation matrix
+    extra_cor_60 = None  # 60days correlation matrix
+    extra_cor_60 = None
+
+    mask, _ = get_corr(
+        sd_diff, y_diff, X_unit, False, RUNHEADER.m_mask_corr_th
     )  # mask - binary mask
     # mask = get_corr(
     #     sd_data, y_index_data[:, RUNHEADER.m_target_index]
@@ -1454,9 +1406,7 @@ def run(
     sd_velocity_data_train, sd_velocity_data_test = cut_off_data(
         sd_velocity, cut_off, blind_set_seq, s_test, e_test, operation_mode
     )
-    historical_ar_data_train, historical_ar_data_test = cut_off_data(
-        historical_ar, cut_off, blind_set_seq, s_test, e_test, operation_mode
-    )
+
     sd_ma_data_5_train, sd_ma_data_5_test = cut_off_data(
         sd_ma_data_5, cut_off, blind_set_seq, s_test, e_test, operation_mode
     )
@@ -1493,27 +1443,15 @@ def run(
     sd_velocity_ma_data_60_train, sd_velocity_ma_data_60_test = cut_off_data(
         sd_velocity_ma_data_60, cut_off, blind_set_seq, s_test, e_test, operation_mode
     )
-    historical_ar_ma_data_5_train, historical_ar_ma_data_5_test = cut_off_data(
-        historical_ar_ma_data_5, cut_off, blind_set_seq, s_test, e_test, operation_mode
-    )
-    historical_ar_ma_data_10_train, historical_ar_ma_data_10_test = cut_off_data(
-        historical_ar_ma_data_10, cut_off, blind_set_seq, s_test, e_test, operation_mode
-    )
-    historical_ar_ma_data_20_train, historical_ar_ma_data_20_test = cut_off_data(
-        historical_ar_ma_data_20, cut_off, blind_set_seq, s_test, e_test, operation_mode
-    )
-    historical_ar_ma_data_60_train, historical_ar_ma_data_60_test = cut_off_data(
-        historical_ar_ma_data_60, cut_off, blind_set_seq, s_test, e_test, operation_mode
-    )
-    fund_his_30_train, fund_his_30_test = cut_off_data(
-        fund_his_30, cut_off, blind_set_seq, s_test, e_test, operation_mode
-    )
-    fund_cov_60_train, fund_cov_60_test = cut_off_data(
-        fund_cov_60, cut_off, blind_set_seq, s_test, e_test, operation_mode
-    )
-    extra_cor_60_train, extra_cor_60_test = cut_off_data(
-        extra_cor_60, cut_off, blind_set_seq, s_test, e_test, operation_mode
-    )
+    historical_ar_data_train, historical_ar_data_test = None, None
+    historical_ar_ma_data_5_train, historical_ar_ma_data_5_test = None, None
+    historical_ar_ma_data_10_train, historical_ar_ma_data_10_test = None, None
+    historical_ar_ma_data_20_train, historical_ar_ma_data_20_test = None, None
+    historical_ar_ma_data_60_train, historical_ar_ma_data_60_test = None, None
+    fund_his_30_train, fund_his_30_test = None, None
+    fund_cov_60_train, fund_cov_60_test = None, None
+    extra_cor_60_train, extra_cor_60_test = None, None
+
     mask_train, mask_test = cut_off_data(
         mask, cut_off, blind_set_seq, s_test, e_test, operation_mode
     )
@@ -1570,15 +1508,15 @@ def run(
         sd_velocity_ma_data_10_train,
         sd_velocity_ma_data_20_train,
         sd_velocity_ma_data_60_train,
-        historical_ar_data_train,
-        historical_ar_ma_data_5_train,
-        historical_ar_ma_data_10_train,
-        historical_ar_ma_data_20_train,
-        historical_ar_ma_data_60_train,
+        None,
+        None,
+        None,
+        None,
+        None,
         target_data_train,
-        fund_his_30_train,
-        fund_cov_60_train,
-        extra_cor_60_train,
+        None,
+        None,
+        None,
         mask_train,
         x_seq,
         class_names_to_ids,
@@ -1601,15 +1539,15 @@ def run(
         sd_velocity_ma_data_10_test,
         sd_velocity_ma_data_20_test,
         sd_velocity_ma_data_60_test,
-        historical_ar_data_test,
-        historical_ar_ma_data_5_test,
-        historical_ar_ma_data_10_test,
-        historical_ar_ma_data_20_test,
-        historical_ar_ma_data_60_test,
+        None,
+        None,
+        None,
+        None,
+        None,
         target_data_test,
-        fund_his_30_test,
-        fund_cov_60_test,
-        extra_cor_60_test,
+        None,
+        None,
+        None,
         mask_test,
         x_seq,
         class_names_to_ids,

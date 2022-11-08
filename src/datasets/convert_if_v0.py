@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import datetime
-import math
+
+# import math
 import os
 import pickle
 import sys
@@ -10,7 +11,6 @@ import warnings
 from collections import OrderedDict
 
 import bottleneck as bn
-import header.index_forecasting.RUNHEADER as RUNHEADER
 import numpy as np
 import pandas as pd
 import ray
@@ -25,6 +25,8 @@ from util import (
     dict2json,
     find_date,
     funTime,
+    get_conjunction_dates_data_v3,
+    get_working_dates,
     ordinary_return,
 )
 
@@ -43,152 +45,19 @@ from datasets.windowing import (
 )
 from datasets.x_selection import get_uniqueness, get_uniqueness_without_dates
 
-warnings.filterwarnings("ignore")
+
+@ray.remote
+def ray_wrap_fun(fun, ma_data, x_idx, num_cov_obs):
+    return rolling_apply_cross_cov(fun, ma_data[:, x_idx], ma_data[:, -1], num_cov_obs)[
+        :, 0, 1
+    ]
 
 
-# def cv_index_configuration(date, verbose):
-#     num_per_shard = int(math.ceil(len(date) / float(_NUM_SHARDS)))
-#     start_end_index_list = np.zeros([_NUM_SHARDS, 2])  # start and end index
-#     if verbose == 0:  # train and validation
-#         for shard_id in range(_NUM_SHARDS):
-#             start_end_index_list[shard_id] = [
-#                 shard_id * num_per_shard,
-#                 min((shard_id + 1) * num_per_shard, len(date)),
-#             ]
-#     else:
-#         start_end_index_list[0] = [0, len(date)]  # from 0 to end
-
-#     return _cv_index_configuration(start_end_index_list, verbose), verbose
-
-
-# def _cv_index_configuration(start_end_index_list, verbose):
-#     index_container = list()
-#     validation = list()
-#     train = list()
-#     if verbose == 0:  # train and validation
-#         for idx in range(len(start_end_index_list)):
-#             for ckeck_idx in range(len(start_end_index_list)):
-#                 if ckeck_idx == idx:
-#                     validation.append(start_end_index_list[ckeck_idx])
-#                 else:
-#                     train.append(start_end_index_list[ckeck_idx])
-#             index_container.append([validation, train])
-#             validation = list()
-#             train = list()
-#     else:
-#         index_container = start_end_index_list
-#     return index_container
-
-
-def check_nan(data, keys):
-    check = np.argwhere(np.sum(np.isnan(data), axis=0) == 1)
-    if len(check) > 0:
-        raise ValueError(
-            "{0} contains nan values".format(keys[check.reshape(len(check))])
-        )
-
-
-def get_conjunction_dates_data(sd_dates, y_index_dates, sd_data, y_index_data):
-    sd_dates_true = np.empty(0, dtype=np.int)
-    y_index_dates_true = np.empty(0, dtype=np.int)
-    y_index_dates_true_label = np.empty(0, dtype=np.object)
-
-    for i in range(len(sd_dates)):
-        for k in range(len(y_index_dates)):
-            if (
-                sd_dates[i] == y_index_dates[k]
-            ):  # conjunction of sd_dates and y_index_dates
-                if np.sum(np.isnan(y_index_data[:, 0])) == 0:
-                    sd_dates_true = np.append(sd_dates_true, i)
-                    y_index_dates_true = np.append(y_index_dates_true, k)
-                    y_index_dates_true_label = np.append(
-                        y_index_dates_true_label, y_index_dates[k]
-                    )
-
-    sd_dates = sd_dates[sd_dates_true]
-    sd_data = sd_data[sd_dates_true]
-
-    y_index_dates = y_index_dates[y_index_dates_true]
-
-    assert len(sd_dates) == len(y_index_dates)
-    assert len(sd_dates) == len(y_index_data)
-    check_nan(sd_data, np.arange(sd_data.shape[1]))
-    check_nan(y_index_data, np.arange(y_index_data.shape[1]))
-
-    return sd_dates, sd_data, y_index_data
-
-
-def get_conjunction_dates_data_v3(sd_dates, y_index_dates, sd_data, y_index_data):
-    assert len(sd_dates) == len(sd_data), "length check"
-    assert len(y_index_dates) == len(y_index_data), "length check"
-    assert len(np.argwhere(np.isnan(sd_data))) == 0, ValueError("data contains nan")
-    assert y_index_dates.ndim == sd_dates.ndim, "check dimension"
-    assert y_index_dates.ndim == 1, "check dimension"
-
-    def _get_conjunction_dates_data_v3(s_dates, t_dates, t_data):
-        conjunctive_idx = [np.argwhere(t_dates == _dates) for _dates in s_dates]
-        conjunctive_idx = sorted(
-            [it[0][0] for it in conjunctive_idx if it.shape[0] == 1]
-        )
-        return t_data[conjunctive_idx], t_dates[conjunctive_idx]
-
-    # y_index_data, ref = remove_nan(
-    #     y_index_data, target_col=RUNHEADER.m_target_index, axis=0
-    # )
-    # if len(ref) > 0:
-    #     y_index_dates = np.delete(y_index_dates, ref)
-
-    sd_data, sd_dates = _get_conjunction_dates_data_v3(y_index_dates, sd_dates, sd_data)
-    y_index_data, y_index_dates = _get_conjunction_dates_data_v3(
-        sd_dates, y_index_dates, y_index_data
-    )
-    assert np.sum(sd_dates == y_index_dates) == len(y_index_dates), "check it"
-    assert len(sd_data) == len(y_index_data), "check it"
-
-    sd_data = np.array(sd_data, dtype=np.float32)
-    y_index_data = np.array(y_index_data, dtype=np.float32)
-
-    check_nan(sd_data, np.arange(sd_data.shape[1]))
-    check_nan(y_index_data, np.arange(y_index_data.shape[1]))
-
-    return sd_dates, sd_data, y_index_dates, y_index_data
-
-
-# def load_file(file_location, file_format):
-#     with open(file_location, "rb") as fp:
-#         if file_format == "npy":
-#             return np.load(fp)
-#         elif file_format == "pkl":
-#             return pickle.load(fp)
-#         else:
-#             raise ValueError("non-support file format")
-
-
-def get_working_dates(dates, data):
-    """Retrieve working days
-    Args:
-    path : raw data path
-
-    """
-    assert dates.shape[0] == data.shape[0], "the number of rows are different"
-
-    # the data from monday to friday
-    working_days_index = list()
-    for i in range(len(dates)):
-        tmp_date = datetime.datetime.strptime(dates[i], "%Y-%m-%d")
-        if tmp_date.weekday() < 5:  # keep working days
-            working_days_index.append(i)
-        dates[i] = tmp_date.strftime("%Y-%m-%d")
-
-    dates = dates[working_days_index]  # re-store working days
-    data = data[working_days_index]  # re-store working days
-    assert dates.shape[0] == data.shape[0], "the number of rows are different"
-
-    return dates, data
-
-
-# def replace_inf(values):
-#     return _replace_cond(np.isinf, values)
+@ray.remote
+def ray_wrap_lr(X, Y):
+    warnings.filterwarnings("ignore")
+    result = sm.OLS(Y, X).fit()
+    return [np.abs(result.params[0]), result.rsquared]
 
 
 def data_from_csv(filename, eod=None):
@@ -221,13 +90,6 @@ def data_from_csv(filename, eod=None):
 def get_data_corresponding(index_price, y_index, eod=None):
     index_dates, index_values, ids_to_var_names = data_from_csv(index_price, eod)
     y_index_dates, y_index_values, ids_to_class_names = data_from_csv(y_index, eod)
-
-    # # get working dates
-    # index_dates, index_values = get_working_dates(index_dates, index_values)
-    # y_index_dates, y_index_values = get_working_dates(y_index_dates, y_index_values)
-
-    # replace nan with forward fill
-    # index_values = replace_nan(index_values)
 
     # align dates of target and independent variables (the conjunction of target and independent variables)
     dates, data, y_index_dates, y_index_data = get_conjunction_dates_data_v3(
@@ -267,29 +129,6 @@ def splite_rawdata_v1(index_price=None, y_index=None, eod=None):
         ids_to_var_names,
         y_index_data,
     )
-
-
-# def _pool_adhoc1(data, ids_to_var_names, opt="None", th=0.975):
-#     return get_uniqueness(
-#         from_file=False, _data=data, _dict=ids_to_var_names, opt=opt, th=th
-#     )
-
-
-# def _pool_adhoc2(data, ids_to_var_names):
-#     return unit_datetype.quantising_vars(data, ids_to_var_names)
-
-
-@ray.remote
-def ray_wrap_fun(fun, ma_data, x_idx, num_cov_obs):
-    return rolling_apply_cross_cov(fun, ma_data[:, x_idx], ma_data[:, -1], num_cov_obs)[
-        :, 0, 1
-    ]
-
-
-@ray.remote
-def ray_wrap_lr(X, Y):
-    result = sm.OLS(Y, X).fit()
-    return [np.abs(result.params[0]), result.rsquared]
 
 
 def pool_ordering_refine(
@@ -406,11 +245,13 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data):
     )
 
     def _save(_dates, _data, _ids_to_var_names):
-        file_name = RUNHEADER.file_data_vars + "total_market"
-        _data = np.append(np.expand_dims(_dates, axis=1), _data, axis=1)
-        # print("{} saving".format(file_name))
+        file_name = RUNHEADER.file_data_vars + RUNHEADER.target_id2name(
+            RUNHEADER.m_target_index
+        )
 
-        _mode = ".csv"
+        # file_name = RUNHEADER.file_data_vars + "TOTAL"
+        _data = np.append(np.expand_dims(_dates, axis=1), _data, axis=1)
+
         pd.DataFrame(data=list(_ids_to_var_names.values()), columns=["VarName"]).to_csv(
             file_name + "_Indices.csv", index=None, header=None
         )
@@ -418,10 +259,6 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data):
         # rewrite
         unit_datetype.script_run(file_name + "_Indices.csv")
 
-        # pd.DataFrame(
-        #     data=_data, columns=["TradeDate"] + list(_ids_to_var_names.values())
-        # ).to_csv(file_name + _mode, index=None)
-        # print("save done {} ".format(file_name + _mode))
         os._exit(0)
 
     data, ids_to_var_names, var_names_to_ids = pool_ordering_refine(
