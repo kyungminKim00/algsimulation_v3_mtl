@@ -23,7 +23,6 @@ from util import (
     _replace_cond,
     current_y_unit,
     dict2json,
-    find_date,
     funTime,
     get_conjunction_dates_data_v3,
     get_working_dates,
@@ -144,70 +143,98 @@ def pool_ordering_refine(
 ):
     num_y_var = target_data.shape[1]
     ordered_ids_list = []
-    for y_idx in range(num_y_var):
-        data = np.hstack([data, np.expand_dims(target_data[:, y_idx], axis=1)])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        for y_idx in range(num_y_var):
+            data = np.hstack([data, np.expand_dims(target_data[:, y_idx], axis=1)])
 
-        # data = np.concatenate([data, target_data[:, idx]], axis=1)
+            # data = np.concatenate([data, target_data[:, idx]], axis=1)
 
-        # latest_3y_samples = num_sample_obs[1] - (20 * 12 * 3)
+            # latest_3y_samples = num_sample_obs[1] - (20 * 12 * 3)
 
-        ma_data = bn.move_mean(
-            data[num_sample_obs[0] : num_sample_obs[1], :],
-            window=base_first_momentum,
-            min_count=1,
-            axis=0,
-        )
-
-        # the variable selection with cross corealation
-        print(
-            f"[{ma_data.shape[1] - 1} vars with {RUNHEADER.target_id2name(y_idx)}] cross corrleation"
-        )
-        res = [
-            ray_wrap_fun.remote(fun_cross_cov, ma_data, x_idx, num_cov_obs)
-            for x_idx in range(ma_data.shape[1] - 1)
-        ]
-        new_cov = np.array(ray.get(res)).T
-
-        # liner regression
-        tmp_cov = np.where(np.isnan(new_cov), 0, new_cov)
-        res = [
-            ray_wrap_lr.remote(
-                np.arange(tmp_cov.shape[0]),
-                tmp_cov[:, var_idx],
+            ma_data = bn.move_mean(
+                data[num_sample_obs[0] : num_sample_obs[1], :],
+                window=base_first_momentum,
+                min_count=1,
+                axis=0,
             )
-            for var_idx in range(tmp_cov.shape[1])
-        ]
-        lr_res = np.array(ray.get(res))
-        mean_coef, mean_rs = bn.nanmean(lr_res, axis=0)
-        lr_dict = dict(zip(list(ids_to_var_names.values()), lr_res.tolist()))
-        lr_dict = OrderedDict(
-            [
-                [key, np.abs(val[0])]
-                for key, val in lr_dict.items()
-                if (val[1] > mean_rs) and (val[0] > mean_coef)
+
+            # the variable selection with cross corealation - part 1 pivot to calculate mean_cor_pivot, std_cor_pivot
+            print(
+                f"[{ma_data.shape[1] - 1} vars with {RUNHEADER.target_id2name(y_idx)}] cross corrleation"
+            )
+            res = [
+                ray_wrap_fun.remote(fun_cross_cov, ma_data, x_idx, num_cov_obs)
+                for x_idx in range(ma_data.shape[1] - 1)
             ]
-        )
-        lr_dict = OrderedDict(sorted(lr_dict.items(), key=lambda x: x[1], reverse=True))
+            new_cov = np.array(ray.get(res)).T
+            mean_cor_pivot, std_cor_pivot = np.nanmean(new_cov, axis=0), np.nanstd(
+                new_cov, axis=0
+            )
 
-        # 2-3. Re-assign Dict & Data
-        ordered_ids = [var_names_to_ids[name] for name in lr_dict.keys()]
-        # 2-3-1. Apply max_num of variables
-        print(f"the num of variables exceeding explane_th: {len(ordered_ids)}")
-        num_variables = len(ordered_ids)
-        if num_variables > max_allowed_num_variables:
-            ordered_ids = ordered_ids[:max_allowed_num_variables]
-        print(
-            f"the num of selected variables {len(ordered_ids)} from {num_variables} for {RUNHEADER.target_id2name(y_idx)}"
-        )
-        ordered_ids_list = ordered_ids_list + ordered_ids
+            # determin marginal area
+            upper = mean_cor_pivot + std_cor_pivot * RUNHEADER.var_select_factor
+            lower = mean_cor_pivot - std_cor_pivot * RUNHEADER.var_select_factor
 
-        # for Monitoring Service
-        save_name = f"{RUNHEADER.file_data_vars}{RUNHEADER.target_id2name(y_idx)}"
-        pd.DataFrame(
-            data=[ids_to_var_names[ids] for ids in ordered_ids], columns=["VarName"]
-        ).to_csv(save_name + "_Indices.csv", index=None, header=None)
-        # rewrite
-        unit_datetype.script_run(save_name + "_Indices.csv")
+            # # use a half of samples
+            # # the variable selection with cross corealation - part 2 to calculate mean_cor
+            new_cov = new_cov[-RUNHEADER.m_pool_samples :, :]
+            mean_cor = np.nanmean(new_cov, axis=0)
+
+            # liner regression
+            tmp_cov = np.where(np.isnan(new_cov), 0, new_cov)
+            res = [
+                ray_wrap_lr.remote(
+                    np.arange(tmp_cov.shape[0]),
+                    tmp_cov[:, var_idx],
+                )
+                for var_idx in range(tmp_cov.shape[1])
+            ]
+            lr_res = np.array(ray.get(res))
+            mean_coef, mean_rs = np.nanmean(lr_res, axis=0)  # basket coef and rs
+
+            lr_res = np.concatenate(
+                [
+                    lr_res,
+                    mean_cor.reshape([-1, 1]),
+                    upper.reshape([-1, 1]),
+                    lower.reshape([-1, 1]),
+                ],
+                axis=1,
+            )
+
+            lr_dict = dict(zip(list(ids_to_var_names.values()), lr_res.tolist()))
+            lr_dict = OrderedDict(
+                [
+                    [key, np.abs(val[0])]
+                    for key, val in lr_dict.items()
+                    if ((val[1] > mean_rs) and (val[0] > mean_coef))
+                    and ((val[2] > val[3]) or (val[2] < val[4]))
+                ]
+            )
+            lr_dict = OrderedDict(
+                sorted(lr_dict.items(), key=lambda x: x[1], reverse=True)
+            )
+
+            # 2-3. Re-assign Dict & Data
+            ordered_ids = [var_names_to_ids[name] for name in lr_dict.keys()]
+            # 2-3-1. Apply max_num of variables
+            print(f"the num of variables exceeding explane_th: {len(ordered_ids)}")
+            num_variables = len(ordered_ids)
+            if num_variables > max_allowed_num_variables:
+                ordered_ids = ordered_ids[:max_allowed_num_variables]
+            print(
+                f"the num of selected variables {len(ordered_ids)} from {num_variables} for {RUNHEADER.target_id2name(y_idx)}"
+            )
+            ordered_ids_list = ordered_ids_list + ordered_ids
+
+            # for Monitoring Service
+            save_name = f"{RUNHEADER.file_data_vars}{RUNHEADER.target_id2name(y_idx)}"
+            pd.DataFrame(
+                data=[ids_to_var_names[ids] for ids in ordered_ids], columns=["VarName"]
+            ).to_csv(save_name + "_Indices.csv", index=None, header=None)
+            # rewrite
+            unit_datetype.script_run(save_name + "_Indices.csv")
 
     ordered_ids = list(set(ordered_ids_list))
     # 2-3-2. re-assign
@@ -231,12 +258,12 @@ def gen_pool(dates, sd_data, ids_to_var_names, target_data):
     base_first_momentum = 5  # default 5
     # RUNHEADER.m_pool_sample_start = (len(dates) - 750)  # for operation, it has been changed after a experimental
     RUNHEADER.m_pool_sample_start = (
-        len(dates) - 70
-    )  # for operation, it has been changed after a experimental
+        len(dates) - RUNHEADER.m_pool_samples * 2
+    )  # for operation, it has been changed after a experimental  # 140
     RUNHEADER.m_pool_sample_end = len(dates)
     num_sample_obs = [RUNHEADER.m_pool_sample_start, RUNHEADER.m_pool_sample_end]
-    num_cov_obs = 25  # default 20
-    max_allowed_num_variables = 25  # default 20 각 시장별 20개 변수 선택 15*20 -> 300
+    num_cov_obs = 20  # default 20
+    max_allowed_num_variables = 25  # default 25 각 시장별 20개 변수 선택 15*25
     explane_th = RUNHEADER.explane_th
     plot = True  # default False
     opts = None

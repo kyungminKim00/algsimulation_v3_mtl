@@ -1,5 +1,7 @@
 import datetime
 from collections import OrderedDict
+from itertools import groupby
+from operator import itemgetter
 
 import header.index_forecasting.RUNHEADER as RUNHEADER
 import numpy as np
@@ -87,13 +89,10 @@ def get_unique_list(var_list):
 def script_run(f_name=None):
     if f_name is None:  # Demo Test
         f_index = "./datasets/rawdata/index_data/data_vars_US10YT_Indices.csv"
-        max_x = 300
         assert False, "Demo Disabled"
     else:  # header configured
         f_index = f_name
-        max_x = RUNHEADER.max_x
-        # print("script_run - f_index: {}".format(f_index))
-        # print("script_run - max_x: {}".format(max_x))
+
     f_summary = RUNHEADER.var_desc
 
     # load data
@@ -115,17 +114,6 @@ def script_run(f_name=None):
         else:
             var_list = add_item(it, d_f_summary, var_list, b_percent_except=True)
 
-    # # merge & save - with derived variables
-    # source_1_head = get_unique_list(var_list)[: int(max_x * 0.5)]  # none derived vars
-    # source_2_head = get_unique_list(d_f_index)[: int(max_x * 0.5)]
-    # source_1_tail = get_unique_list(d_f_index)[int(max_x * 0.5) :]
-    # my_final_list = OrderedDict.fromkeys(source_1_head + source_2_head)
-    # my_final_list = list(my_final_list) + source_1_tail
-    # pd.DataFrame(data=my_final_list, columns=["VarName"]).to_csv(
-    #     f_index, index=None, header=None
-    # )
-
-    # merge & save - without derived variables
     source_1_head = get_unique_list(var_list)
     my_final_list = OrderedDict.fromkeys(source_1_head)
     pd.DataFrame(data=list(my_final_list.keys()), columns=["VarName"]).to_csv(
@@ -169,13 +157,12 @@ def write_var_desc_with_correlation(
     time_now = performed_date
 
     # save desc
-    var_desc = list()
-    for idx in range(len(my_final_list)):
-        it = my_final_list[idx]
-        if "-" in it:
+    var_desc = []
+    for _, val in enumerate(my_final_list):
+        if "-" in val:
             pass
         else:
-            Condition = d_f_summary["var_name"] == it
+            Condition = d_f_summary["var_name"] == val
             tmp = (
                 [
                     time_now,
@@ -183,7 +170,7 @@ def write_var_desc_with_correlation(
                     RUNHEADER.target_name,
                 ]
                 + d_f_summary[Condition].values.squeeze().tolist()[1:]
-                + [my_final_cov[-1, idx]]
+                + [0.0]
             )
             var_desc.append(tmp)
     pd.DataFrame(
@@ -192,7 +179,7 @@ def write_var_desc_with_correlation(
         + list(d_f_summary.keys()[1:])
         + ["score"],
     ).to_csv(basename, index=None, sep="|")
-    print("{} has been saved".format(basename))
+    print(f"{basename} has been saved")
 
 
 # if __name__ == "__main__":

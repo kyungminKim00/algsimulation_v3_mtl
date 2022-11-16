@@ -1,34 +1,28 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 16 14:21:21 2018
 
 @author: kim KyungMin
 """
+from __future__ import absolute_import, division, print_function
 
-import header.index_forecasting.RUNHEADER as RUNHEADER
-import sc_parameters as scp
-from datasets.index_forecasting_protobuf2pickle import DataSet
-import util
-from util import get_domain_on_CDSW_env
-
-import index_forecasting_train
-from multiprocessing.managers import BaseManager
-import shutil
-import os
-import pickle
 import argparse
 import datetime
+import os
+import pickle
+import shutil
+from multiprocessing.managers import BaseManager
 
+import index_forecasting_train
+import sc_parameters as scp
+import util
+from datasets.index_forecasting_protobuf2pickle import DataSet
+from header.index_forecasting import RUNHEADER
+from util import get_domain_on_CDSW_env
 
 if __name__ == "__main__":
     try:
         """configuration"""
-        # RUNHEADER = __import__('header.index_forecasting.RUNHEADER', fromlist=['RUNHEADER'])
-
         time_now = (
             str(datetime.datetime.now())[:-10]
             .replace(":", "-")
@@ -37,26 +31,42 @@ if __name__ == "__main__":
         )
 
         parser = argparse.ArgumentParser("")
-        # init args
-        parser.add_argument("--m_online_buffer", type=int, default=0)
-        parser.add_argument("--search_variables", type=int, default=0)
-        parser.add_argument("--search_parameter", type=int, default=None)
-        parser.add_argument("--process_id", type=int, required=True)
-        parser.add_argument(
-            "--on_cloud", type=int, default=1
-        )  # for debug test, load chunks of samples or all samples
-        parser.add_argument("--dataset_version", type=str, default=None)
-        parser.add_argument("--n_cpu", type=int, default=0)
-        parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2]
-        parser.add_argument("--forward_ndx", type=int, default=None)  # [30 | 60 | 120]
-        parser.add_argument("--ref_pid", type=int, default=None)
-        parser.add_argument("--domain", type=str, required=True)
-
-        # # Demo
+        # # init args
         # parser.add_argument("--m_online_buffer", type=int, default=0)
         # parser.add_argument("--search_variables", type=int, default=0)
         # parser.add_argument("--search_parameter", type=int, default=None)
-        # parser.add_argument("--process_id", type=int, default=4)
+        # parser.add_argument("--process_id", type=int, required=True)
+        # parser.add_argument(
+        #     "--on_cloud", type=int, default=1
+        # )  # for debug test, load chunks of samples or all samples
+        # parser.add_argument("--dataset_version", type=str, default=None)
+        # parser.add_argument("--n_cpu", type=int, default=0)
+        # parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2]
+        # parser.add_argument("--forward_ndx", type=int, default=None)  # [30 | 60 | 120]
+        # parser.add_argument("--ref_pid", type=int, default=None)
+        # parser.add_argument("--domain", type=str, required=True)
+
+        # # Debug - generate buffer
+        parser.add_argument("--m_online_buffer", type=int, default=1)
+        parser.add_argument("--search_variables", type=int, default=0)
+        parser.add_argument("--search_parameter", type=int, default=0)
+        parser.add_argument("--process_id", type=int, default=1)
+        parser.add_argument(
+            "--on_cloud", type=int, default=0
+        )  # for debug test, load chunks of samples or all samples
+        parser.add_argument("--dataset_version", type=str, default=None)
+        parser.add_argument("--n_cpu", type=int, default=1)
+        parser.add_argument("--m_target_index", type=int, default=15)  # [0 | 1 | 2]
+        parser.add_argument("--forward_ndx", type=int, default=None)
+        parser.add_argument("--ref_pid", type=int, default=None)
+        parser.add_argument("--domain", type=str, default="TOTAL_20")
+        args = parser.parse_args()
+
+        # # # Debug - train
+        # parser.add_argument("--m_online_buffer", type=int, default=0)
+        # parser.add_argument("--search_variables", type=int, default=0)
+        # parser.add_argument("--search_parameter", type=int, default=None)
+        # parser.add_argument("--process_id", type=int, default=1)
         # parser.add_argument(
         #     "--on_cloud", type=int, default=1
         # )  # for debug test, load chunks of samples or all samples
@@ -65,8 +75,10 @@ if __name__ == "__main__":
         # parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2]
         # parser.add_argument("--forward_ndx", type=int, default=None)
         # parser.add_argument("--ref_pid", type=int, default=None)
-        # parser.add_argument("--domain", type=str, default='INX_20')
+        # parser.add_argument("--domain", type=str, default="TOTAL_20")
+
         args = parser.parse_args()
+
         args.domain = get_domain_on_CDSW_env(args.domain)
         args = scp.ScriptParameters(
             args.domain,
@@ -80,15 +92,14 @@ if __name__ == "__main__":
             args.ref_pid = 0
 
         if bool(args.ref_pid):
-            assert args.m_online_buffer == 0, "{}: check your parameters".format(
-                __name__
-            )
+            assert args.m_online_buffer == 0, f"{__name__}: check your parameters"
+
             if args.ref_pid == args.process_id:
                 pass
             else:
                 shutil.copy2(
-                    "./agent_log/buffer_generate_model_p{}.txt".format(args.ref_pid),
-                    "./agent_log/buffer_generate_model_p{}.txt".format(args.process_id),
+                    f"./agent_log/buffer_generate_model_p{args.ref_pid}.txt",
+                    f"./agent_log/buffer_generate_model_p{args.process_id}.txt",
                 )
 
         # re-write RUNHEADER
@@ -102,15 +113,15 @@ if __name__ == "__main__":
             RUNHEADER
         )  # win32 only support spawn method for multiprocess unlike linux
 
-        print("m_online_buffer: {}".format(RUNHEADER.m_online_buffer))
-        print("search_variables: {}".format(RUNHEADER.search_variables))
-        print("search_parameter: {}".format(RUNHEADER.search_parameter))
-        print("process_id: {}".format(str(args.process_id)))
-        print("dataset_version: {}".format(RUNHEADER.dataset_version))
-        print("m_offline_buffer_file: {}".format(RUNHEADER.m_offline_buffer_file))
-        print("m_name: {}".format(RUNHEADER.m_name))
-        print("forecast: {}".format(RUNHEADER.forward_ndx))
-        print("target: {}".format(RUNHEADER.target_name))
+        print(f"m_online_buffer: {RUNHEADER.m_online_buffer}")
+        print(f"search_variables: {RUNHEADER.search_variables}")
+        print(f"search_parameter: {RUNHEADER.search_parameter}")
+        print(f"process_id: {str(args.process_id)}")
+        print(f"dataset_version: {RUNHEADER.dataset_version}")
+        print(f"m_offline_buffer_file: {RUNHEADER.m_offline_buffer_file}")
+        print(f"m_name: {RUNHEADER.m_name}".format())
+        print(f"forecast: {RUNHEADER.forward_ndx}")
+        print(f"target: {RUNHEADER.target_name}")
 
         m_name = RUNHEADER.m_name
         _n_step = RUNHEADER.m_n_step
@@ -134,7 +145,7 @@ if __name__ == "__main__":
                 target = _tensorboard_log
             elif k == 2:
                 location = _model_location.split("/")
-                target = "{}/{}/result/{}".format(location[0], location[1], location[4])
+                target = f"{location[0]}/{location[1]}/result/{location[4]}"
 
             if os.path.isdir(target):
                 shutil.rmtree(target, ignore_errors=True)
@@ -178,13 +189,11 @@ if __name__ == "__main__":
                 )
         else:  # Learning with Buffer
             copy_file = ["/selected_x_dict.json"]
-            [
+            for file_name in copy_file:
                 shutil.copy2(
                     "./save/model/rllearn/" + json_location + file_name,
                     _model_location + file_name,
                 )
-                for file_name in copy_file
-            ]
             # shutil.copy2('./save/model/rllearn/' + json_location + '/selected_x_dict.json',
             #              _model_location + '/selected_x_dict.json')
             # shutil.copy2('./save/model/rllearn/' + json_location + '/shuffled_episode_index.txt',
@@ -192,7 +201,7 @@ if __name__ == "__main__":
         ###
 
         _mode = "train"  # [train | validation | test]
-        _full_tensorboard_log = RUNHEADER._full_tensorboard_log
+        _full_tensorboard_log = RUNHEADER.full_tensorboard_log
         _dataset_dir = RUNHEADER.m_dataset_dir
 
         _env_name = str(RUNHEADER.objective) + "-" + str(RUNHEADER.dataset_version)

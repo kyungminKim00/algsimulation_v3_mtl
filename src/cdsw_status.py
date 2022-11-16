@@ -7,12 +7,13 @@
 # import util
 # from util import get_domain_on_CDSW_env
 
-import random
-import os
-import sys
-import numpy as np
 import argparse
+import os
 import pickle
+import random
+import sys
+
+import numpy as np
 
 domain_search_parameter = {
     "INX_20": 1,
@@ -60,6 +61,9 @@ domain_search_parameter = {
     "CN10YT_120": 6,
     "JP10YT_120": 6,
     "BR10YT_120": 6,
+    "TOTAL_20": 7,
+    "TOTAL_60": 8,
+    "TOTAL_120": 9,
 }
 
 ex_20 = [
@@ -187,7 +191,7 @@ def validate(forward_ndx, is_update_20, is_update_60, is_update_120):
 
 
 def finalize_cdsw_status(is_update_20, is_update_60, is_update_120):
-    if is_update_20 == False and is_update_60 == False and is_update_120 == False:
+    if is_update_20 is False and is_update_60 is False and is_update_120 is False:
         _write_file(20, None)
         _write_file(60, None)
         _write_file(120, None)
@@ -206,9 +210,9 @@ def finalize_cdsw_status(is_update_20, is_update_60, is_update_120):
 
 def current_learning_model():
     print("Current learning model:")
-    print("{} from cdsw_20.txt".format(read_file("./cdsw_20.txt")))
-    print("{} from cdsw_60.txt".format(read_file("./cdsw_60.txt")))
-    print("{} from cdsw_120.txt".format(read_file("./cdsw_120.txt")))
+    print(f"{read_file('./cdsw_20.txt')} from cdsw_20.txt")
+    print(f"{read_file('./cdsw_60.txt')} from cdsw_60.txt")
+    print(f"{read_file('./cdsw_120.txt')} from cdsw_120.txt")
 
 
 def read_pickle(file_name):

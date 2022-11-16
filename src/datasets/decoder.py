@@ -401,40 +401,56 @@ def pkexample_type_B(
         #                                                                 patch_historical_ar_ma60.data), axis=0). \
         #     reshape((g_num_of_datatype_obs, g_x_seq, g_x_variables)),
         "structure/predefined_observation_total": np.multiply(
-            np.concatenate(
-                (
-                    patch_sd.normal_data,  # 0 [spread - smoothing]
-                    patch_sd_ma5.normal_data,
-                    patch_sd_ma10.normal_data,
-                    patch_sd_ma20.normal_data,
-                    patch_sd_ma60.normal_data,
-                    patch_sd_diff.normal_data,  # 5 [velocity]
-                    patch_sd_diff_ma5.normal_data,
-                    patch_sd_diff_ma10.normal_data,
-                    patch_sd_diff_ma20.normal_data,
-                    patch_sd_diff_ma60.normal_data,
-                    patch_sd_velocity.data,  # 10 [spread - grained]
-                    patch_sd_velocity_ma5.data,
-                    patch_sd_velocity_ma10.data,
-                    patch_sd_velocity_ma20.data,
-                    patch_sd_velocity_ma60.data,
-                    #   patch_sd.status_data5,  # 15
-                    #   patch_sd_ma5.status_data5,
-                    #   patch_sd_ma10.status_data5,
-                    #   patch_sd_ma20.status_data5,
-                    #   patch_sd_ma60.status_data5,
-                    # patch_sd.status_data5_Y,  # 20
-                    # patch_sd_ma5.status_data5_Y,
-                    # patch_sd_ma10.status_data5_Y,
-                    # patch_sd_ma20.status_data5_Y,
-                    # patch_sd_ma60.status_data5_Y,
+            np.transpose(
+                np.broadcast_to(
+                    np.concatenate(
+                        (
+                            # patch_sd.normal_data,  # 0 [spread - smoothing]
+                            # patch_sd_ma5.normal_data,
+                            # patch_sd_ma10.normal_data,
+                            # patch_sd_ma20.normal_data,
+                            # patch_sd_ma60.normal_data,
+                            # patch_sd_diff.normal_data,  # 5 [velocity]
+                            # patch_sd_diff_ma5.normal_data,
+                            # patch_sd_diff_ma10.normal_data,
+                            # patch_sd_diff_ma20.normal_data,
+                            # patch_sd_diff_ma60.normal_data,
+                            patch_sd_velocity.data
+                            + patch_sd.normal_data,  # 10 [spread - grained]
+                            patch_sd_velocity_ma5.data + patch_sd_ma5.normal_data,
+                            patch_sd_velocity_ma10.data + patch_sd_ma10.normal_data,
+                            patch_sd_velocity_ma20.data + patch_sd_ma20.normal_data,
+                            patch_sd_velocity_ma60.data + patch_sd_ma60.normal_data,
+                            #   patch_sd.status_data5,  # 15
+                            #   patch_sd_ma5.status_data5,
+                            #   patch_sd_ma10.status_data5,
+                            #   patch_sd_ma20.status_data5,
+                            #   patch_sd_ma60.status_data5,
+                            # patch_sd.status_data5_Y,  # 20
+                            # patch_sd_ma5.status_data5_Y,
+                            # patch_sd_ma10.status_data5_Y,
+                            # patch_sd_ma20.status_data5_Y,
+                            # patch_sd_ma60.status_data5_Y,
+                        ),
+                        axis=0,
+                    ).reshape(
+                        (
+                            args[0],
+                            patch_sd.normal_data.shape[0],
+                            patch_sd.normal_data.shape[1],
+                        )  # (Features X Date X Variables)
+                    ),
+                    (
+                        args[2],
+                        args[0],
+                        patch_sd.normal_data.shape[0],
+                        patch_sd.normal_data.shape[1],
+                    ),  # broadcast (target_market X Features X Date X Variables)
                 ),
-                axis=0,
-            ).reshape(
-                (args[0], patch_sd.normal_data.shape[0], patch_sd.normal_data.shape[1])
+                (1, 2, 3, 0),  # transpose (Features X Date X Variables X target_market)
             ),
-            mask_reader.data,
-        )
+            mask_reader.data,  # element wise product (Date X Variables X target_market)
+        )  # (Features X Date X Variables X target_market)
         + 0,
         # "structure/predefined_observation_ar": np.concatenate(
         #     (
@@ -472,11 +488,11 @@ def pkexample_type_B(
         "structure/class/label_ref3": patch_sd.class_label_ref3,
         "structure/class/label_ref4": patch_sd.class_label_ref4,
         "structure/class/label_ref5": patch_sd.class_label_ref5,
-        "structure/class/tr_label_call": patch_sd.tr_class_label_call,
-        "structure/class/tr_label_hold": patch_sd.tr_class_label_hold,
-        "structure/class/tr_label_put": patch_sd.tr_class_label_put,
+        # "structure/class/tr_label_call": patch_sd.tr_class_label_call,
+        # "structure/class/tr_label_hold": patch_sd.tr_class_label_hold,
+        # "structure/class/tr_label_put": patch_sd.tr_class_label_put,
         "structure/class/index": patch_sd.class_index,
-        "structure/class/tr_index": patch_sd.tr_class_index,
+        # "structure/class/tr_index": patch_sd.tr_class_index,
         "structure/class/ratio": patch_sd.class_ratio,
         "structure/class/ratio_ref0": patch_sd.class_ratio_ref0,
         "structure/class/ratio_ref1": patch_sd.class_ratio_ref1,
@@ -490,8 +506,8 @@ def pkexample_type_B(
         # 'fund_his/data_cumsum30': patch_fund_his_30.data[-1],  # today cumulative sum returns
         # 'fund_his/height': patch_fund_his_30.height,
         # 'fund_his/width': patch_fund_his_30.width,
-        "fund_his/patch_min": patch_fund_his_30.patch_min,
-        "fund_his/patch_max": patch_fund_his_30.patch_max,
+        # "fund_his/patch_min": patch_fund_his_30.patch_min,
+        # "fund_his/patch_max": patch_fund_his_30.patch_max,
         "date/base_date_label": patch_sd.base_date_label,
         "date/base_date_index": patch_sd.base_date_index,
         "date/prediction_date_label": patch_sd.prediction_date_label,

@@ -176,7 +176,7 @@ def configure_header(args):
             "weighted_random_sample"
         ] = True  # last 2 month (3 times over sampling)
 
-        # following could be tested.. but need to develop more code
+        # following are hard coded
         RUNHEADER.__dict__["m_lstm_hidden"] = RUNHEADER.m_lstm_hidden
         RUNHEADER.__dict__["m_num_features"] = RUNHEADER.m_num_features
         # RUNHEADER.__dict__['m_n_cpu'] = RUNHEADER.m_n_cpu
@@ -187,7 +187,7 @@ def configure_header(args):
         RUNHEADER.__dict__["m_n_cpu"] = args.n_cpu  # populate rate
         RUNHEADER.__dict__[
             "enable_lstm"
-        ] = False  # when using continuous learning, a enable_lstm parameter should be properly configured
+        ] = False  # when continuous learning, the parameter should be configured
         RUNHEADER.__dict__["re_assign_vars"] = False
         assert tmp == RUNHEADER.m_n_step, "check dataset version"
 

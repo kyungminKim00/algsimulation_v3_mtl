@@ -8,7 +8,6 @@ import numpy as np
 from gym import spaces
 from gym.utils import seeding
 
-# import header.index_forecasting.RUNHEADER as RUNHEADER
 from header.index_forecasting import RUNHEADER
 
 

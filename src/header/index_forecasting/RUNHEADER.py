@@ -4,6 +4,10 @@ import numpy as np
 
 """ Declare static variables
 """
+var_select_factor = (
+    0.4  # 0 < vsf < 1, select similar assets against the target as close as 0
+)
+m_pool_samples = 70
 release: bool = False
 use_historical_model: bool = True  # the historical best or the best model at the moment
 re_assign_vars: bool = True  # add forced variables
@@ -40,8 +44,9 @@ r_model_cnt: int = (
 )
 pkexample_type: Dict[str, Any] = {
     "decoder": "pkexample_type_B",
-    "num_features_1": 15,
+    "num_features_1": 5,
     "num_features_2": 17,
+    "num_market": 15,
 }  # {pkexample_type_A: 'Original', pkexample_type_B: 'Use var mask', pkexample_type_C: 'Enable WR'}
 raw_x: str
 raw_x2: str
@@ -53,7 +58,7 @@ max_x: int
 """ Agent parameter
 """
 _debug_on: bool = False
-_full_tensorboard_log: bool = False
+full_tensorboard_log: bool = False
 disable_derived_vars: bool = True
 
 
