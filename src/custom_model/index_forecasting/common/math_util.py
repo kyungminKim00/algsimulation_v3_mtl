@@ -30,9 +30,12 @@ def explained_variance(y_pred, y_true):
     :param y_true: (np.ndarray) the expected value
     :return: (float) explained variance of ypred and y
     """
-    assert y_true.ndim == 1 and y_pred.ndim == 1
-    var_y = np.var(y_true)
-    return np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
+    assert y_true.ndim == y_pred.ndim
+    var_y = np.var(y_true, axis=0)
+    is_zero = var_y == 0
+    var_y = 1 - np.var(y_true - y_pred, axis=0) / var_y
+    var_y[is_zero] = np.nan
+    return var_y
 
 
 def explained_variance_2d(y_pred, y_true):

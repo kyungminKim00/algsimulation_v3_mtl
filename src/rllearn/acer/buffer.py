@@ -18,7 +18,12 @@ class Buffer(object):
 
         if len(env.observation_space.shape) > 1:
             self.raw_pixels = True
-            self.height, self.width, self.n_channels = env.observation_space.shape
+            (
+                self.height,
+                self.width,
+                self.n_channels,
+                self.n_targets,
+            ) = env.observation_space.shape
             self.obs_dtype = np.uint8
         else:
             self.raw_pixels = False

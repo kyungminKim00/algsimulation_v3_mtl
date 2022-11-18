@@ -104,7 +104,7 @@ buffer_drop_rate: bool = 1  # 0.05 -> 0.1
 # (total_samples * 0.1) / buffer_drop_rate / train_batch_size * target_epoch
 warm_up_update: bool = 100  # (1425 * 0.1) / 0.1 / 32 * 5
 cosine_lr: bool = True
-
+mtl_target = 15  # 15 markets
 
 """ Model learning
 """
@@ -113,10 +113,9 @@ m_l1_norm: float = 0.0
 m_batch_decay: float = 0.9997  # 0.9997 (inception default)
 m_batch_epsilon: float = 0.001  # 0.001 (inception default)
 m_drop_out: float = 0.8
-m_vf_coef: float = 0.25
-m_vf_coef_2: float = 0.25
-m_pi_coef: float = 0.1
-m_ent_coef: float = 0.01
+m_vf_coef: float = 0
+m_pi_coef: float = 0
+m_ent_coef: float = 0
 m_factor: float = 0.05
 m_h_factor: float = 0.15  # it may need extra model
 m_cov_factor: int = 0  # it may need extra model

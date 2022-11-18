@@ -1,16 +1,14 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import os
-from datasets import dataset_utils
 import pickle
-import numpy as np
-import header.index_forecasting.RUNHEADER as RUNHEADER
-from util import funTime, json2dict
-from datasets.windowing import rolling_window
 
-from datasets import generate_val_test_with_X
+import numpy as np
+from header.index_forecasting import RUNHEADER
+from util import funTime, json2dict
+
+from datasets import dataset_utils, generate_val_test_with_X
+from datasets.windowing import rolling_window
 
 
 def get_x_dates(model_location, tf_record_location, forward_ndx):

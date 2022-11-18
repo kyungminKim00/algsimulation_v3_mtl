@@ -1,28 +1,27 @@
 import warnings
-from itertools import zip_longest
 from abc import ABC
+from itertools import zip_longest
 
+import header.index_forecasting.RUNHEADER as RUNHEADER
 import numpy as np
 import tensorflow as tf
 import tf_slim as slim
-from gym.spaces import Discrete, MultiDiscrete
-from custom_model.index_forecasting.common.utils import (
-    linear,
-    batch_to_seq,
-    seq_to_batch,
-    lstm,
-)
 from custom_model.index_forecasting.common.input import observation_input
-
-import header.index_forecasting.RUNHEADER as RUNHEADER
-from custom_model.index_forecasting.policies.net_factory import net_factory
-from custom_model.index_forecasting.policies.distributions_v1 import (
-    make_proba_dist_type,
-    CategoricalProbabilityDistribution,
-    MultiCategoricalProbabilityDistribution,
-    DiagGaussianProbabilityDistribution,
-    BernoulliProbabilityDistribution,
+from custom_model.index_forecasting.common.utils import (
+    batch_to_seq,
+    linear,
+    lstm,
+    seq_to_batch,
 )
+from custom_model.index_forecasting.policies.distributions_v1 import (
+    BernoulliProbabilityDistribution,
+    CategoricalProbabilityDistribution,
+    DiagGaussianProbabilityDistribution,
+    MultiCategoricalProbabilityDistribution,
+    make_proba_dist_type,
+)
+from custom_model.index_forecasting.policies.net_factory import net_factory
+from gym.spaces import Discrete, MultiDiscrete
 
 default_cnn = net_factory()
 
@@ -251,7 +250,6 @@ class ActorCriticPolicy(BasePolicy):
         self.policy = None
         self.proba_distribution = None
         self.value_fn = None
-        self.value_fn_2 = None
         self.deterministic_action = None
         self.initial_state = None
         self.sample_th_ph = tf.compat.v1.placeholder(
@@ -292,11 +290,9 @@ class ActorCriticPolicy(BasePolicy):
                     for categorical in self.proba_distribution.categoricals
                 ]
             else:
-                self.policy_proba = (
-                    []
-                )  # it will return nothing, as it is not implemented
-            self._value = self.value_fn[:, 0]
-            self._value_2 = self.value_fn_2[:, 0]
+                self.policy_proba = []  # it will return nothing
+            # self._value = self.value_fn[:, 0]
+            self._value = self.value_fn
 
     def step(self, obs, state=None, mask=None, deterministic=False):
         """
@@ -445,8 +441,7 @@ class LstmPolicy(ActorCriticPolicy):
                     rnn_output = extracted_features
 
                 if not RUNHEADER.enable_non_shared_part:
-                    value_fn = linear(rnn_output, "vf", 1)
-                    value_fn_2 = linear(rnn_output, "vf_2", 1)
+                    value_fn = linear(rnn_output, "vf", RUNHEADER.mtl_target)
 
                     (
                         self.proba_distribution,
@@ -467,16 +462,6 @@ class LstmPolicy(ActorCriticPolicy):
                         scale=False,
                         activation_fn=act_fun,
                     )
-                    rnn_output_value_fn_2 = slim.layer_norm(
-                        linear(
-                            rnn_output,
-                            "vf_2_latent",
-                            rnn_output.shape[-1],
-                            init_scale=np.sqrt(2),
-                        ),
-                        scale=False,
-                        activation_fn=act_fun,
-                    )
                     rnn_output_policy = slim.layer_norm(
                         linear(
                             rnn_output,
@@ -489,11 +474,9 @@ class LstmPolicy(ActorCriticPolicy):
                     )
 
                     rnn_output_value_fn = rnn_output + rnn_output_value_fn
-                    rnn_output_value_fn_2 = rnn_output + rnn_output_value_fn_2
                     rnn_output_policy = rnn_output + rnn_output_policy
 
-                    value_fn = linear(rnn_output_value_fn, "vf", 1)
-                    value_fn_2 = linear(rnn_output_value_fn_2, "vf_2", 1)
+                    value_fn = linear(rnn_output_value_fn, "vf", RUNHEADER.mtl_target)
 
                     # not yet performed
                     # # Create non share representations(value and policy) from the shared representation  version 2
@@ -502,8 +485,7 @@ class LstmPolicy(ActorCriticPolicy):
                     # rnn_output_policy = slim.layer_norm(
                     #     linear(rnn_output, 'pi_latent', rnn_output.shape[-1], init_scale=np.sqrt(2)), activation_fn=act_fun)
                     #
-                    # value_fn = linear(rnn_output_value_fn, 'vf', 1)
-                    # value_fn_2 = linear(rnn_output_value_fn, 'vf_2', 1)
+                    # value_fn = linear(rnn_output_value_fn, 'vf', RUNHEADER.mtl_target)
 
                     (
                         self.proba_distribution,
@@ -514,7 +496,7 @@ class LstmPolicy(ActorCriticPolicy):
                     )
 
             self.value_fn = value_fn
-            self.value_fn_2 = value_fn_2
+
         else:  # Use the new net_arch parameter
             if layers is not None:
                 warnings.warn(
@@ -623,7 +605,7 @@ class LstmPolicy(ActorCriticPolicy):
                         "The net_arch parameter must contain at least one occurrence of 'lstm'!"
                     )
 
-                self.value_fn = linear(latent_value, "vf", 1)
+                self.value_fn = linear(latent_value, "vf", RUNHEADER.mtl_target)
                 # TODO: why not init_scale = 0.001 here like in the feedforward
                 (
                     self.proba_distribution,
@@ -638,13 +620,12 @@ class LstmPolicy(ActorCriticPolicy):
     def step(self, obs, state=None, mask=None, deterministic=False, sample_th=0.8):
         # print('is_first_step: {}'.format(is_first_step))
         if deterministic:
-            action, _value, snew, neglogp, _value_2 = self.sess.run(
+            action, _value, snew, neglogp = self.sess.run(
                 [
                     self.deterministic_action,
                     self._value,
                     self.snew,
                     self.neglogp,
-                    self._value_2,
                 ],
                 {
                     self.obs_ph: obs,
@@ -654,8 +635,8 @@ class LstmPolicy(ActorCriticPolicy):
                 },
             )
         else:
-            action, _value, snew, neglogp, _value_2 = self.sess.run(
-                [self.action, self._value, self.snew, self.neglogp, self._value_2],
+            action, _value, snew, neglogp = self.sess.run(
+                [self.action, self._value, self.snew, self.neglogp],
                 {
                     self.obs_ph: obs,
                     self.states_ph: state,
@@ -664,7 +645,7 @@ class LstmPolicy(ActorCriticPolicy):
                 },
             )
         # self.sess.run({self.first_step_of_episode_ph: is_first_step})
-        return action, _value, snew, neglogp, _value_2
+        return action, _value, snew, neglogp
 
     # def rand_action(self, rows, cols, minval=3, maxval=100):
     #     actions = np.zeros(shape=(rows, cols), dtype=np.int)
@@ -685,12 +666,6 @@ class LstmPolicy(ActorCriticPolicy):
     def value(self, obs, state=None, mask=None):
         return self.sess.run(
             self._value, {self.obs_ph: obs, self.states_ph: state, self.masks_ph: mask}
-        )
-
-    def value_2(self, obs, state=None, mask=None):
-        return self.sess.run(
-            self._value_2,
-            {self.obs_ph: obs, self.states_ph: state, self.masks_ph: mask},
         )
 
 
@@ -769,7 +744,7 @@ class FeedForwardPolicy(ActorCriticPolicy):
                     tf.compat.v1.layers.flatten(self.processed_obs), net_arch, act_fun
                 )
 
-            self.value_fn = linear(vf_latent, "vf", 1)
+            self.value_fn = linear(vf_latent, "vf", RUNHEADER.mtl_target)
 
             (
                 self.proba_distribution,

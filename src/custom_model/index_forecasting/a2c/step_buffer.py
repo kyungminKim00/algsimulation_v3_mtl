@@ -7,7 +7,12 @@ class StepBuffer(object):
 
         if len(env.observation_space.shape) > 1:
             self.raw_pixels = True
-            self.height, self.width, self.n_channels = env.observation_space.shape
+            (
+                self.height,
+                self.width,
+                self.n_channels,
+                self.n_targets,
+            ) = env.observation_space.shape
             self.obs_dtype = np.float32
         else:
             self.raw_pixels = False
@@ -47,7 +52,7 @@ class StepBuffer(object):
         _dones = np.reshape(dones, [self.n_env])
         cond_idx = np.squeeze(np.argwhere(_dones == 0), axis=1).tolist()
 
-        env_idx = list()
+        env_idx = []
         for idx in cond_idx:
             env_idx.append(idx)
 
@@ -60,8 +65,12 @@ class StepBuffer(object):
                     self.actions = np.empty(
                         [self.n_env] + list(actions.shape[1:]), dtype=np.int32
                     )
-                    self.rewards = np.empty([self.n_env], dtype=np.float32)
-                    self.values = np.empty([self.n_env], dtype=np.float32)
+                    self.rewards = np.empty(
+                        [self.n_env] + list(rewards.shape[1:]), dtype=np.float32
+                    )
+                    self.values = np.empty(
+                        [self.n_env] + list(values.shape[1:]), dtype=np.float32
+                    )
                     self.states = np.empty(
                         [self.n_env] + list(states.shape[1:]), dtype=np.float32
                     )
@@ -75,8 +84,12 @@ class StepBuffer(object):
                     self.actions[self.next_idx] = np.reshape(
                         actions, [self.n_env] + list(actions.shape[1:])
                     )[idx]
-                    self.rewards[self.next_idx] = np.reshape(rewards, [self.n_env])[idx]
-                    self.values[self.next_idx] = np.reshape(values, [self.n_env])[idx]
+                    self.rewards[self.next_idx] = np.reshape(
+                        rewards, [self.n_env] + list(rewards.shape[1:])
+                    )[idx]
+                    self.values[self.next_idx] = np.reshape(
+                        values, [self.n_env] + list(values.shape[1:])
+                    )[idx]
                     self.dones[self.next_idx] = np.reshape(dones, [self.n_env])[idx]
                     self.states[self.next_idx] = states[idx]
 

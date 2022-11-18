@@ -3,26 +3,26 @@
 @author: kim KyungMin
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
+import datetime
+import os
+import sys
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 # import matplotlib
 # matplotlib.use('agg')
 from matplotlib.dates import date2num
-import datetime
-from mpl_finance import candlestick_ohlc
-import sys
+
+# from mpl_finance import candlestick_ohlc
+from mplfinance.original_flavor import candlestick_ohlc
+from sklearn.metrics import classification_report, f1_score, mean_squared_error
+
 import header.index_forecasting.RUNHEADER as RUNHEADER
 from util import current_y_unit
-from sklearn.metrics import classification_report
-from sklearn.metrics import f1_score
-from sklearn.metrics import mean_squared_error
-import os
 
 
 def gather_validation_performence(

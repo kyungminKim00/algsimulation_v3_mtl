@@ -18,7 +18,12 @@ class SBuffer(object):
 
         if len(env.observation_space.shape) > 1:
             self.raw_pixels = True
-            self.height, self.width, self.n_channels = env.observation_space.shape
+            (
+                self.height,
+                self.width,
+                self.n_channels,
+                self.n_targets,
+            ) = env.observation_space.shape
             self.obs_dtype = np.float32
         else:
             self.raw_pixels = False
@@ -101,13 +106,20 @@ class SBuffer(object):
                         dtype=np.int32,
                     )
                     self.rewards = np.empty(
-                        [self.n_env, self.n_steps], dtype=np.float32
+                        [self.n_env] + [self.n_steps] + list(rewards.shape[1:]),
+                        dtype=np.float32,
                     )
-                    self.values = np.empty([self.n_env, self.n_steps], dtype=np.float32)
+                    self.values = np.empty(
+                        [self.n_env, self.n_steps] + list(values.shape[1:]),
+                        dtype=np.float32,
+                    )
                     self.states = np.empty(
                         [self.n_env] + list(states.shape[1:]), dtype=np.float32
                     )
-                    self.masks = np.empty([self.n_env, self.n_steps], dtype=np.bool)
+                    self.masks = np.empty(
+                        [self.n_env, self.n_steps] + list(masks.shape[1:]),
+                        dtype=np.bool,
+                    )
 
                     # Blow are dummy variables for session run.. Not in use, even tensorboard
                     self.suessor = np.empty([self.n_env], dtype=np.int32)
@@ -119,9 +131,13 @@ class SBuffer(object):
                     )
 
                     self.returns_info = np.empty(
-                        [self.n_env, self.n_steps], dtype=np.float32
+                        [self.n_env, self.n_steps] + list(returns_info.shape[1:]),
+                        dtype=np.float32,
                     )
-                    self.hit = np.empty([self.n_env, self.n_steps], dtype=np.float32)
+                    self.hit = np.empty(
+                        [self.n_env, self.n_steps] + list(hit.shape[1:]),
+                        dtype=np.float32,
+                    )
 
                 for idx in env_idx:
                     self.enc_obs[self.next_idx] = np.reshape(
@@ -131,13 +147,13 @@ class SBuffer(object):
                         actions, [self.n_env, self.n_steps] + list(actions.shape[1:])
                     )[idx]
                     self.rewards[self.next_idx] = np.reshape(
-                        rewards, [self.n_env, self.n_steps]
+                        rewards, [self.n_env, self.n_steps] + list(rewards.shape[1:])
                     )[idx]
                     self.values[self.next_idx] = np.reshape(
-                        values, [self.n_env, self.n_steps]
+                        values, [self.n_env, self.n_steps] + list(values.shape[1:])
                     )[idx]
                     self.masks[self.next_idx] = np.reshape(
-                        masks, [self.n_env, self.n_steps]
+                        masks, [self.n_env, self.n_steps] + list(masks.shape[1:])
                     )[idx]
                     self.states[self.next_idx] = states[idx]
 
@@ -150,10 +166,11 @@ class SBuffer(object):
                         diff_selected_action, [self.n_env, self.n_steps]
                     )[idx]
                     self.returns_info[self.next_idx] = np.reshape(
-                        returns_info, [self.n_env, self.n_steps]
+                        returns_info,
+                        [self.n_env, self.n_steps] + list(returns_info.shape[1:]),
                     )[idx]
                     self.hit[self.next_idx] = np.reshape(
-                        hit, [self.n_env, self.n_steps]
+                        hit, [self.n_env, self.n_steps] + list(hit.shape[1:])
                     )[idx]
 
                     self.next_idx = (self.next_idx + 1) % self.n_env
@@ -275,16 +292,22 @@ class SBuffer(object):
         actions = np.reshape(
             actions, [self.n_env * self.n_steps] + list(actions.shape[2:])
         )
-        rewards = np.reshape(rewards, [self.n_env * self.n_steps])
-        values = np.reshape(values, [self.n_env * self.n_steps])
+        rewards = np.reshape(
+            rewards, [self.n_env * self.n_steps] + list(rewards.shape[2:])
+        )
+        values = np.reshape(
+            values, [self.n_env * self.n_steps] + list(values.shape[2:])
+        )
         states = np.reshape(states, states.shape)
         masks = np.reshape(masks, [self.n_env * self.n_steps])
         selected_action = np.reshape(selected_action, [self.n_env * self.n_steps])
         diff_selected_action = np.reshape(
             diff_selected_action, [self.n_env * self.n_steps]
         )
-        returns_info = np.reshape(returns_info, [self.n_env * self.n_steps])
-        hit = np.reshape(hit, [self.n_env * self.n_steps])
+        returns_info = np.reshape(
+            returns_info, [self.n_env * self.n_steps] + list(returns_info.shape[2:])
+        )
+        hit = np.reshape(hit, [self.n_env * self.n_steps] + list(hit.shape[2:]))
         suessor = np.reshape(suessor, [self.n_env])
 
         return (

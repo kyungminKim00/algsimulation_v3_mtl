@@ -1,54 +1,46 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-import time
+import datetime
 import os
-import gym
-import numpy as np
-import tensorflow as tf
 import sys
+import time
 
-# import logger
+import gym
 import logger
+import numpy as np
+import pandas as pd
+import plot_util
+import tensorflow as tf
+import util
+from custom_model.index_forecasting.a2c.buffer import Buffer
+from custom_model.index_forecasting.a2c.short_term_buffer import SBuffer
+from custom_model.index_forecasting.a2c.step_buffer import StepBuffer
 from custom_model.index_forecasting.common import (
-    Scheduler,
-    find_trainable_variables,
-    mse,
-    total_episode_reward_logger,
     AbstractEnvRunner,
+    Scheduler,
     explained_variance,
-    tf_util,
     find_moving_mean_varience,
     find_shared_variables,
+    find_trainable_variables,
+    mse,
     ortho_init,
+    tf_util,
+    total_episode_reward_logger,
 )
-
-import header.index_forecasting.RUNHEADER as RUNHEADER
 from custom_model.index_forecasting.policies.base_class_index_forecasting import (
     ActorCriticRLModel,
     SetVerbosity,
     TensorboardWriter,
 )
 from custom_model.index_forecasting.policies.policies_index_forecasting import (
-    LstmPolicy,
     ActorCriticPolicy,
+    LstmPolicy,
 )
-from custom_model.index_forecasting.a2c.buffer import Buffer
-from custom_model.index_forecasting.a2c.short_term_buffer import SBuffer
-from custom_model.index_forecasting.a2c.step_buffer import StepBuffer
-from util import funTime, discount_reward, writeFile, loadFile
-import util
-import pandas as pd
-from gym.spaces import Discrete, Box, MultiDiscrete
-
-import plot_util
-
-# import matplotlib.pyplot as plt
-import datetime
-
+from gym.spaces import Box, Discrete, MultiDiscrete
+from header.index_forecasting import RUNHEADER
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import control_flow_ops
+from util import discount_reward, funTime, loadFile, writeFile
 
 
 class A2C(ActorCriticRLModel):
@@ -130,18 +122,14 @@ class A2C(ActorCriticRLModel):
         self.actions_ph = None
         self.advs_ph = None
         self.rewards_ph = None
-        self.rewards_ph_2 = None
         self.pg_loss = None
         self.vf_loss = None
-        self.vf_loss_2 = None
         self.pi_coef = None
         self.vf_coef = None
-        self.vf_coef_2 = None
         self.pg_loss_bias = None
         self.vf_loss_bias = None
-        self.vf_loss_2_bias = None
         self.loss_bias = None  # current loss
-        self.stack_loss_bias = [[1, 1, 1]]
+        self.stack_loss_bias = [[1, 1]]
         self.entropy = None
         self.params = None
         self.apply_backprop = None
@@ -166,7 +154,7 @@ class A2C(ActorCriticRLModel):
         self.hit_ph = None
         self.cur_lr = None
         self.loss_bias_ph = None
-        self.record_tabular = list()
+        self.record_tabular = []
 
         # self.buffer_size = RUNHEADER.m_buffer_size
         # self.replay_ratio = RUNHEADER.m_replay_ratio
@@ -182,8 +170,8 @@ class A2C(ActorCriticRLModel):
         self.replay_start = RUNHEADER.m_replay_start
 
         self.offline_timestamps = -1
-        self.weights_load_op = list()
-        self.weights_load_placeholder = list()
+        self.weights_load_op = []
+        self.weights_load_placeholder = []
         self.epoch_track = 0
 
         self.model_vf_w = None
@@ -197,1010 +185,6 @@ class A2C(ActorCriticRLModel):
 
         if _init_setup_model:
             self.setup_model()
-
-    def _setup_model_original(self):
-        with SetVerbosity(self.verbose):
-
-            assert issubclass(self.policy, ActorCriticPolicy), (
-                "Error: the input policy for the A2C model must be an "
-                "instance of common.policies.ActorCriticPolicy."
-            )
-            self.graph = tf.Graph()
-            with self.graph.as_default():
-                self.apply_backprop_gradnorm = tf.constant([0])  # dummy for run
-                if self.verbose == 2:
-                    self.sess = tf_util.debug_session(
-                        graph=self.graph, port="localhost:7000", mode=0
-                    )
-                else:
-                    self.sess = tf_util.make_session(graph=self.graph)
-
-                self.n_batch = self.n_envs * self.n_steps
-
-                n_batch_step = None
-                n_batch_train = None
-                if issubclass(self.policy, LstmPolicy):
-                    n_batch_step = self.n_envs
-                    n_batch_train = self.n_envs * self.n_steps
-
-                step_model = self.policy(
-                    self.sess,
-                    self.observation_space,
-                    self.action_space,
-                    self.n_envs,
-                    1,
-                    n_batch_step,
-                    reuse=False,
-                    **self.policy_kwargs
-                )
-
-                with tf.compat.v1.variable_scope(
-                    "train_model",
-                    reuse=True,
-                    custom_getter=tf_util.outer_scope_getter("train_model"),
-                ):
-                    train_model = self.policy(
-                        self.sess,
-                        self.observation_space,
-                        self.action_space,
-                        self.n_envs,
-                        self.n_steps,
-                        n_batch_train,
-                        reuse=True,
-                        **self.policy_kwargs
-                    )
-
-                with tf.compat.v1.variable_scope("loss", reuse=False):
-                    self.actions_ph = train_model.pdtype.sample_placeholder(
-                        [None], name="action_ph"
-                    )
-                    self.advs_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="advs_ph"
-                    )
-                    self.rewards_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="rewards_ph"
-                    )
-                    self.rewards_ph_2 = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="rewards_ph_2"
-                    )
-                    self.learning_rate_ph = tf.compat.v1.placeholder(
-                        tf.float32, [], name="learning_rate_ph"
-                    )
-                    self.loss_bias_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None, 3], name="loss_bias_ph"
-                    )
-
-                    neglogpac = train_model.proba_distribution.neglogp(self.actions_ph)
-                    self.entropy = tf.reduce_mean(
-                        input_tensor=train_model.proba_distribution.entropy()
-                    )
-                    # self.pg_loss = tf.reduce_mean(self.c * neglogpac)  # Disable for MTL, this task is not RL
-                    self.pg_loss = tf.reduce_mean(input_tensor=neglogpac)
-                    self.vf_loss = mse(
-                        tf.squeeze(train_model.value_fn), self.rewards_ph
-                    )
-                    self.vf_loss_2 = mse(
-                        tf.squeeze(train_model.value_fn_2), self.rewards_ph_2
-                    )
-
-                    if self.dynamic_coe:
-                        minimum = tf.cast(
-                            tf.minimum(
-                                tf.minimum(self.pg_loss, self.vf_loss), self.vf_loss_2
-                            ),
-                            dtype=tf.float32,
-                        )
-
-                        cons = tf.constant(1, dtype=tf.float32)
-                        self.pi_coef = tf.cond(
-                            pred=tf.equal(self.pg_loss, minimum),
-                            true_fn=lambda: cons,
-                            false_fn=lambda: tf.divide(minimum, self.pg_loss),
-                        )
-                        self.vf_coef = tf.cond(
-                            pred=tf.equal(self.vf_loss, minimum),
-                            true_fn=lambda: cons,
-                            false_fn=lambda: tf.divide(minimum, self.vf_loss),
-                        )
-                        self.vf_coef_2 = tf.cond(
-                            pred=tf.equal(self.vf_loss_2, minimum),
-                            true_fn=lambda: cons,
-                            false_fn=lambda: tf.divide(minimum, self.vf_loss_2),
-                        )
-                    else:
-                        self.pi_coef = tf.convert_to_tensor(
-                            value=RUNHEADER.m_pi_coef, dtype=tf.float32
-                        )
-                        self.vf_coef = tf.convert_to_tensor(
-                            value=RUNHEADER.m_vf_coef, dtype=tf.float32
-                        )
-                        self.vf_coef_2 = tf.convert_to_tensor(
-                            value=RUNHEADER.m_vf_coef_2, dtype=tf.float32
-                        )
-
-                    with ops.control_dependencies(
-                        [self.pi_coef, self.vf_coef, self.vf_coef_2]
-                    ):
-                        barrier_coef = control_flow_ops.no_op(
-                            name="update_barrier_coef"
-                        )
-
-                    # reg_loss_1 = tf.add_n(slim.losses.get_regularization_losses())
-                    reg_loss_2 = tf.reduce_sum(
-                        input_tensor=tf.compat.v1.get_collection(
-                            tf.compat.v1.GraphKeys.REGULARIZATION_LOSSES
-                        )
-                    )
-                    reg_loss_3 = tf.compat.v1.losses.get_regularization_loss()
-                    loss_1 = self.pg_loss * self.pi_coef - self.entropy * self.ent_coef
-                    loss_2 = self.vf_loss * self.vf_coef
-                    loss_2_2 = self.vf_loss_2 * self.vf_coef_2
-                    loss = loss_1 + loss_2 + loss_2_2 + reg_loss_2
-                    self.loss_bias = tf.stack([[loss_1, loss_2, loss_2_2]])
-
-                    if self.full_tensorboard_log:
-                        tf.compat.v1.summary.scalar("entropy_loss", self.entropy)
-                        tf.compat.v1.summary.scalar(
-                            "policy_gradient_loss", self.pg_loss
-                        )
-                        tf.compat.v1.summary.scalar("value_function_loss", self.vf_loss)
-                        tf.compat.v1.summary.scalar(
-                            "value_function",
-                            tf.reduce_mean(input_tensor=train_model.value_fn),
-                        )
-                        tf.compat.v1.summary.scalar(
-                            "advs", tf.reduce_mean(input_tensor=self.advs_ph)
-                        )
-                        tf.compat.v1.summary.scalar(
-                            "neglogpac", tf.reduce_mean(input_tensor=neglogpac)
-                        )
-                        tf.compat.v1.summary.scalar("loss", loss)
-                        tf.compat.v1.summary.scalar("loss_1", loss_1)
-                        tf.compat.v1.summary.scalar("loss_2", loss_2)
-                        tf.compat.v1.summary.scalar("loss_2_2", loss_2_2)
-                        tf.compat.v1.summary.scalar("reg_loss_2", reg_loss_2)
-                        tf.compat.v1.summary.scalar("reg_loss_3", reg_loss_3)
-
-                    # self.params = find_trainable_variables("model")
-                    # grads = tf.gradients(loss, self.params)
-                    # grads_pi = tf.gradients(loss_1, self.params)
-                    # grads_vf = tf.gradients(loss_2, self.params)
-                    # grads_vf_2 = tf.gradients(loss_2_2, self.params)
-                    # if self.max_grad_norm is not None:
-                    #     grads, _ = tf.clip_by_global_norm(grads, self.max_grad_norm)
-                    #     grads_pi, _ = tf.clip_by_global_norm(grads_pi, self.max_grad_norm)
-                    #     grads_vf, _ = tf.clip_by_global_norm(grads_vf, self.max_grad_norm)
-                    #     grads_vf_2, _ = tf.clip_by_global_norm(grads_vf_2, self.max_grad_norm)
-                    # grads = list(zip(grads, self.params))
-                    # grads_pi = list(zip(grads_pi, self.params))
-                    # grads_vf = list(zip(grads_vf, self.params))
-                    # grads_vf_2 = list(zip(grads_vf_2, self.params))
-                    # # Added 2019-08-27
-                    # merge_grads = list()
-                    # for idx in range(len(self.params)):
-                    #     param = self.params[idx]
-                    #     if (param.name == 'model/pi/w_0') or (param.name == 'model/pi/b_0'):
-                    #         merge_grads.append(grads_pi[idx])
-                    #     elif (param.name == 'model/vf/w_0') or (param.name == 'model/vf/b_0'):
-                    #         merge_grads.append(grads_vf[idx])
-                    #     elif (param.name == 'model/vf_2/w_0') or (param.name == 'model/vf_2/b_0'):
-                    #         merge_grads.append(grads_vf_2[idx])
-                    #     else:
-                    #         merge_grads.append(grads[idx])
-                    # grads = merge_grads
-
-                #  Make sure update_ops are computed before total_loss.
-                update_ops = ops.get_collection(ops.GraphKeys.UPDATE_OPS, "train_model")
-                if update_ops:
-                    with ops.control_dependencies(update_ops):
-                        barrier = control_flow_ops.no_op(name="update_barrier")
-                    new_loss = control_flow_ops.with_dependencies(
-                        [barrier, barrier_coef], loss
-                    )
-                    new_loss_1 = control_flow_ops.with_dependencies(
-                        [barrier, barrier_coef], loss_1
-                    )
-                    new_loss_2 = control_flow_ops.with_dependencies(
-                        [barrier, barrier_coef], loss_2
-                    )
-                    new_loss_2_2 = control_flow_ops.with_dependencies(
-                        [barrier, barrier_coef], loss_2_2
-                    )
-
-                else:
-                    new_loss = control_flow_ops.with_dependencies([barrier_coef], loss)
-                    new_loss_1 = control_flow_ops.with_dependencies(
-                        [barrier_coef], loss_1
-                    )
-                    new_loss_2 = control_flow_ops.with_dependencies(
-                        [barrier_coef], loss_2
-                    )
-                    new_loss_2_2 = control_flow_ops.with_dependencies(
-                        [barrier_coef], loss_2_2
-                    )
-
-                # calculate gradient
-                self.params = find_trainable_variables("model")
-                self.ema_params = find_moving_mean_varience(
-                    "model"
-                )  # just global variables
-                if self.max_grad_norm is not None:
-                    grads, _ = tf.clip_by_global_norm(
-                        tf.gradients(ys=new_loss, xs=self.params), self.max_grad_norm
-                    )
-                    grads_pi, _ = tf.clip_by_global_norm(
-                        tf.gradients(ys=new_loss_1, xs=self.params), self.max_grad_norm
-                    )
-                    grads_vf, _ = tf.clip_by_global_norm(
-                        tf.gradients(ys=new_loss_2, xs=self.params), self.max_grad_norm
-                    )
-                    grads_vf_2, _ = tf.clip_by_global_norm(
-                        tf.gradients(ys=new_loss_2_2, xs=self.params),
-                        self.max_grad_norm,
-                    )
-                else:
-                    grads = tf.gradients(ys=new_loss, xs=self.params)
-                    grads_pi = tf.gradients(ys=new_loss_1, xs=self.params)
-                    grads_vf = tf.gradients(ys=new_loss_2, xs=self.params)
-                    grads_vf_2 = tf.gradients(ys=new_loss_2_2, xs=self.params)
-                _grads = list(zip(grads, self.params))
-                _grads_pi = list(zip(grads_pi, self.params))
-                _grads_vf = list(zip(grads_vf, self.params))
-                _grads_vf_2 = list(zip(grads_vf_2, self.params))
-                # Added 2019-08-27
-                merge_grads = list()
-                for idx in range(len(self.params)):
-                    param = self.params[idx]
-                    if (param.name == "model/pi/w_0") or (param.name == "model/pi/b_0"):
-                        merge_grads.append(_grads_pi[idx])
-                    elif (param.name == "model/vf/w_0") or (
-                        param.name == "model/vf/b_0"
-                    ):
-                        merge_grads.append(_grads_vf[idx])
-                    elif (param.name == "model/vf_2/w_0") or (
-                        param.name == "model/vf_2/b_0"
-                    ):
-                        merge_grads.append(_grads_vf_2[idx])
-                    else:
-                        merge_grads.append(_grads[idx])
-                # grads = merge_grads
-
-                # Todo: check it later
-                with tf.compat.v1.variable_scope("weight_visualization", reuse=False):
-                    # Todo: check it later
-                    if self.full_tensorboard_log:
-                        for partial_deviation, param in merge_grads:
-                            if partial_deviation is not None:
-                                tf.compat.v1.summary.scalar(
-                                    "partial_dev_" + param.name,
-                                    tf.reduce_mean(input_tensor=partial_deviation),
-                                )
-                                tf.compat.v1.summary.scalar(
-                                    param.name, tf.reduce_mean(input_tensor=param)
-                                )
-                                tf.compat.v1.summary.histogram(
-                                    "partial_dev_" + param.name, partial_deviation
-                                )
-                                tf.compat.v1.summary.histogram(param.name, param)
-                            # if (param.name == 'model/vf/w:0') or (param.name == 'model/pi/w:0'):
-                            #     tf.summary.scalar('partial_dev_' + param.name, tf.reduce_mean(partial_deviation))
-                            #     tf.summary.scalar(param.name, tf.reduce_mean(param))
-                            #     tf.summary.histogram('partial_dev_' + param.name, partial_deviation)
-                            #     tf.summary.histogram(param.name, param)
-                            # if (param.name == 'model/c1_1/w:0') or (param.name == 'model/c1_2/w:0') or \
-                            #         (param.name == 'model/c1_3/w:0') or (param.name == 'model/c1_4/w:0') or \
-                            #         (param.name == 'model/c3_1/w:0') or (param.name == 'model/c3_2/w:0'):
-                            #     X = param - tf.reduce_mean(param)
-                            #     image = ((X - tf.reduce_min(X)) / (tf.reduce_max(X) - tf.reduce_min(X))) * 255
-                            #     image_shape = image.get_shape().as_list()
-                            #     sliced_image = tf.slice(image, [0, 0, 0, 0],
-                            #                             [image_shape[0], image_shape[1], image_shape[2], 1])
-                            #     tf.summary.image('nor_img/' + param.name, sliced_image, max_outputs=3)
-                            #     sliced_image2 = tf.slice(param, [0, 0, 0, 0],
-                            #                              [image_shape[0], image_shape[1], image_shape[2], 1])
-                            #     tf.summary.image('img/' + param.name, sliced_image2, max_outputs=3)
-
-                with tf.compat.v1.variable_scope("step_info", reuse=False):
-                    self.sussesor_ph = tf.compat.v1.placeholder(
-                        tf.int32, [None], name="sussesor_ph"
-                    )
-                    self.selected_action_ph = tf.compat.v1.placeholder(
-                        tf.int32, [None], name="selected_action_ph"
-                    )
-                    self.diff_action_ph = tf.compat.v1.placeholder(
-                        tf.int32, [None], name="diff_action_ph"
-                    )
-                    self.returns_info_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="returns_info_ph"
-                    )
-                    self.hit_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="hit_ph"
-                    )
-
-                    # could not disable by "if self.full_tensorboard_log:", it updates from placeholders be careful
-                    tf.compat.v1.summary.scalar(
-                        "sussesor", tf.reduce_mean(input_tensor=self.sussesor_ph)
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "num_action",
-                        tf.reduce_mean(input_tensor=self.selected_action_ph),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "diff_action", tf.reduce_mean(input_tensor=self.diff_action_ph)
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "10day_return",
-                        tf.reduce_mean(input_tensor=self.returns_info_ph),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "hit", tf.reduce_mean(input_tensor=self.hit_ph)
-                    )
-
-                with tf.compat.v1.variable_scope("input_info", reuse=False):
-                    tf.compat.v1.summary.scalar(
-                        "discounted_rewards",
-                        tf.reduce_mean(input_tensor=self.rewards_ph),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "learning_rate",
-                        tf.reduce_mean(input_tensor=self.learning_rate_ph),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "advantage", tf.reduce_mean(input_tensor=self.advs_ph)
-                    )
-
-                    if self.full_tensorboard_log:
-                        tf.compat.v1.summary.histogram(
-                            "discounted_rewards", self.rewards_ph
-                        )
-                        tf.compat.v1.summary.histogram(
-                            "learning_rate", self.learning_rate_ph
-                        )
-                        tf.compat.v1.summary.histogram("advantage", self.advs_ph)
-                        # if tf_util.is_image(self.observation_space):
-                        #     tf.summary.image('observation', train_model.obs_ph)
-                        # else:
-                        #     tf.summary.histogram('observation', train_model.obs_ph)
-                        if tf_util.is_image(self.observation_space):
-                            tf.compat.v1.summary.image(
-                                "processed_observation", train_model.processed_obs
-                            )
-                        else:
-                            tf.compat.v1.summary.histogram(
-                                "processed_observation", train_model.processed_obs
-                            )
-                            tf.compat.v1.summary.scalar(
-                                "processed_observation_mean",
-                                tf.reduce_mean(input_tensor=train_model.processed_obs),
-                            )
-                            tf.compat.v1.summary.scalar(
-                                "processed_observation_sum",
-                                tf.reduce_sum(input_tensor=train_model.processed_obs),
-                            )
-
-                with tf.compat.v1.variable_scope("batch_parameter", reuse=False):
-                    if self.full_tensorboard_log:
-                        _list = ops.get_default_graph().get_collection(
-                            tf.compat.v1.GraphKeys.GLOBAL_VARIABLES,
-                            "model/Stem_1_1/batch_normalization",
-                        )
-                        for item in _list:
-                            tf.compat.v1.summary.scalar(
-                                item.name, tf.reduce_mean(input_tensor=item.value())
-                            )
-                        _list = ops.get_default_graph().get_collection(
-                            tf.compat.v1.GraphKeys.GLOBAL_VARIABLES,
-                            "model/Stem_1_2/batch_normalization",
-                        )
-                        for item in _list:
-                            tf.compat.v1.summary.scalar(
-                                item.name, tf.reduce_mean(input_tensor=item.value())
-                            )
-
-                # # note. should be train_model scope
-                # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, 'train_model')  # add for batch normalization
-                # with tf.control_dependencies(update_ops):  # add for batch normalization - 2019-08-07
-                #     trainer = tf.train.RMSPropOptimizer(learning_rate=self.learning_rate_ph, decay=self.alpha,
-                #                                         epsilon=self.epsilon)
-                #     self.apply_backprop = trainer.apply_gradients(grads)
-
-                # PlaceHolder Error
-                # trainer = tf.train.RMSPropOptimizer(learning_rate=self.learning_rate_ph, decay=self.alpha,
-                #                                     epsilon=self.epsilon)
-                # self.apply_backprop = slim.learning.create_train_op(loss, trainer)
-
-                trainer = tf.compat.v1.train.RMSPropOptimizer(
-                    learning_rate=self.learning_rate_ph,
-                    decay=self.alpha,
-                    epsilon=self.epsilon,
-                )
-                if update_ops:
-                    grad_updates = trainer.apply_gradients(merge_grads)
-                    # Ensure the train_tensor computes grad_updates.
-                    train_op = control_flow_ops.with_dependencies(
-                        [grad_updates], new_loss
-                    )
-                    train_ops = ops.get_collection_ref(ops.GraphKeys.TRAIN_OP)
-                    # Add the operation used for training to the 'train_op' collection
-                    if train_op not in train_ops:
-                        train_ops.append(train_op)
-                    self.apply_backprop = train_op
-                else:
-                    self.apply_backprop = trainer.apply_gradients(merge_grads)
-
-                # load weights from placeholder
-                with tf.compat.v1.variable_scope(
-                    "assign_params", reuse=tf.compat.v1.AUTO_REUSE
-                ):
-                    for tensor in self.ema_params:
-                        self.weights_load_placeholder.append(
-                            tf.compat.v1.placeholder(
-                                dtype=tensor.dtype, shape=tensor.get_shape()
-                            )
-                        )
-                        self.weights_load_op.append(
-                            tensor.assign(self.weights_load_placeholder[-1])
-                        )
-
-                self.train_model = train_model
-                self.step_model = step_model
-                self.step = step_model.step
-                self.proba_step = step_model.proba_step
-                self.value = step_model.value
-                self.initial_state = step_model.initial_state
-                tf.compat.v1.global_variables_initializer().run(session=self.sess)
-
-                self.summary = tf.compat.v1.summary.merge_all()
-
-    def _setup_model_v2(self):
-        ## GradNorm: Gradient Normalization for Adaptive Loss Balancing in Deep Multitask Networks
-        with SetVerbosity(self.verbose):
-
-            assert issubclass(self.policy, ActorCriticPolicy), (
-                "Error: the input policy for the A2C model must be an "
-                "instance of common.policies.ActorCriticPolicy."
-            )
-            self.graph = tf.Graph()
-            with self.graph.as_default():
-                if self.verbose == 2:
-                    self.sess = tf_util.debug_session(
-                        graph=self.graph, port="localhost:7000", mode=0
-                    )
-                else:
-                    self.sess = tf_util.make_session(graph=self.graph)
-
-                self.n_batch = self.n_envs * self.n_steps
-
-                n_batch_step = None
-                n_batch_train = None
-                if issubclass(self.policy, LstmPolicy):
-                    n_batch_step = self.n_envs
-                    n_batch_train = self.n_envs * self.n_steps
-
-                step_model = self.policy(
-                    self.sess,
-                    self.observation_space,
-                    self.action_space,
-                    self.n_envs,
-                    1,
-                    n_batch_step,
-                    reuse=False,
-                    **self.policy_kwargs
-                )
-
-                with tf.compat.v1.variable_scope(
-                    "train_model",
-                    reuse=True,
-                    custom_getter=tf_util.outer_scope_getter("train_model"),
-                ):
-                    train_model = self.policy(
-                        self.sess,
-                        self.observation_space,
-                        self.action_space,
-                        self.n_envs,
-                        self.n_steps,
-                        n_batch_train,
-                        reuse=True,
-                        **self.policy_kwargs
-                    )
-
-                with tf.compat.v1.variable_scope("loss", reuse=False):
-                    self.actions_ph = train_model.pdtype.sample_placeholder(
-                        [None], name="action_ph"
-                    )
-                    self.advs_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="advs_ph"
-                    )
-                    self.rewards_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="rewards_ph"
-                    )
-                    self.rewards_ph_2 = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="rewards_ph_2"
-                    )
-                    self.learning_rate_ph = tf.compat.v1.placeholder(
-                        tf.float32, [], name="learning_rate_ph"
-                    )
-                    self.loss_bias_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None, 3], name="loss_bias_ph"
-                    )
-
-                    neglogpac = train_model.proba_distribution.neglogp(self.actions_ph)
-                    self.entropy = tf.reduce_mean(
-                        input_tensor=train_model.proba_distribution.entropy()
-                    )
-                    # self.pg_loss = tf.reduce_mean(self.advs_ph * neglogpac)
-                    self.pg_loss = tf.reduce_mean(input_tensor=neglogpac)
-                    self.vf_loss = mse(
-                        tf.squeeze(train_model.value_fn), self.rewards_ph
-                    )
-                    self.vf_loss_2 = mse(
-                        tf.squeeze(train_model.value_fn_2), self.rewards_ph_2
-                    )
-
-                    assert (
-                        self.dynamic_coe is False
-                    ), "dynamic_coe should be false for gradnorm"
-                    self.pi_coef = tf.convert_to_tensor(
-                        value=RUNHEADER.m_pi_coef, dtype=tf.float32
-                    )
-                    self.vf_coef = tf.convert_to_tensor(
-                        value=RUNHEADER.m_vf_coef, dtype=tf.float32
-                    )
-                    self.vf_coef_2 = tf.convert_to_tensor(
-                        value=RUNHEADER.m_vf_coef_2, dtype=tf.float32
-                    )
-
-                    self.weight_pi_coef = tf.compat.v1.get_variable(
-                        "weight_pi_coef",
-                        shape=1,
-                        initializer=tf.compat.v1.ones_initializer(),
-                    )
-                    self.weight_vf_coef = tf.compat.v1.get_variable(
-                        "weight_vf_coef",
-                        shape=1,
-                        initializer=tf.compat.v1.ones_initializer(),
-                    )
-                    self.weight_vf_coef_2 = tf.compat.v1.get_variable(
-                        "weight_vf_coef_2",
-                        shape=1,
-                        initializer=tf.compat.v1.ones_initializer(),
-                    )
-
-                    with ops.control_dependencies(
-                        [self.pi_coef, self.vf_coef, self.vf_coef_2]
-                    ):
-                        barrier_coef = control_flow_ops.no_op(
-                            name="update_barrier_coef"
-                        )
-
-                    coef = tf.divide(
-                        3,
-                        self.weight_pi_coef
-                        + self.weight_vf_coef
-                        + self.weight_vf_coef_2,
-                    )
-                    with ops.control_dependencies([coef]):
-                        renormalizing = control_flow_ops.no_op(
-                            name="update_renormalizing_coef"
-                        )
-
-                    reg_loss_1 = tf.reduce_sum(
-                        input_tensor=tf.compat.v1.get_collection(
-                            tf.compat.v1.GraphKeys.REGULARIZATION_LOSSES
-                        )
-                    )
-                    loss_1 = (
-                        self.pg_loss
-                        * self.pi_coef
-                        * (
-                            1
-                            - tf.exp(
-                                -tf.reduce_mean(input_tensor=self.weight_pi_coef * coef)
-                            )
-                        )
-                        - self.entropy * self.ent_coef
-                    )
-                    loss_2 = (
-                        self.vf_loss
-                        * self.vf_coef
-                        * (
-                            1
-                            - tf.exp(
-                                -tf.reduce_mean(input_tensor=self.weight_vf_coef * coef)
-                            )
-                        )
-                    )
-                    loss_2_2 = (
-                        self.vf_loss_2
-                        * self.vf_coef_2
-                        * (
-                            1
-                            - tf.exp(
-                                -tf.reduce_mean(
-                                    input_tensor=self.weight_vf_coef_2 * coef
-                                )
-                            )
-                        )
-                    )
-                    # loss = tf.divide(tf.add(tf.add(loss_1, loss_2), loss_2_2), 3)
-                    loss = loss_1 + loss_2 + loss_2_2 + reg_loss_1
-
-                    self.loss_bias = tf.stack(
-                        [[loss_1, loss_2, loss_2_2]]
-                    )  # current batch loss
-                    loss_1_bias = self.loss_bias_ph[-1, 0]  # previous batch loss
-                    loss_2_bias = self.loss_bias_ph[-1, 1]
-                    loss_2_2_bias = self.loss_bias_ph[-1, 2]
-
-                    # if self.full_tensorboard_log:  # fix later on
-                    tf.compat.v1.summary.scalar("entropy_loss", self.entropy)
-                    tf.compat.v1.summary.scalar("policy_gradient_loss", self.pg_loss)
-                    tf.compat.v1.summary.scalar("value_function_loss", self.vf_loss)
-                    tf.compat.v1.summary.scalar(
-                        "value_function",
-                        tf.reduce_mean(input_tensor=train_model.value_fn),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "advs", tf.reduce_mean(input_tensor=self.advs_ph)
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "neglogpac", tf.reduce_mean(input_tensor=neglogpac)
-                    )
-                    tf.compat.v1.summary.scalar("loss", loss)
-                    tf.compat.v1.summary.scalar("loss_1", loss_1)
-                    tf.compat.v1.summary.scalar("loss_2", loss_2)
-                    tf.compat.v1.summary.scalar("loss_2_2", loss_2_2)
-                    tf.compat.v1.summary.scalar("reg_loss_1", reg_loss_1)
-
-                #  Make sure update_ops are computed before total_loss.
-                update_ops = ops.get_collection(ops.GraphKeys.UPDATE_OPS, "train_model")
-                if update_ops:
-                    with ops.control_dependencies(update_ops):
-                        barrier = control_flow_ops.no_op(name="update_barrier")
-                    new_loss = control_flow_ops.with_dependencies(
-                        [barrier, barrier_coef, renormalizing], loss
-                    )
-                    new_loss_1 = control_flow_ops.with_dependencies(
-                        [barrier, barrier_coef, renormalizing], loss_1
-                    )
-                    new_loss_2 = control_flow_ops.with_dependencies(
-                        [barrier, barrier_coef, renormalizing], loss_2
-                    )
-                    new_loss_2_2 = control_flow_ops.with_dependencies(
-                        [barrier, barrier_coef, renormalizing], loss_2_2
-                    )
-
-                else:
-                    new_loss = control_flow_ops.with_dependencies(
-                        [barrier_coef, renormalizing], loss
-                    )
-                    new_loss_1 = control_flow_ops.with_dependencies(
-                        [barrier_coef, renormalizing], loss_1
-                    )
-                    new_loss_2 = control_flow_ops.with_dependencies(
-                        [barrier_coef, renormalizing], loss_2
-                    )
-                    new_loss_2_2 = control_flow_ops.with_dependencies(
-                        [barrier_coef, renormalizing], loss_2_2
-                    )
-
-                # calculate gradient
-                self.params = find_trainable_variables("model")
-                shared_params, non_shared_params = find_shared_variables(
-                    "model", "Feature_out/weights"
-                )
-                self.ema_params = find_moving_mean_varience(
-                    "model"
-                )  # just global variables
-                if self.max_grad_norm is not None:
-                    grads, _ = tf.clip_by_global_norm(
-                        tf.gradients(ys=new_loss, xs=self.params), self.max_grad_norm
-                    )
-                    grads_pi, _ = tf.clip_by_global_norm(
-                        tf.gradients(ys=new_loss_1, xs=shared_params),
-                        self.max_grad_norm,
-                    )
-                    grads_vf, _ = tf.clip_by_global_norm(
-                        tf.gradients(ys=new_loss_2, xs=shared_params),
-                        self.max_grad_norm,
-                    )
-                    grads_vf_2, _ = tf.clip_by_global_norm(
-                        tf.gradients(ys=new_loss_2_2, xs=shared_params),
-                        self.max_grad_norm,
-                    )
-                else:
-                    grads = tf.gradients(ys=new_loss, xs=self.params)
-                    grads_pi = tf.gradients(ys=new_loss_1, xs=shared_params)
-                    grads_vf = tf.gradients(ys=new_loss_2, xs=shared_params)
-                    grads_vf_2 = tf.gradients(ys=new_loss_2_2, xs=shared_params)
-
-                grads_pi_norm = tf.norm(tensor=grads_pi)
-                grads_vf_norm = tf.norm(tensor=grads_vf)
-                grads_vf_2_norm = tf.norm(tensor=grads_vf_2)
-                grads_avg = tf.divide(
-                    tf.add(tf.add(grads_pi_norm, grads_vf_norm), grads_vf_2_norm), 3
-                )
-
-                loss_1_hat = tf.divide(loss_1, loss_1_bias)
-                loss_2_hat = tf.divide(loss_2, loss_2_bias)
-                loss_2_2_hat = tf.divide(loss_2_2, loss_2_2_bias)
-                loss_avg_hat = tf.divide(
-                    tf.add(tf.add(loss_1_hat, loss_2_hat), loss_2_2_hat), 3
-                )
-
-                inv_loss_1 = tf.divide(loss_1_hat, loss_avg_hat)
-                inv_loss_2 = tf.divide(loss_2_hat, loss_avg_hat)
-                inv_loss_2_2 = tf.divide(loss_2_2_hat, loss_avg_hat)
-
-                c1 = grads_avg * inv_loss_1**RUNHEADER.gn_alpha
-                c2 = grads_avg * inv_loss_2**RUNHEADER.gn_alpha
-                c2_2 = grads_avg * inv_loss_2_2**RUNHEADER.gn_alpha
-
-                reduction_method = tf.compat.v1.losses.Reduction.MEAN
-                l_grad_pi_norm = tf.compat.v1.losses.absolute_difference(
-                    grads_pi_norm, c1, reduction=reduction_method
-                )
-                l_grad_vf_norm = tf.compat.v1.losses.absolute_difference(
-                    grads_vf_norm, c2, reduction=reduction_method
-                )
-                l_grad_vf_2_norm = tf.compat.v1.losses.absolute_difference(
-                    grads_vf_2_norm, c2_2, reduction=reduction_method
-                )
-                total_l_grad_norm = l_grad_pi_norm + l_grad_vf_norm + l_grad_vf_2_norm
-
-                # if self.full_tensorboard_log:  # fix later on
-                with tf.compat.v1.variable_scope("grad_norm", reuse=False):
-                    tf.compat.v1.summary.scalar("grads_pi_norm", grads_pi_norm)
-                    tf.compat.v1.summary.scalar("grads_vf_norm", grads_vf_norm)
-                    tf.compat.v1.summary.scalar("grads_vf_2_norm", grads_vf_2_norm)
-                    tf.compat.v1.summary.scalar("grads_avg", grads_avg)
-                    tf.compat.v1.summary.scalar("loss_1_hat", loss_1_hat)
-                    tf.compat.v1.summary.scalar("loss_2_hat", loss_2_hat)
-                    tf.compat.v1.summary.scalar("loss_2_2_hat", loss_2_2_hat)
-                    tf.compat.v1.summary.scalar("loss_avg_hat", loss_avg_hat)
-                    tf.compat.v1.summary.scalar("inv_loss_1", inv_loss_1)
-                    tf.compat.v1.summary.scalar("inv_loss_2", inv_loss_2)
-                    tf.compat.v1.summary.scalar("inv_loss_2_2", inv_loss_2_2)
-                    tf.compat.v1.summary.scalar("c1", c1)
-                    tf.compat.v1.summary.scalar("c2", c2)
-                    tf.compat.v1.summary.scalar("c2_2", c2_2)
-                    tf.compat.v1.summary.scalar("l_grad_pi_norm", l_grad_pi_norm)
-                    tf.compat.v1.summary.scalar("l_grad_vf_norm", l_grad_vf_norm)
-                    tf.compat.v1.summary.scalar("l_grad_vf_2_norm", l_grad_vf_2_norm)
-                    tf.compat.v1.summary.scalar("total_l_grad_norm", total_l_grad_norm)
-                    tf.compat.v1.summary.scalar(
-                        "weight_pi_coef",
-                        tf.reduce_mean(input_tensor=self.weight_pi_coef),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "weight_vf_coef",
-                        tf.reduce_mean(input_tensor=self.weight_vf_coef),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "weight_vf_coef_2",
-                        tf.reduce_mean(input_tensor=self.weight_vf_coef_2),
-                    )
-                    # tf.summary.scalar('coef', coef)
-                    tf.compat.v1.summary.scalar(
-                        "atual_weight_pi_coef",
-                        (
-                            1
-                            - tf.exp(
-                                -tf.reduce_mean(input_tensor=self.weight_pi_coef * coef)
-                            )
-                        ),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "atual_weight_vf_coef",
-                        (
-                            1
-                            - tf.exp(
-                                -tf.reduce_mean(input_tensor=self.weight_vf_coef * coef)
-                            )
-                        ),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "atual_weight_vf_coef_2",
-                        (
-                            1
-                            - tf.exp(
-                                -tf.reduce_mean(
-                                    input_tensor=self.weight_vf_coef_2 * coef
-                                )
-                            )
-                        ),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "previous_loss_bias_pi", self.loss_bias_ph[-1, 0]
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "previous_loss_bias_vf", self.loss_bias_ph[-1, 1]
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "previous_loss_bias_vf2", self.loss_bias_ph[-1, 2]
-                    )
-
-                grads_norm_params = [
-                    self.weight_pi_coef,
-                    self.weight_vf_coef,
-                    self.weight_vf_coef_2,
-                ]
-                grads_l_total = tf.gradients(ys=total_l_grad_norm, xs=grads_norm_params)
-
-                _grads = list(zip(grads, self.params))
-                _grads_l_total = list(zip(grads_l_total, grads_norm_params))
-                # merge_grads = _grads + _grads_l_total
-                merge_grads = _grads
-
-                # Todo: check it later
-                with tf.compat.v1.variable_scope("weight_visualization", reuse=False):
-                    # Todo: check it later
-                    if self.full_tensorboard_log:
-                        for partial_deviation, param in merge_grads:
-                            if partial_deviation is not None:
-                                tf.compat.v1.summary.scalar(
-                                    "partial_dev_" + param.name,
-                                    tf.reduce_mean(input_tensor=partial_deviation),
-                                )
-                                tf.compat.v1.summary.scalar(
-                                    param.name, tf.reduce_mean(input_tensor=param)
-                                )
-                                tf.compat.v1.summary.histogram(
-                                    "partial_dev_" + param.name, partial_deviation
-                                )
-                                tf.compat.v1.summary.histogram(param.name, param)
-
-                with tf.compat.v1.variable_scope("step_info", reuse=False):
-                    self.sussesor_ph = tf.compat.v1.placeholder(
-                        tf.int32, [None], name="sussesor_ph"
-                    )
-                    self.selected_action_ph = tf.compat.v1.placeholder(
-                        tf.int32, [None], name="selected_action_ph"
-                    )
-                    self.diff_action_ph = tf.compat.v1.placeholder(
-                        tf.int32, [None], name="diff_action_ph"
-                    )
-                    self.returns_info_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="returns_info_ph"
-                    )
-                    self.hit_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="hit_ph"
-                    )
-
-                    # could not disable by "if self.full_tensorboard_log:", it updates from placeholders be careful
-                    tf.compat.v1.summary.scalar(
-                        "sussesor", tf.reduce_mean(input_tensor=self.sussesor_ph)
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "num_action",
-                        tf.reduce_mean(input_tensor=self.selected_action_ph),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "diff_action", tf.reduce_mean(input_tensor=self.diff_action_ph)
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "10day_return",
-                        tf.reduce_mean(input_tensor=self.returns_info_ph),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "hit", tf.reduce_mean(input_tensor=self.hit_ph)
-                    )
-
-                with tf.compat.v1.variable_scope("input_info", reuse=False):
-                    tf.compat.v1.summary.scalar(
-                        "discounted_rewards",
-                        tf.reduce_mean(input_tensor=self.rewards_ph),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "learning_rate",
-                        tf.reduce_mean(input_tensor=self.learning_rate_ph),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "advantage", tf.reduce_mean(input_tensor=self.advs_ph)
-                    )
-
-                    if self.full_tensorboard_log:
-                        tf.compat.v1.summary.histogram(
-                            "discounted_rewards", self.rewards_ph
-                        )
-                        tf.compat.v1.summary.histogram(
-                            "learning_rate", self.learning_rate_ph
-                        )
-                        tf.compat.v1.summary.histogram("advantage", self.advs_ph)
-
-                        if tf_util.is_image(self.observation_space):
-                            tf.compat.v1.summary.image(
-                                "processed_observation", train_model.processed_obs
-                            )
-                        else:
-                            tf.compat.v1.summary.histogram(
-                                "processed_observation", train_model.processed_obs
-                            )
-                            tf.compat.v1.summary.scalar(
-                                "processed_observation_mean",
-                                tf.reduce_mean(input_tensor=train_model.processed_obs),
-                            )
-                            tf.compat.v1.summary.scalar(
-                                "processed_observation_sum",
-                                tf.reduce_sum(input_tensor=train_model.processed_obs),
-                            )
-
-                with tf.compat.v1.variable_scope("batch_parameter", reuse=False):
-                    if self.full_tensorboard_log:
-                        _list = ops.get_default_graph().get_collection(
-                            tf.compat.v1.GraphKeys.GLOBAL_VARIABLES,
-                            "model/Stem_1_1/batch_normalization",
-                        )
-                        for item in _list:
-                            tf.compat.v1.summary.scalar(
-                                item.name, tf.reduce_mean(input_tensor=item.value())
-                            )
-
-                        _list = ops.get_default_graph().get_collection(
-                            tf.compat.v1.GraphKeys.GLOBAL_VARIABLES,
-                            "model/Stem_1_2/batch_normalization",
-                        )
-                        for item in _list:
-                            tf.compat.v1.summary.scalar(
-                                item.name, tf.reduce_mean(input_tensor=item.value())
-                            )
-
-                trainer = tf.compat.v1.train.RMSPropOptimizer(
-                    learning_rate=self.learning_rate_ph,
-                    decay=self.alpha,
-                    epsilon=self.epsilon,
-                )
-                trainer_2 = tf.compat.v1.train.RMSPropOptimizer(
-                    learning_rate=0.001, decay=self.alpha, epsilon=self.epsilon
-                )
-                if update_ops:
-                    grad_updates = trainer.apply_gradients(merge_grads)
-                    # Ensure the train_tensor computes grad_updates.
-                    train_op = control_flow_ops.with_dependencies(
-                        [grad_updates], new_loss
-                    )
-                    train_ops = ops.get_collection_ref(ops.GraphKeys.TRAIN_OP)
-                    # Add the operation used for training to the 'train_op' collection
-                    if train_op not in train_ops:
-                        train_ops.append(train_op)
-                    self.apply_backprop = train_op
-
-                    grad_updates2 = trainer_2.apply_gradients(_grads_l_total)
-                    # Ensure the train_tensor computes grad_updates.
-                    train_op2 = control_flow_ops.with_dependencies(
-                        [grad_updates2], total_l_grad_norm
-                    )
-                    # Add the operation used for training to the 'train_op' collection
-                    if train_op2 not in train_ops:
-                        train_ops.append(train_op2)
-                    self.apply_backprop_gradnorm = train_op2
-
-                else:
-                    self.apply_backprop = trainer.apply_gradients(merge_grads)
-
-                # load weights from placeholder
-                with tf.compat.v1.variable_scope(
-                    "assign_params", reuse=tf.compat.v1.AUTO_REUSE
-                ):
-                    for tensor in self.ema_params:
-                        self.weights_load_placeholder.append(
-                            tf.compat.v1.placeholder(
-                                dtype=tensor.dtype, shape=tensor.get_shape()
-                            )
-                        )
-                        self.weights_load_op.append(
-                            tensor.assign(self.weights_load_placeholder[-1])
-                        )
-
-                self.train_model = train_model
-                self.step_model = step_model
-                self.step = step_model.step
-                self.proba_step = step_model.proba_step
-                self.value = step_model.value
-                self.initial_state = step_model.initial_state
-                tf.compat.v1.global_variables_initializer().run(session=self.sess)
-
-                self.summary = tf.compat.v1.summary.merge_all()
 
     def _setup_model_v1(self):
         with SetVerbosity(self.verbose):
@@ -1256,22 +240,20 @@ class A2C(ActorCriticRLModel):
 
                 with tf.compat.v1.variable_scope("loss", reuse=False):
                     self.actions_ph = train_model.pdtype.sample_placeholder(
-                        [None], name="action_ph"
+                        [None],
+                        name="action_ph",
                     )
                     self.advs_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="advs_ph"
+                        tf.float32, [None, 15], name="advs_ph"
                     )
                     self.rewards_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="rewards_ph"
-                    )
-                    self.rewards_ph_2 = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="rewards_ph_2"
+                        tf.float32, [None, 15], name="rewards_ph"
                     )
                     self.learning_rate_ph = tf.compat.v1.placeholder(
                         tf.float32, [], name="learning_rate_ph"
                     )
                     self.loss_bias_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None, 3], name="loss_bias_ph"
+                        tf.float32, [None, 2], name="loss_bias_ph"
                     )
 
                     neglogpac = train_model.proba_distribution.neglogp(self.actions_ph)
@@ -1283,48 +265,14 @@ class A2C(ActorCriticRLModel):
                     self.vf_loss = mse(
                         tf.squeeze(train_model.value_fn), self.rewards_ph
                     )
-                    self.vf_loss_2 = mse(
-                        tf.squeeze(train_model.value_fn_2), self.rewards_ph_2
+                    self.pi_coef = tf.convert_to_tensor(
+                        value=RUNHEADER.m_pi_coef, dtype=tf.float32
+                    )
+                    self.vf_coef = tf.convert_to_tensor(
+                        value=RUNHEADER.m_vf_coef, dtype=tf.float32
                     )
 
-                    if self.dynamic_coe:
-                        minimum = tf.cast(
-                            tf.minimum(
-                                tf.minimum(self.pg_loss, self.vf_loss), self.vf_loss_2
-                            ),
-                            dtype=tf.float32,
-                        )
-
-                        cons = tf.constant(1, dtype=tf.float32)
-                        self.pi_coef = tf.cond(
-                            pred=tf.equal(self.pg_loss, minimum),
-                            true_fn=lambda: cons,
-                            false_fn=lambda: tf.divide(minimum, self.pg_loss),
-                        )
-                        self.vf_coef = tf.cond(
-                            pred=tf.equal(self.vf_loss, minimum),
-                            true_fn=lambda: cons,
-                            false_fn=lambda: tf.divide(minimum, self.vf_loss),
-                        )
-                        self.vf_coef_2 = tf.cond(
-                            pred=tf.equal(self.vf_loss_2, minimum),
-                            true_fn=lambda: cons,
-                            false_fn=lambda: tf.divide(minimum, self.vf_loss_2),
-                        )
-                    else:
-                        self.pi_coef = tf.convert_to_tensor(
-                            value=RUNHEADER.m_pi_coef, dtype=tf.float32
-                        )
-                        self.vf_coef = tf.convert_to_tensor(
-                            value=RUNHEADER.m_vf_coef, dtype=tf.float32
-                        )
-                        self.vf_coef_2 = tf.convert_to_tensor(
-                            value=RUNHEADER.m_vf_coef_2, dtype=tf.float32
-                        )
-
-                    with ops.control_dependencies(
-                        [self.pi_coef, self.vf_coef, self.vf_coef_2]
-                    ):
+                    with ops.control_dependencies([self.pi_coef, self.vf_coef]):
                         barrier_coef = control_flow_ops.no_op(
                             name="update_barrier_coef"
                         )
@@ -1336,9 +284,8 @@ class A2C(ActorCriticRLModel):
                     )
                     loss_1 = self.pg_loss * self.pi_coef - self.entropy * self.ent_coef
                     loss_2 = self.vf_loss * self.vf_coef
-                    loss_2_2 = self.vf_loss_2 * self.vf_coef_2
-                    loss = loss_1 + loss_2 + loss_2_2 + reg_loss_1
-                    self.loss_bias = tf.stack([[loss_1, loss_2, loss_2_2]])
+                    loss = loss_1 + loss_2 + reg_loss_1
+                    self.loss_bias = tf.stack([[loss_1, loss_2]])
 
                     if self.full_tensorboard_log:
                         tf.compat.v1.summary.scalar("entropy_loss", self.entropy)
@@ -1359,7 +306,6 @@ class A2C(ActorCriticRLModel):
                         tf.compat.v1.summary.scalar("loss", loss)
                         tf.compat.v1.summary.scalar("loss_1", loss_1)
                         tf.compat.v1.summary.scalar("loss_2", loss_2)
-                        tf.compat.v1.summary.scalar("loss_2_2", loss_2_2)
                         tf.compat.v1.summary.scalar("reg_loss_1", reg_loss_1)
 
                 #  Make sure update_ops are computed before total_loss.
@@ -1416,10 +362,10 @@ class A2C(ActorCriticRLModel):
                         tf.int32, [None], name="diff_action_ph"
                     )
                     self.returns_info_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="returns_info_ph"
+                        tf.float32, [None, 15], name="returns_info_ph"
                     )
                     self.hit_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None], name="hit_ph"
+                        tf.float32, [None, 15], name="hit_ph"
                     )
 
                     # could not disable by "if self.full_tensorboard_log:", it updates from placeholders be careful
@@ -1619,64 +565,6 @@ class A2C(ActorCriticRLModel):
 
                 if RUNHEADER.predefined_fixed_lr is None:
                     self.cur_lr = RUNHEADER.m_offline_learning_rate
-                else:
-                    if self.pg_loss_bias is None:
-                        self.cur_lr = init_lr  # warm-up
-                    elif (
-                        update <= RUNHEADER.warm_up_update
-                    ):  # (141 samples // 32 batch + 1)  / buffer_drop_rate * 6epoch
-                        self.cur_lr = init_lr  # warm-up
-                    else:
-                        if RUNHEADER.target_name not in [
-                            "US10YT",
-                            "GB10YT",
-                            "DE10YT",
-                            "KR10YT",
-                            "CN10YT",
-                            "JP10YT",
-                            "BR10YT",
-                        ]:
-                            if self.pg_loss_bias < 2.8 and (
-                                26 >= self.vf_loss_bias > 5
-                            ):
-                                self.cur_lr = lr_func(
-                                    RUNHEADER.predefined_fixed_lr[0],
-                                    RUNHEADER.cosine_lr,
-                                )
-                            elif self.pg_loss_bias < 2.8 and (
-                                5 >= self.vf_loss_bias >= 1.8
-                            ):
-                                self.cur_lr = lr_func(
-                                    RUNHEADER.predefined_fixed_lr[1],
-                                    RUNHEADER.cosine_lr,
-                                )
-                            else:
-                                self.cur_lr = lr_func(
-                                    RUNHEADER.predefined_fixed_lr[2],
-                                    RUNHEADER.cosine_lr,
-                                )
-                        else:  # bond index
-                            if float(explained_var) <= 0.85:  # find initial start
-                                self.cur_lr = lr_func(
-                                    RUNHEADER.predefined_fixed_lr[0],
-                                    RUNHEADER.cosine_lr,
-                                )
-                            # find recent local optimal:
-                            # no way right now and too much time consuming for validation test hence, hence, use a small lr
-                            # (when available validation test during the train phase,
-                            # use regression up/down performance = 0.65)
-                            elif (
-                                float(explained_var) <= 0.85
-                            ):  # fix condition later on (use regression up/down performance)
-                                self.cur_lr = lr_func(
-                                    RUNHEADER.predefined_fixed_lr[1],
-                                    RUNHEADER.cosine_lr,
-                                )
-                            else:  # find global optimal on the recent local optimal
-                                self.cur_lr = lr_func(
-                                    RUNHEADER.predefined_fixed_lr[2],
-                                    RUNHEADER.cosine_lr,
-                                )
 
         run_params = [
             self.summary,
@@ -1684,10 +572,8 @@ class A2C(ActorCriticRLModel):
             self.vf_loss,
             self.entropy,
             self.apply_backprop,
-            self.vf_loss_2,
             self.pi_coef,
             self.vf_coef,
-            self.vf_coef_2,
             self.apply_backprop_gradnorm,
             self.loss_bias,
         ]
@@ -1702,7 +588,6 @@ class A2C(ActorCriticRLModel):
             self.diff_action_ph: diff_selected_action,
             self.returns_info_ph: returns_info,
             self.hit_ph: hit,
-            self.rewards_ph_2: returns_info,
             self.loss_bias_ph: np.expand_dims(
                 np.mean(self.stack_loss_bias, axis=0), axis=0
             ),
@@ -1718,9 +603,7 @@ class A2C(ActorCriticRLModel):
                 self.full_tensorboard_log
                 and (1 + update) % self.tensorboard_log_update == 0
             ):
-                run_options = tf.compat.v1.RunOptions(
-                    trace_level=tf.compat.v1.RunOptions.FULL_TRACE
-                )
+                run_options = tf.compat.v1.RunOptions()
                 run_metadata = tf.compat.v1.RunMetadata()
                 (
                     summary,
@@ -1728,10 +611,8 @@ class A2C(ActorCriticRLModel):
                     value_loss,
                     policy_entropy,
                     _,
-                    value_loss2,
                     pi_coef,
                     vf_coef,
-                    vf_coef_2,
                     _,
                     loss_bias,
                 ) = self.sess.run(
@@ -1749,10 +630,8 @@ class A2C(ActorCriticRLModel):
                     value_loss,
                     policy_entropy,
                     _,
-                    value_loss2,
                     pi_coef,
                     vf_coef,
-                    vf_coef_2,
                     _,
                     loss_bias,
                 ) = self.sess.run(run_params, td_map)
@@ -1765,21 +644,17 @@ class A2C(ActorCriticRLModel):
                 value_loss,
                 policy_entropy,
                 _,
-                value_loss2,
                 pi_coef,
                 vf_coef,
-                vf_coef_2,
             ) = self.sess.run(
                 [
                     self.pg_loss,
                     self.vf_loss,
                     self.entropy,
                     self.apply_backprop,
-                    self.vf_loss_2,
                     self.pi_coef,
                     self.vf_coef,
-                    self.vf_coef_2,
-                    self.apply_backprop_gradnorm,
+                    # self.apply_backprop_gradnorm,
                 ],
                 td_map,
             )
@@ -1793,10 +668,8 @@ class A2C(ActorCriticRLModel):
             policy_loss,
             value_loss,
             policy_entropy,
-            value_loss2,
             pi_coef,
             vf_coef,
-            vf_coef_2,
         )
 
     def offline_learning_with_buffer(self, runner, writer, model_location):
@@ -1936,12 +809,12 @@ class A2C(ActorCriticRLModel):
             runner = A2CRunner(self.env, self, n_steps=self.n_steps, gamma=self.gamma)
 
             self.episode_reward = np.zeros((self.n_envs,))
-            self.day_return = np.zeros(
-                (
-                    self.n_envs,
-                    5,
-                )
-            )  # 0, 1, 5, 10, 20
+            # self.day_return = np.zeros(
+            #     (
+            #         self.n_envs,
+            #         5,
+            #     )
+            # )  # 0, 1, 5, 10, 20     2022.11.17 disable
 
             if RUNHEADER.m_online_buffer:  # generate buffer
                 buffer = Buffer(
@@ -1952,11 +825,11 @@ class A2C(ActorCriticRLModel):
 
             # simulation learning or continue the simulation learning after the offline learning
             t_start = time.time()
-            print_rewards = list()
+            print_rewards = []
             current_timesteps = 0
             current_episode_idx = 0
-            ep_dsr = list()
-            ep_dones = list()
+            ep_dsr = []
+            ep_dones = []
             entry_th = None
             mask_th = None
             learned_experiences_ep = 0
@@ -2135,10 +1008,8 @@ class A2C(ActorCriticRLModel):
                     policy_loss,
                     value_loss,
                     policy_entropy,
-                    value_loss2,
                     pi_coef,
                     vf_coef,
-                    vf_coef_2,
                 ) = self._train_step(
                     obs,
                     states,
@@ -2154,10 +1025,9 @@ class A2C(ActorCriticRLModel):
                     returns_info,
                     hit,
                 )
-                self.pg_loss_bias, self.vf_loss_bias, self.vf_loss_2_bias = (
+                self.pg_loss_bias, self.vf_loss_bias = (
                     policy_loss,
                     value_loss,
-                    value_loss2,
                 )
 
                 """ Trace actions
@@ -2210,7 +1080,9 @@ class A2C(ActorCriticRLModel):
                 if writer is not None:
                     self.episode_reward = total_episode_reward_logger(
                         self.episode_reward,
-                        true_reward.reshape((self.n_envs, self.n_steps)),
+                        true_reward.reshape(
+                            (self.n_envs, self.n_steps * true_reward.shape[-1])
+                        ),
                         masks.reshape((self.n_envs, self.n_steps)),
                         writer,
                         self.num_timesteps,
@@ -2244,21 +1116,27 @@ class A2C(ActorCriticRLModel):
                     non_pass_episode=non_pass_episode,
                     short_term_roll_out=short_term_roll_out,
                     log_interval=log_interval,
-                    value_loss2=value_loss2,
                     pi_coef=pi_coef,
                     vf_coef=vf_coef,
-                    vf_coef_2=vf_coef_2,
                 )
                 """Restore extra information
                 """
                 print_rewards.append(
                     [
                         float(
-                            np.mean(np.reshape(rewards, [self.n_envs, self.n_steps]))
+                            np.mean(
+                                np.reshape(
+                                    rewards,
+                                    [self.n_envs, self.n_steps, rewards.shape[-1]],
+                                )
+                            )
                         ),
                         float(
                             np.mean(
-                                np.reshape(true_reward, [self.n_envs, self.n_steps])
+                                np.reshape(
+                                    true_reward,
+                                    [self.n_envs, self.n_steps, true_reward.shape[-1]],
+                                )
                             )
                         ),
                     ]
@@ -2492,10 +1370,8 @@ class A2C(ActorCriticRLModel):
                     policy_loss,
                     value_loss,
                     policy_entropy,
-                    value_loss2,
                     pi_coef,
                     vf_coef,
-                    vf_coef_2,
                 ) = self._train_step(
                     obs,
                     states,
@@ -2513,10 +1389,9 @@ class A2C(ActorCriticRLModel):
                     hit,
                     replay=False,
                 )
-                self.pg_loss_bias, self.vf_loss_bias, self.vf_loss_2_bias = (
+                self.pg_loss_bias, self.vf_loss_bias = (
                     policy_loss,
                     value_loss,
-                    value_loss2,
                 )
                 explained_var = self.print_out_tabular(
                     policy_entropy=policy_entropy,
@@ -2526,10 +1401,8 @@ class A2C(ActorCriticRLModel):
                     rewards=rewards,
                     values=values,
                     opt=1,
-                    value_loss2=value_loss2,
                     pi_coef=pi_coef,
                     vf_coef=vf_coef,
-                    vf_coef_2=vf_coef_2,
                 )
 
                 print_out_csv.append(
@@ -2786,10 +1659,8 @@ class A2C(ActorCriticRLModel):
         non_pass_episode=None,
         short_term_roll_out=None,
         log_interval=None,
-        value_loss2=None,
         pi_coef=None,
         vf_coef=None,
-        vf_coef_2=None,
     ):
         """Write printout and save csv"""
         if opt == 0:  # default tabular
@@ -2878,7 +1749,6 @@ class A2C(ActorCriticRLModel):
                             policy_loss * pi_coef
                             - policy_entropy * RUNHEADER.m_ent_coef
                             + value_loss * vf_coef
-                            + value_loss2 * vf_coef_2
                         ),
                         float(values),
                         float(rewards),
@@ -2886,8 +1756,6 @@ class A2C(ActorCriticRLModel):
                         np.abs(float(policy_loss - values)),
                         float(policy_loss * pi_coef),
                         float(value_loss * vf_coef),
-                        float(value_loss2 * vf_coef_2),
-                        float(value_loss2),
                     ]
                 )
                 if self.verbose >= 1:
@@ -2945,15 +1813,15 @@ class A2CRunner(AbstractEnvRunner):
         print("\n")
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [], [], [], [], []
         previous_action = np.zeros(1)
-        tmp_info = list()
+        tmp_info = []
         # Todo: assume that each episodes are independent (it depends on your perspective to given problem)
         self.states = self.init_state
         mb_states = self.states
         self.dones = [False for _ in range(self.n_env)]
-        selected_action = list()
-        diff_selected_action = list()
-        returns_info = list()
-        hit = list()
+        selected_action = []
+        diff_selected_action = []
+        returns_info = []
+        hit = []
 
         # step simulation
         for n_steps_idx in range(self.n_steps):
@@ -2996,7 +1864,7 @@ class A2CRunner(AbstractEnvRunner):
             if online_buffer:
                 tmp_info.append(info)
                 tmp_log = [tmp["10day_return"] for tmp in info]
-                returns_info.append(tmp_log)
+                returns_info.append(np.array(tmp_log).squeeze().tolist())
                 hit.append(np.where(np.array(tmp_log) > 0, 1, 0))
             else:
                 returns_info.append(tmp_log.tolist())
@@ -3058,8 +1926,8 @@ class A2CRunner(AbstractEnvRunner):
             suessor,
             np.reshape(np.array(selected_action).T, [self.n_env * self.n_steps]),
             np.reshape(np.array(diff_selected_action).T, [self.n_env * self.n_steps]),
-            np.reshape(np.array(returns_info).T, [self.n_env * self.n_steps]),
-            np.reshape(np.array(hit).T, [self.n_env * self.n_steps]),
+            np.array(returns_info),
+            np.array(hit).squeeze(),
         )
 
     def step_simulation(self, clipped_actions=0, n_steps_idx=None):
@@ -3081,7 +1949,7 @@ class A2CRunner(AbstractEnvRunner):
 
             """get step example and stack to step memory
             """
-            actions, values, states, neglogp, _ = self.model.step(
+            actions, values, states, neglogp = self.model.step(
                 self.obs, self.states, self.dones, sample_th=sample_th
             )
 
@@ -3168,7 +2036,7 @@ class A2CRunner(AbstractEnvRunner):
         """get step example and stack to step memory
         """
         self.obs = obs_buffer[n_steps_idx]
-        _, values, states, _, _ = self.model.step(
+        _, values, states, _ = self.model.step(
             self.obs, self.states, self.dones, sample_th=sample_th
         )
         actions = action_buffer[n_steps_idx]

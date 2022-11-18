@@ -7,7 +7,6 @@ import gym
 import numpy as np
 from gym import spaces
 from gym.utils import seeding
-
 from header.index_forecasting import RUNHEADER
 
 
@@ -76,13 +75,23 @@ class IndexForecastingEnv(gym.Env):
         # self.action_space = spaces.Box(low=0, high=1, shape=(self.num_y_index))
 
         # up/down +20, +10, +15, +25, +30
+        # self.action_space = spaces.MultiDiscrete(
+        #     np.ones(5) * 2,
+        # )
+
+        # up/down +20 : MTL version (15 market)
         self.action_space = spaces.MultiDiscrete(
-            np.ones(5) * 2,
+            np.ones(self.num_y_index) * 2,
         )
         self.observation_space = spaces.Box(
             low=data_low,
             high=data_high,
-            shape=(self.num_of_datatype_obs_total, self.window_size, self.num_index),
+            shape=(
+                self.num_of_datatype_obs_total,
+                self.window_size,
+                self.num_index,
+                self.num_y_index,
+            ),
             dtype=np.float32,
         )
         self.seed()
@@ -95,8 +104,6 @@ class IndexForecastingEnv(gym.Env):
 
     def step(self, action):
         done = None
-        assert self.action_space.contains(action), f"{action} ({type(action)}) invalid"
-
         assert self.action_space.contains(action), f"{action} ({type(action)}) invalid"
 
         if self.mode == "train":
@@ -114,22 +121,15 @@ class IndexForecastingEnv(gym.Env):
         # adopt allocation rate later...
         # extract data from given actions
         NoneType_Check = None
-        target_index = RUNHEADER.m_target_index
-        y_return_ratio = self.sample["structure/class/ratio"][target_index]  # ratio +20
-        y_return_ratio_ref1 = self.sample["structure/class/ratio_ref1"][
-            target_index
-        ]  # ratio +10
-        y_return_index = self.sample["structure/class/index"][target_index]  # index +20
 
-        y_return_label = self.sample["structure/class/label"][
-            target_index
-        ]  # up/down +20
-        y_return_label_ref1 = self.sample["structure/class/label_ref1"][
-            target_index
-        ]  # up/down +10
-        y_return_label_ref2 = self.sample["structure/class/label_ref2"][
-            target_index
-        ]  # up/down +15
+        # target_index = RUNHEADER.m_target_index
+        y_return_ratio = self.sample["structure/class/ratio"]  # ratio +20
+        y_return_ratio_ref1 = self.sample["structure/class/ratio_ref1"]  # ratio +10
+        y_return_index = self.sample["structure/class/index"]  # index +20
+
+        y_return_label = self.sample["structure/class/label"]  # up/down +20
+        y_return_label_ref1 = self.sample["structure/class/label_ref1"]  # up/down +10
+        y_return_label_ref2 = self.sample["structure/class/label_ref2"]  # up/down +15
         if type(NoneType_Check) is type(
             self.sample["structure/class/label_ref4"]
         ):  # NoneType is not subscriptable
@@ -138,11 +138,11 @@ class IndexForecastingEnv(gym.Env):
             y_return_label_ref4 = dummy
             y_return_label_ref5 = dummy
         else:
-            y_return_label_ref4 = self.sample["structure/class/label_ref4"][
-                target_index
+            y_return_label_ref4 = self.sample[
+                "structure/class/label_ref4"
             ]  # up/down +25
-            y_return_label_ref5 = self.sample["structure/class/label_ref5"][
-                target_index
+            y_return_label_ref5 = self.sample[
+                "structure/class/label_ref5"
             ]  # up/down +30
 
         y_return = np.array(
@@ -155,12 +155,10 @@ class IndexForecastingEnv(gym.Env):
             ],
             dtype=np.int,
         )
-        y_return_seq_ratio = self.sample["structure/class/seq_ratio"][
-            :, target_index
-        ]  # -2 ~ +2 (5days)
-        y_current_index = self.sample["structure/class/base_date_price"][
-            target_index
-        ]  # +0 index
+        y_return_seq_ratio = self.sample[
+            "structure/class/seq_ratio"
+        ]  # -2 ~ +2 (5days)  [daily return x 15 targets]
+        y_current_index = self.sample["structure/class/base_date_price"]  # +0 index
 
         """ Caution: not in use for training,
             used in performance calculation and tensor-board only
@@ -189,40 +187,19 @@ class IndexForecastingEnv(gym.Env):
         with warnings.catch_warnings():
             warnings.filterwarnings("error")
             try:
-
-                # # history of the fund penalty (using fund cumulative returns)
-                # if is_zero_action:
-                #     history_score = 0
-                # else:
-                #     history_score = (fund_cum_return - fund_min_return + 1E-5) / (fund_max_return - fund_min_return)
-                # history_score = np.mean(history_score) * self.h_factor
-                #
-                # # num of action penalty
-                # total = self.num_y_index
-                # target = RUNHEADER.m_target_actions
-                # penalty_lookup = np.array((np.linspace(1, 0, target).tolist() +
-                #                            np.linspace(0, 1, target)[1:].tolist() +
-                #                            [1] * (total + 1 - (target * 2)))) * self.factor
-                # # penalty_lookup = np.array([0]*349)
-                #
-                # # expectation with tri return
-                # # expectation = (y_return_ref0 * 0.25) + (y_return * 1.5) + (y_return_ref1 * 0.5) + (y_return_ref2 * 0.25)
-                # expectation = (y_return_ref0 * 1) + (y_return * 1) + (y_return_ref1 * 0.35) + (y_return_ref2 * 0.15)
-
                 """
                 Expectation
                 """
-                if RUNHEADER.m_n_cpu == 1:  # use mean
-                    expectation: np.floating = np.mean(y_return_seq_ratio)
-                else:
-                    expectation = y_return_seq_ratio[
-                        np.random.randint(0, y_return_seq_ratio.shape[0])
-                    ]
+                # expectation: np.floating = np.mean(y_return_seq_ratio)
+                expectation: np.floating = np.mean(y_return_seq_ratio, axis=0)
+
                 # done_cond = np.sum(np.abs(action - y_return)) > 0
-                done_cond2 = (
-                    np.abs(action - y_return)[0] > 0
-                    or np.sum(np.abs(action - y_return)) > 1
-                )
+
+                # done_cond2 = (
+                #     np.abs(action - y_return)[0] > 0
+                #     or np.sum(np.abs(action - y_return)) > 1
+                # )
+                done_cond2 = False
 
                 # # for co-relation coefficient analysis
                 # if self.write_file:

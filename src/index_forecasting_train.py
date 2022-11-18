@@ -220,7 +220,7 @@ def configure_header(args):
         # sub1, 140 -> sub2, 70 -> sub2, 140 -> sub1, 200
         RUNHEADER.__dict__[
             "m_offline_learning_epoch"
-        ] = 50  # total epochs should reach to about 140 epochs (experimental result) 300 -> 120 (For fast experimental, boss Reporting) -> 150 -> 50
+        ] = 50  # total epochs should reach to about 140 epochs (experimental result) 300 -> 120 (For fast experimental) -> 150 -> 50
         RUNHEADER.__dict__[
             "m_sub_epoch"
         ] = 1  # investigate the same samples 3 times in a epoch to increase training speed
@@ -607,6 +607,162 @@ def configure_header(args):
             RUNHEADER.__dict__["m_name"] = (
                 dict_RUNHEADER["m_name"]
                 + "_m5_6_"
+                + str(RUNHEADER.__dict__["dataset_version"])
+                + "_"
+                + time_now
+                + "_"
+                + str(args.process_id)
+            )
+        elif args.search_parameter == 7:
+            RUNHEADER.__dict__["default_net"] = "shake_regulization_v5"
+            RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
+            RUNHEADER.__dict__["m_offline_learning_epoch"] = 900
+            RUNHEADER.__dict__["warm_up_update"] = 1000
+            RUNHEADER.__dict__["cosine_lr"] = True
+            RUNHEADER.__dict__["cyclic_lr_min"] = 2e-4
+            RUNHEADER.__dict__["cyclic_lr_max"] = 6e-4
+
+            RUNHEADER.__dict__["m_on_validation"] = False
+            RUNHEADER.__dict__["dynamic_lr"] = False  # made a decision True -> False
+            RUNHEADER.__dict__["dynamic_coe"] = False  # made a decision True -> False
+            RUNHEADER.__dict__["grad_norm"] = False
+            RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
+            RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["m_validation_min_epoch"] = 0
+            RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
+            # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
+            RUNHEADER.__dict__[
+                "m_offline_learning_rate"
+            ] = 2e-4  # a made decision 5e-4 -> 3e-4 -> 5e-6 -> 5e-5 -> 5e-4
+            RUNHEADER.__dict__["m_min_learning_rate"] = 2e-4  # 7e-6 ->  1e-5
+            RUNHEADER.__dict__["m_vf_coef"] = 1
+            RUNHEADER.__dict__["m_ent_coef"] = 0
+            RUNHEADER.__dict__[
+                "m_pi_coef"
+            ] = 0.7  # 0.01 -> 1 -> 0.05 -> 0.1 -> 0.024 -> 0.005
+            RUNHEADER.__dict__[
+                "m_max_grad_norm"
+            ] = 0.5  # [0.5 | None]  # a made decision
+            RUNHEADER.__dict__[
+                "m_l2_norm"
+            ] = 1e-7  # 0.1 -> 4e-5 -> 4e-6 -> 1e-7(id3) -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__["m_l1_norm"] = 1e-05
+            RUNHEADER.__dict__[
+                "m_drop_out"
+            ] = 0.8  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__[
+                "m_batch_decay"
+            ] = 0.9997  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__[
+                "m_batch_epsilon"
+            ] = 0.001  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__["m_name"] = (
+                dict_RUNHEADER["m_name"]
+                + "_m5_1_"
+                + str(RUNHEADER.__dict__["dataset_version"])
+                + "_"
+                + time_now
+                + "_"
+                + str(args.process_id)
+            )
+        elif args.search_parameter == 8:
+            RUNHEADER.__dict__["default_net"] = "shake_regulization_v5"
+            RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
+            RUNHEADER.__dict__["m_offline_learning_epoch"] = 900
+            RUNHEADER.__dict__["warm_up_update"] = 1000
+            RUNHEADER.__dict__["cosine_lr"] = True
+            RUNHEADER.__dict__["cyclic_lr_min"] = 1e-4
+            RUNHEADER.__dict__["cyclic_lr_max"] = 5e-4
+
+            RUNHEADER.__dict__["m_on_validation"] = False
+            RUNHEADER.__dict__["dynamic_lr"] = False  # made a decision True -> False
+            RUNHEADER.__dict__["dynamic_coe"] = False  # made a decision True -> False
+            RUNHEADER.__dict__["grad_norm"] = False
+            RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
+            RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["m_validation_min_epoch"] = 0
+            RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
+            # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
+            RUNHEADER.__dict__[
+                "m_offline_learning_rate"
+            ] = 1e-4  # a made decision 5e-4 -> 3e-4 -> 5e-6 -> 5e-5 -> 5e-4
+            RUNHEADER.__dict__["m_min_learning_rate"] = 1e-4  # 7e-6 ->  1e-5
+            RUNHEADER.__dict__["m_vf_coef"] = 0.8
+            RUNHEADER.__dict__["m_ent_coef"] = 0
+            RUNHEADER.__dict__[
+                "m_pi_coef"
+            ] = 1  # 0.01 -> 1 -> 0.05 -> 0.1 -> 0.024 -> 0.005
+            RUNHEADER.__dict__[
+                "m_max_grad_norm"
+            ] = 0.5  # [0.5 | None]  # a made decision
+            RUNHEADER.__dict__[
+                "m_l2_norm"
+            ] = 1e-7  # 0.1 -> 4e-5 -> 4e-6 -> 1e-7(id3) -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__["m_l1_norm"] = 1e-05
+            RUNHEADER.__dict__[
+                "m_drop_out"
+            ] = 0.8  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__[
+                "m_batch_decay"
+            ] = 0.9997  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__[
+                "m_batch_epsilon"
+            ] = 0.001  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__["m_name"] = (
+                dict_RUNHEADER["m_name"]
+                + "_m5_2_"
+                + str(RUNHEADER.__dict__["dataset_version"])
+                + "_"
+                + time_now
+                + "_"
+                + str(args.process_id)
+            )
+        elif args.search_parameter == 9:
+            RUNHEADER.__dict__["default_net"] = "shake_regulization_v5"
+            RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
+            RUNHEADER.__dict__["m_offline_learning_epoch"] = 900
+            RUNHEADER.__dict__["warm_up_update"] = 1000
+            RUNHEADER.__dict__["cosine_lr"] = True
+            RUNHEADER.__dict__["cyclic_lr_min"] = 1e-4
+            RUNHEADER.__dict__["cyclic_lr_max"] = 5e-4
+
+            RUNHEADER.__dict__["m_on_validation"] = False
+            RUNHEADER.__dict__["dynamic_lr"] = False  # made a decision True -> False
+            RUNHEADER.__dict__["dynamic_coe"] = False  # made a decision True -> False
+            RUNHEADER.__dict__["grad_norm"] = False
+            RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
+            RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["m_validation_min_epoch"] = 0
+            RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
+            # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
+            RUNHEADER.__dict__[
+                "m_offline_learning_rate"
+            ] = 1e-4  # a made decision 5e-4 -> 3e-4 -> 5e-6 -> 5e-5 -> 5e-4
+            RUNHEADER.__dict__["m_min_learning_rate"] = 1e-4  # 7e-6 ->  1e-5
+            RUNHEADER.__dict__["m_vf_coef"] = 0.8
+            RUNHEADER.__dict__["m_ent_coef"] = 0
+            RUNHEADER.__dict__[
+                "m_pi_coef"
+            ] = 1  # 0.01 -> 1 -> 0.05 -> 0.1 -> 0.024 -> 0.005
+            RUNHEADER.__dict__[
+                "m_max_grad_norm"
+            ] = 0.5  # [0.5 | None]  # a made decision
+            RUNHEADER.__dict__[
+                "m_l2_norm"
+            ] = 1e-7  # 0.1 -> 4e-5 -> 4e-6 -> 1e-7(id3) -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__["m_l1_norm"] = 1e-05
+            RUNHEADER.__dict__[
+                "m_drop_out"
+            ] = 0.8  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__[
+                "m_batch_decay"
+            ] = 0.9997  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__[
+                "m_batch_epsilon"
+            ] = 0.001  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__["m_name"] = (
+                dict_RUNHEADER["m_name"]
+                + "_m5_3_"
                 + str(RUNHEADER.__dict__["dataset_version"])
                 + "_"
                 + time_now

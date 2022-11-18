@@ -151,10 +151,8 @@ def run(
 
     # use predefined base model
     dir_name = _model_location
-    [
+    for file_name in copy_file:
         shutil.copy2(dir_name + file_name, target_list[-7] + file_name)
-        for file_name in copy_file
-    ]
 
     # check _dataset_dir in operation mode
     (
@@ -166,7 +164,7 @@ def run(
         _infer_set,
     ) = index_forecasting_test.meta_info(_model_location, _dataset_dir)
 
-    _env_name = "IF-{}".format(RUNHEADER.dataset_version)
+    _env_name = f"IF-{RUNHEADER.dataset_version}"
     _file_pattern = "if_{}_cv%02d_%s.pkl".format(RUNHEADER.dataset_version)
 
     """run application"""

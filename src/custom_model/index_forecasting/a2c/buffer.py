@@ -20,7 +20,12 @@ class Buffer(object):
 
         if len(env.observation_space.shape) > 1:
             self.raw_pixels = True
-            self.height, self.width, self.n_channels = env.observation_space.shape
+            (
+                self.height,
+                self.width,
+                self.n_channels,
+                self.n_targets,
+            ) = env.observation_space.shape
             self.obs_dtype = np.float32
         else:
             self.raw_pixels = False
@@ -180,8 +185,14 @@ class Buffer(object):
                         [self.size] + [self.n_steps] + list(actions.shape[1:]),
                         dtype=np.int8,
                     )
-                    self.rewards = np.empty([self.size, self.n_steps], dtype=np.float32)
-                    self.values = np.empty([self.size, self.n_steps], dtype=np.float32)
+                    self.rewards = np.empty(
+                        [self.size, self.n_steps] + list(rewards.shape[1:]),
+                        dtype=np.float32,
+                    )
+                    self.values = np.empty(
+                        [self.size, self.n_steps] + list(values.shape[1:]),
+                        dtype=np.float32,
+                    )
                     self.states = np.empty(
                         [self.size] + list(states.shape[1:]), dtype=np.float32
                     )
@@ -196,10 +207,16 @@ class Buffer(object):
                         [self.size, self.n_steps], dtype=np.int8
                     )
                     self.returns_info = np.empty(
-                        [self.size, self.n_steps], dtype=np.float32
+                        [self.size, self.n_steps] + list(actions.shape[1:]),
+                        dtype=np.float32,
                     )
-                    self.hit = np.empty([self.size, self.n_steps], dtype=np.float32)
-                    self.bin_rewards = np.empty([self.size], dtype=np.float32)
+                    self.hit = np.empty(
+                        [self.size, self.n_steps] + list(hit.shape[1:]),
+                        dtype=np.float32,
+                    )
+                    self.bin_rewards = np.empty(
+                        [self.size] + [rewards.shape[-1]], dtype=np.float32
+                    )
                     # self.suessor = np.empty([self.size] + list(np.array(suessor).shape), dtype=np.int32)
                     # self.selected_action = np.empty([self.size] + list(np.array(selected_action).shape), dtype=np.int32)
                     # self.diff_selected_action = np.empty([self.size] + list(np.array(diff_selected_action).shape),
@@ -215,10 +232,10 @@ class Buffer(object):
                         actions, [self.n_env, self.n_steps] + list(actions.shape[1:])
                     )[idx]
                     self.rewards[self.next_idx] = np.reshape(
-                        rewards, [self.n_env, self.n_steps]
+                        rewards, [self.n_env, self.n_steps] + list(rewards.shape[1:])
                     )[idx]
                     self.values[self.next_idx] = np.reshape(
-                        values, [self.n_env, self.n_steps]
+                        values, [self.n_env, self.n_steps] + list(values.shape[1:])
                     )[idx]
                     self.masks[self.next_idx] = np.reshape(
                         masks, [self.n_env, self.n_steps]
@@ -236,14 +253,19 @@ class Buffer(object):
                     )[idx]
 
                     self.returns_info[self.next_idx] = np.reshape(
-                        returns_info, [self.n_env, self.n_steps]
+                        returns_info,
+                        [self.n_env, self.n_steps] + list(returns_info.shape[1:]),
                     )[idx]
 
                     self.hit[self.next_idx] = np.reshape(
-                        hit, [self.n_env, self.n_steps]
+                        hit, [self.n_env, self.n_steps] + list(hit.shape[1:])
                     )[idx]
                     self.bin_rewards[self.next_idx] = np.sum(
-                        np.reshape(rewards, [self.n_env, self.n_steps])[idx]
+                        np.reshape(
+                            rewards,
+                            [self.n_env, self.n_steps] + list(rewards.shape[1:]),
+                        )[idx],
+                        axis=0,
                     )
 
                     self.next_idx = (self.next_idx + 1) % self.size
