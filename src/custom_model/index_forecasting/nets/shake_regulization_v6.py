@@ -4,6 +4,7 @@ import tensorflow as tf
 
 # slim = tf_slim  # call keras
 import tf_slim as slim  # call tf.layers
+
 from custom_model.index_forecasting.common.utils import conv, conv_to_fc, linear
 from header.index_forecasting import RUNHEADER
 
@@ -40,7 +41,7 @@ def ShakeShake(x, is_training=False):
 def block_stem(inputs, w_1, w_2, scope=None, reuse=None):
     """Builds stem layer"""
     with tf.compat.v1.variable_scope(scope, "Stem", [inputs], reuse=reuse):
-        # 5 X 20 X 313
+        # 5 X 20 X 292
         net = channel_wise_attn_layer(inputs, scope)
         # net = slim.conv2d(inputs, w_1, [1, 1], scope='Conv2d_0b_1x1')
         # net = slim.conv2d(net, w_2, [3, 3], scope='Conv2d_0c_1x1')
@@ -193,9 +194,8 @@ def attn_layer(net):
     return slim.layers.layer_norm(out, scale=False)
 
 
-def channel_wise_attn_layer(net, scope):
-    # ratio = 8
-    ratio = 1
+def channel_wise_attn_layer(net, scope, ratio=8):
+
     _, width, height, n_feat_map = net.get_shape().as_list()
     input_reshape = tf.reshape(net, [-1, width * height * n_feat_map, 1])
 
@@ -224,25 +224,24 @@ def shakenet(scaled_images, is_training=False, **kwargs):
     # on - batch normalization, on - regularization
     with slim.arg_scope(shake_arg_scope(use_batch_norm=True)):
         with slim.arg_scope([slim.batch_norm, slim.dropout], is_training=is_training):
-            # image split
-            scaled_images = tf.transpose(a=scaled_images, perm=[1, 0, 2, 3])
-
-            scaled_images_1 = tf.transpose(a=scaled_images[0:5, :], perm=[1, 0, 2, 3])
-            scaled_images_2 = tf.transpose(a=scaled_images[5:10, :], perm=[1, 0, 2, 3])
-            scaled_images_3 = tf.transpose(a=scaled_images[10:15, :], perm=[1, 0, 2, 3])
 
             # Stem
-            # 5 X 20 X 150
-            layer_1_5 = block_stem(scaled_images_1, 32, 32, "Stem1")
-            layer_2_5 = block_stem(scaled_images_2, 32, 32, "Stem2")
-            layer_3_5 = block_stem(scaled_images_3, 16, 16, "Stem3")
+            # scaled_images: (5, 20, 292, 15)
+            layer_stem = [
+                block_stem(scaled_images[:, :, :, :, idx], 128, 64, f"Stem{idx}")
+                for idx in range(scaled_images.shape[-1])
+            ]
 
-            # concat 5 x 20 x 32, 32, 16
-            net = tf.concat([layer_1_5, layer_2_5, layer_3_5], 3)
-            net = channel_wise_attn_layer(net, "multi_modal_concat")
+            # 5 X 20 X 64, 15
+            net = tf.concat(layer_stem, 3)
 
-            # 5 X 20 X 80
-            net = block_residual_layer(net, 80, 5, [1, 1], is_training=is_training)
+            # 5 X 20 X 64*15
+            net = channel_wise_attn_layer(net, "concat_layer_1_1")
+            net = block_stem(net, 480, 240, "concat_layer_1_2")
+            net = block_stem(net, 120, 64, "concat_layer_1_3")
+
+            # 5 X 20 X 64
+            net = block_residual_layer(net, 64, 5, [1, 1], is_training=is_training)
             # 5 X 20 X 128
             net = block_residual_layer(net, 128, 5, [1, 2], is_training=is_training)
             # 5 X 10 X 256
@@ -273,7 +272,7 @@ def shakenet(scaled_images, is_training=False, **kwargs):
                     scope="Feature_out",
                 )
 
-    return net  # 512 * 0.25 -> 128
+    return net
 
 
 def shake_arg_scope(

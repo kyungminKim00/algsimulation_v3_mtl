@@ -658,7 +658,7 @@ def configure_header(args):
             ] = 0.001  # -> inception_utils.inception_arg_scope()
             RUNHEADER.__dict__["m_name"] = (
                 dict_RUNHEADER["m_name"]
-                + "_m5_1_"
+                + "_m7_1_"
                 + str(RUNHEADER.__dict__["dataset_version"])
                 + "_"
                 + time_now
@@ -666,7 +666,7 @@ def configure_header(args):
                 + str(args.process_id)
             )
         elif args.search_parameter == 8:
-            RUNHEADER.__dict__["default_net"] = "shake_regulization_v5"
+            RUNHEADER.__dict__["default_net"] = "shake_regulization_v7"
             RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
             RUNHEADER.__dict__["m_offline_learning_epoch"] = 900
             RUNHEADER.__dict__["warm_up_update"] = 1000
@@ -718,7 +718,7 @@ def configure_header(args):
                 + str(args.process_id)
             )
         elif args.search_parameter == 9:
-            RUNHEADER.__dict__["default_net"] = "shake_regulization_v5"
+            RUNHEADER.__dict__["default_net"] = "shake_regulization_v8"
             RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
             RUNHEADER.__dict__["m_offline_learning_epoch"] = 900
             RUNHEADER.__dict__["warm_up_update"] = 1000
