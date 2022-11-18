@@ -409,13 +409,13 @@ class Buffer(object):
             ).transpose([1, 0])
             returns_info = self.take(
                 self.returns_info, wrs, envx, dummy=True
-            ).transpose([1, 0])
-            hit = self.take(self.hit, wrs, envx, dummy=True).transpose([1, 0])
+            ).transpose([1, 0, 2])
+            hit = self.take(self.hit, wrs, envx, dummy=True).transpose([1, 0, 2])
             actions = self.take(self.actions, wrs, envx).transpose([1, 0, 2])
-            rewards = self.take(self.rewards, wrs, envx).transpose([1, 0])
-            values = self.take(self.values, wrs, envx).transpose([1, 0])
+            rewards = self.take(self.rewards, wrs, envx).transpose([1, 0, 2])
+            values = self.take(self.values, wrs, envx).transpose([1, 0, 2])
             masks = self.take(self.masks, wrs, envx).transpose([1, 0])
-            obs = self.take(self.enc_obs, wrs, envx).transpose([1, 0, 2, 3, 4])
+            obs = self.take(self.enc_obs, wrs, envx).transpose([1, 0, 2, 3, 4, 5])
 
         # it is a summarized values, so does not need transformation
         suessor = self.take(self.suessor, wrs, envx, dummy=True)

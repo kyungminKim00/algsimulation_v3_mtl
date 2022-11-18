@@ -587,8 +587,10 @@ class A2C(ActorCriticRLModel):
             self.sussesor_ph: suessor,
             self.selected_action_ph: selected_action,
             self.diff_action_ph: diff_selected_action,
-            self.returns_info_ph: returns_info,
-            self.hit_ph: hit,
+            self.returns_info_ph: returns_info.reshape(
+                [returns_info.shape[0] * returns_info.shape[1], returns_info.shape[-1]]
+            ),
+            self.hit_ph: hit.reshape([hit.shape[0] * hit.shape[1], hit.shape[-1]]),
             self.loss_bias_ph: np.expand_dims(
                 np.mean(self.stack_loss_bias, axis=0), axis=0
             ),
