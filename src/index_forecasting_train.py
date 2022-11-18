@@ -614,7 +614,7 @@ def configure_header(args):
                 + str(args.process_id)
             )
         elif args.search_parameter == 7:
-            RUNHEADER.__dict__["default_net"] = "shake_regulization_v5"
+            RUNHEADER.__dict__["default_net"] = "shake_regulization_v6"
             RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
             RUNHEADER.__dict__["m_offline_learning_epoch"] = 900
             RUNHEADER.__dict__["warm_up_update"] = 1000

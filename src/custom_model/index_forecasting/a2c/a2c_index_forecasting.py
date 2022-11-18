@@ -6,11 +6,15 @@ import sys
 import time
 
 import gym
-import logger
 import numpy as np
 import pandas as pd
-import plot_util
 import tensorflow as tf
+from gym.spaces import Box, Discrete, MultiDiscrete
+from tensorflow.python.framework import ops
+from tensorflow.python.ops import control_flow_ops
+
+import logger
+import plot_util
 import util
 from custom_model.index_forecasting.a2c.buffer import Buffer
 from custom_model.index_forecasting.a2c.short_term_buffer import SBuffer
@@ -36,10 +40,7 @@ from custom_model.index_forecasting.policies.policies_index_forecasting import (
     ActorCriticPolicy,
     LstmPolicy,
 )
-from gym.spaces import Box, Discrete, MultiDiscrete
 from header.index_forecasting import RUNHEADER
-from tensorflow.python.framework import ops
-from tensorflow.python.ops import control_flow_ops
 from util import discount_reward, funTime, loadFile, writeFile
 
 
@@ -219,7 +220,7 @@ class A2C(ActorCriticRLModel):
                     1,
                     n_batch_step,
                     reuse=False,
-                    **self.policy_kwargs
+                    **self.policy_kwargs,
                 )
 
                 with tf.compat.v1.variable_scope(
@@ -235,7 +236,7 @@ class A2C(ActorCriticRLModel):
                         self.n_steps,
                         n_batch_train,
                         reuse=True,
-                        **self.policy_kwargs
+                        **self.policy_kwargs,
                     )
 
                 with tf.compat.v1.variable_scope("loss", reuse=False):
@@ -1047,16 +1048,7 @@ class A2C(ActorCriticRLModel):
                 # basically sample generation section or online learning + sample generation section
                 # if update % int(self.total_example // 200) == 0:
                 if update % int(self.total_example * 0.5) == 0:
-                    model_name = (
-                        "{}/fs_{}_ev{:3.3}_pe{:3.3}_pl{:3.3}_vl{:3.3}.pkl".format(
-                            model_location,
-                            current_timesteps,
-                            explained_var,
-                            policy_entropy,
-                            policy_loss,
-                            value_loss,
-                        )
-                    )
+                    model_name = f"{model_location}/fs_{current_timesteps}_ev{np.mean(explained_var):3.3}_pe{policy_entropy:3.3}_pl{policy_loss:3.3}_vl{value_loss:3.3}.pkl"
                     self.save(model_name)
 
                 # buffer save
@@ -1064,12 +1056,7 @@ class A2C(ActorCriticRLModel):
                     update == self.total_example - 1
                 ):
                     writeFile(
-                        "{}/buffer_E{}_S{}_U{}".format(
-                            RUNHEADER.m_offline_buffer_file,
-                            self.n_envs,
-                            self.n_steps,
-                            update,
-                        ),
+                        f"{RUNHEADER.m_offline_buffer_file}/buffer_E{self.n_envs}_S{self.n_steps}_U{update}",
                         buffer,
                     )
                     buffer = None
