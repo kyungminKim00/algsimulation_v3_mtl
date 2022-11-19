@@ -106,7 +106,7 @@ class A2C(ActorCriticRLModel):
         self.ent_coef = RUNHEADER.m_ent_coef
         self.max_grad_norm = max_grad_norm
         self.alpha = alpha
-        self.epsilon = epsilon
+        self.epsilon: float = epsilon
         if RUNHEADER.cosine_lr:
             lr_schedule = "cosine_annealing"
         self.lr_schedule = lr_schedule
@@ -566,6 +566,8 @@ class A2C(ActorCriticRLModel):
 
                 if RUNHEADER.predefined_fixed_lr is None:
                     self.cur_lr = RUNHEADER.m_offline_learning_rate
+                else:
+                    self.cur_lr = RUNHEADER.predefined_fixed_lr[0]
 
         run_params = [
             self.summary,
@@ -713,9 +715,10 @@ class A2C(ActorCriticRLModel):
                         print_out_csv = np.append(
                             print_out_csv, np.array(print_out_csv_tmp), axis=0
                         )
-                epoch_print_out_csv.append(
-                    np.mean(np.array(print_out_csv), axis=0).tolist()
-                )
+
+                aa = np.mean(np.array(print_out_csv), axis=0).tolist()
+                aa = aa[:7] + [np.mean(aa[7])]
+                epoch_print_out_csv.append(aa)
             pd.DataFrame(epoch_print_out_csv, columns=print_out_csv_colname).to_csv(
                 "{}/record_tabular_epoch_summary.csv".format(model_location)
             )
@@ -753,9 +756,9 @@ class A2C(ActorCriticRLModel):
                                     buffer_name
                                 )
                             )
-                epoch_print_out_csv.append(
-                    np.mean(np.array(print_out_csv), axis=0).tolist()
-                )
+                aa = np.mean(np.array(print_out_csv), axis=0).tolist()
+                aa = aa[:7] + [np.mean(aa[7])]
+                epoch_print_out_csv.append(aa)
             pd.DataFrame(epoch_print_out_csv, columns=print_out_csv_colname).to_csv(
                 "{}/record_tabular_epoch_summary.csv".format(model_location)
             )
@@ -1039,7 +1042,7 @@ class A2C(ActorCriticRLModel):
                     actions, [self.n_envs, self.n_steps, actions.shape[-1]]
                 )[0].T
                 # Disable
-                # plt.imsave('./save/images/{}_{}_{}.jpeg'.format(str(delete_later), update,
+                # plt.imsave('./save/images/{}_{}_{}.jpeg'.format(str(g_date), update,
                 #                                                 int(np.mean(np.sum(tmp, axis=0)))), tmp * 255)
 
                 """Blows describe post-processes during the training
@@ -1116,7 +1119,12 @@ class A2C(ActorCriticRLModel):
                             np.mean(
                                 np.reshape(
                                     rewards,
-                                    [self.n_envs, self.n_steps, rewards.shape[-1]],
+                                    [
+                                        self.n_envs,
+                                        self.n_steps,
+                                        rewards.shape[-1],
+                                        RUNHEADER.mtl_target,
+                                    ],
                                 )
                             )
                         ),
@@ -1124,7 +1132,12 @@ class A2C(ActorCriticRLModel):
                             np.mean(
                                 np.reshape(
                                     true_reward,
-                                    [self.n_envs, self.n_steps, true_reward.shape[-1]],
+                                    [
+                                        self.n_envs,
+                                        self.n_steps,
+                                        true_reward.shape[-1],
+                                        RUNHEADER.mtl_target,
+                                    ],
                                 )
                             )
                         ),
@@ -1188,7 +1201,7 @@ class A2C(ActorCriticRLModel):
         if (self.on_validation is True) and (epoch >= RUNHEADER.m_validation_min_epoch):
             print("validation_test perform")
             # dummy values for plotting
-            softmax_actions = np.zeros((1, 5, 2))
+            softmax_actions = np.zeros((1, RUNHEADER.mtl_target, 2))
             index_bound = [0, 0, 0, 0, 0]
             index_bound_return = [0, 0, 0, 0, 0]
 
@@ -1217,7 +1230,7 @@ class A2C(ActorCriticRLModel):
                     # action, values, states, neglogp, values2 = self.step(obs, state=p_states, mask=mask, deterministic=False)
 
                     # memory growing
-                    action, values, states, neglogp, values2 = runner.step_validation(
+                    action, values, states, neglogp = runner.step_validation(
                         obs,
                         initial_state,
                         state=p_states,
@@ -1241,7 +1254,6 @@ class A2C(ActorCriticRLModel):
                         info,
                         tmp_info,
                         values,
-                        values2,
                         softmax_actions,
                         index_bound,
                         index_bound_return,
@@ -1402,10 +1414,20 @@ class A2C(ActorCriticRLModel):
                         policy_loss,
                         value_loss,
                         float(
-                            np.mean(np.reshape(rewards, [buffer.n_env, self.n_steps]))
+                            np.mean(
+                                np.reshape(
+                                    rewards,
+                                    [buffer.n_env, self.n_steps, RUNHEADER.mtl_target],
+                                )
+                            )
                         ),
                         float(
-                            np.mean(np.reshape(values, [buffer.n_env, self.n_steps]))
+                            np.mean(
+                                np.reshape(
+                                    values,
+                                    [buffer.n_env, self.n_steps, RUNHEADER.mtl_target],
+                                )
+                            )
                         ),
                         explained_var,
                     ]
@@ -1453,7 +1475,7 @@ class A2C(ActorCriticRLModel):
                     # policy_loss
                     np.mean(np.array(print_out_csv)[:, 4]),
                     # value_loss
-                    np.mean(np.array(print_out_csv)[:, 7]),
+                    np.mean(np.mean(np.array(print_out_csv)[:, 7])),
                 )  # explained_var
 
                 if RUNHEADER._debug_on:
@@ -1683,13 +1705,25 @@ class A2C(ActorCriticRLModel):
                         float(explained_var),
                         float(np.mean(suessor)),
                         float(
-                            np.mean(np.reshape(rewards, [self.n_envs, self.n_steps]))
+                            np.mean(
+                                np.reshape(
+                                    rewards,
+                                    [self.n_envs, self.n_steps, RUNHEADER.mtl_target],
+                                )
+                            )
                         ),
-                        float(np.mean(np.reshape(values, [self.n_envs, self.n_steps]))),
+                        float(
+                            np.mean(
+                                np.reshape(
+                                    values,
+                                    [self.n_envs, self.n_steps, RUNHEADER.mtl_target],
+                                )
+                            )
+                        ),
                         int(buffer.num_in_buffer),
                         learned_experiences_ep,
                         non_pass_episode,
-                        delete_later,
+                        g_date,
                         short_term_roll_out,
                     ]
                 )
@@ -1720,12 +1754,20 @@ class A2C(ActorCriticRLModel):
                     "convergence",
                     "policy_loss_with_coef",
                     "value_loss_with_coef",
-                    "value_loss_with_coef_2",
-                    "value_loss2",
                 ]
-                values = float(np.mean(np.reshape(values, [self.n_envs, self.n_steps])))
+                values = float(
+                    np.mean(
+                        np.reshape(
+                            values, [self.n_envs, self.n_steps, RUNHEADER.mtl_target]
+                        )
+                    )
+                )
                 rewards = float(
-                    np.mean(np.reshape(rewards, [self.n_envs, self.n_steps]))
+                    np.mean(
+                        np.reshape(
+                            rewards, [self.n_envs, self.n_steps, RUNHEADER.mtl_target]
+                        )
+                    )
                 )
                 self.record_tabular.append(
                     [
@@ -2006,9 +2048,9 @@ class A2CRunner(AbstractEnvRunner):
             sys.stdout.flush()
 
             # delete later
-            global delete_later, delete_later2
-            delete_later = info[0]["date"]
-            delete_later2 = sample_th
+            global g_date
+            g_date = info[0]["date"]
+            # g_date2 = sample_th
 
         return step_memory
 

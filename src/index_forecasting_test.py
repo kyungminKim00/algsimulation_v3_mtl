@@ -157,7 +157,7 @@ class Script:
                 # )
 
                 # Fast approach
-                action, states, values, neglogp, values2 = self.base_model.predict(
+                action, states, values, neglogp = self.base_model.predict(
                     obs
                     + np.zeros(
                         [RUNHEADER.m_n_cpu, obs.shape[1], obs.shape[2], obs.shape[3]]
@@ -199,7 +199,6 @@ class Script:
                                     states,
                                     _values,
                                     _,
-                                    _values2,
                                 ) = self.base_model.predict(
                                     obs, state=states, mask=None, deterministic=True
                                 )
@@ -240,7 +239,6 @@ class Script:
                         info,
                         tmp_info,
                         values,
-                        values2,
                         softmax_actions,
                         index_bound,
                         index_bound_return,

@@ -474,7 +474,7 @@ class ActorCriticRLModel(BaseRLModel):
         )
 
         observation = observation.reshape((-1,) + self.observation_space.shape)
-        actions, values, states, neglogp, values2 = self.step(
+        actions, values, states, neglogp = self.step(
             observation, state, mask, deterministic=deterministic
         )
 
@@ -492,7 +492,7 @@ class ActorCriticRLModel(BaseRLModel):
                 )
             clipped_actions = clipped_actions[0]
 
-        return clipped_actions, states, values, neglogp, values2
+        return clipped_actions, states, values, neglogp
 
     def action_probability(self, observation, state=None, mask=None, actions=None):
         if state is None:

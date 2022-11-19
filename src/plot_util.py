@@ -29,7 +29,6 @@ def gather_validation_performence(
     info,
     tmp_info,
     values,
-    values2,
     softmax_actions,
     index_bound,
     index_bound_return,
@@ -40,7 +39,6 @@ def gather_validation_performence(
     p_action = info[0]["selected_action"]
     r_return = info[0]["20day_return"]
     p_return = values[0]
-    p_return2 = values2[0]
     r_index = info[0]["20day_index"]
     today_index = info[0]["today_index"]
 
@@ -338,7 +336,7 @@ def plot_prediction_band(
     plt.close()
 
 
-# it may cause errors but incoming data is correct so modify code for plotting if go on
+# it may cause errors with correct incoming data, so modify code for plotting if go on
 def plot_bound_type1(
     tmp_info,
     save_dir,

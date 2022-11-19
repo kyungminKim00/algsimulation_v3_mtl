@@ -623,7 +623,7 @@ def configure_header(args):
             RUNHEADER.__dict__["cyclic_lr_max"] = 6e-4
 
             RUNHEADER.__dict__["m_on_validation"] = False
-            RUNHEADER.__dict__["dynamic_lr"] = False  # made a decision True -> False
+            RUNHEADER.__dict__["dynamic_lr"] = True  # made a decision True -> False
             RUNHEADER.__dict__["dynamic_coe"] = False  # made a decision True -> False
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]

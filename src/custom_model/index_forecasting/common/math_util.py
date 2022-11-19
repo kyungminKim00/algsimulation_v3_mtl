@@ -35,7 +35,7 @@ def explained_variance(y_pred, y_true):
     is_zero = var_y == 0
     var_y = 1 - np.var(y_true - y_pred, axis=0) / var_y
     var_y[is_zero] = np.nan
-    return var_y
+    return np.mean(var_y)
 
 
 def explained_variance_2d(y_pred, y_true):

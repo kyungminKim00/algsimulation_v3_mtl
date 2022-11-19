@@ -2,6 +2,13 @@ from typing import Any, Dict, List, Literal, Tuple
 
 import numpy as np
 
+""" Agent parameter
+"""
+_debug_on: bool = True
+full_tensorboard_log: bool = False
+disable_derived_vars: bool = True
+m_on_validation: bool = False
+
 """ Declare static variables
 """
 var_select_factor = (
@@ -29,7 +36,6 @@ m_total_timesteps: int = (
     None  # it depends on a stride and data and random sampling strategies
 )
 m_final_model: str = None  # [None | 'fs_epoch_47_500'], only for the test stage
-m_on_validation: bool = None
 predefined_fixed_lr: float = None
 on_cloud: int = None
 m_max_grad_norm: float = None
@@ -54,13 +60,6 @@ gen_var: int
 use_c_name: str
 use_var_mask: bool
 max_x: int
-
-""" Agent parameter
-"""
-_debug_on: bool = False
-full_tensorboard_log: bool = False
-disable_derived_vars: bool = True
-
 
 # data set related
 objective: str = "IF"  # ['IF' | 'FS' | 'MT']

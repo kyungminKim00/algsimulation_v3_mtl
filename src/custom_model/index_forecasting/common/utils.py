@@ -565,7 +565,7 @@ def double_middle_drop(progress):
     return 1 - progress
 
 
-def cosine_annealing(progress, lr_max=0.2, lr_min=0.02):  # not a restart versoin
+def cosine_annealing(progress, lr_max=0.2, lr_min=0.02):
     return lr_min + (lr_max - lr_min) * 0.5 * (1 + np.cos(progress * np.pi))
 
 
@@ -643,7 +643,7 @@ class Scheduler(object):
             or globals()["sine_annealing"] == self.schedule
         ):
             nvalues = int(self.cyclic_step * 0.1)
-            process = (step / nvalues) - round(step / nvalues)
+            process = (steps / nvalues) - round(steps / nvalues)
             if process == 0:
                 process = 1
             return self.schedule(
