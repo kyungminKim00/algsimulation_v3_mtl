@@ -258,7 +258,7 @@ if __name__ == "__main__":
         parser.add_argument("--m_target_index", type=int, default=None)
         parser.add_argument("--forward_ndx", type=int, default=None)
         parser.add_argument("--dataset_version", type=str, default=None)
-        parser.add_argument("--performed_date", type=str, default=None)
+
         # # For Demo
         # parser.add_argument("--process_id", type=int, default=None)
         # parser.add_argument("--m_target_index", type=int, default=None)
@@ -266,7 +266,7 @@ if __name__ == "__main__":
         # parser.add_argument("--actual_inference", type=int, default=1)
         # parser.add_argument("--dataset_version", type=str, default=None)
         # parser.add_argument("--domain", type=str, default="INX_20")
-        # parser.add_argument("--performed_date", type=str, default=None)
+
         args = parser.parse_args()
         args.domain = get_domain_on_CDSW_env(args.domain)
         if args.actual_inference == 1:
@@ -275,8 +275,6 @@ if __name__ == "__main__":
             args.domain, args, job_id_int=args.process_id
         ).update_args()
 
-        if args.performed_date is not None:
-            time_now = "".join(performed_date.split("-"))
         enable_confidence = False  # Disalbe for the sevice, (computation cost issue)
         # re-write RUNHEADER
         if bool(args.actual_inference):

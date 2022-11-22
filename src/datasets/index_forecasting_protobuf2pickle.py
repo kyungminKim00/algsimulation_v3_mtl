@@ -4,11 +4,11 @@ import os
 import pickle
 
 import numpy as np
-from header.index_forecasting import RUNHEADER
-from util import funTime, json2dict
 
 from datasets import dataset_utils, generate_val_test_with_X
 from datasets.windowing import rolling_window
+from header.index_forecasting import RUNHEADER
+from util import funTime, json2dict
 
 
 def get_x_dates(model_location, tf_record_location, forward_ndx):
@@ -27,7 +27,7 @@ def get_x_dates(model_location, tf_record_location, forward_ndx):
 
 
 class DataSet:
-    @funTime("Loading data")
+    @funTime("Loading DataSet data")
     def __init__(
         self,
         dataset_dir="../save/tf_record/index_forecasting",

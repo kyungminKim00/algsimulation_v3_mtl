@@ -27,13 +27,6 @@ def configure_header(args) -> None:
         print(f"s_test: {RUNHEADER.s_test}")
         print(f"e_test: {RUNHEADER.e_test}")
 
-    # def get_file_name(m_target_index, file_data_vars) -> str:
-    #     return (
-    #         file_data_vars
-    #         + RUNHEADER.target_id2name(m_target_index)
-    #         + "_intermediate.csv"
-    #     )
-
     RUNHEADER.__dict__["dataset_version"] = args.dataset_version
     RUNHEADER.__dict__["m_target_index"] = args.m_target_index
     RUNHEADER.__dict__["target_name"] = RUNHEADER.target_id2name(args.m_target_index)
@@ -56,28 +49,18 @@ def configure_header(args) -> None:
         if RUNHEADER.__dict__["gen_var"]:
             assert False, "this features have been disabled !! (gen_var=1)"
         else:
-            # RUNHEADER.__dict__["raw_x"] = get_file_name(
-            #     RUNHEADER.m_target_index, "./datasets/rawdata/index_data/data_vars_"
-            # )
             RUNHEADER.__dict__[
                 "raw_x"
             ] = "./datasets/rawdata/index_data/Synced_D_FilledData.csv"
             RUNHEADER.__dict__["max_x"] = 500
 
     else:
-        # online tf_record e.g. v10, v11, v12 ..., v21
-        # RUNHEADER.__dict__['m_target_index'] = 1
         RUNHEADER.__dict__["use_c_name"] = True
         RUNHEADER.__dict__["use_var_mask"] = True
         RUNHEADER.__dict__[
             "raw_x"
         ] = "./datasets/rawdata/index_data/Synced_D_FilledData.csv"
-        RUNHEADER.__dict__[
-            "max_x"
-        ] = 150  # US10YT 변경 사항 반영 전, KS11, Gold, S&P 는 이 세팅으로 실험 결과 산출 함
-        RUNHEADER.__dict__[
-            "max_x"
-        ] = 500  # 500으로 변경 함, 1. 변경 실험결과 산출 필요 2. 네트워크 파라미터 변경이 필요 할 수 도 있음.
+        RUNHEADER.__dict__["max_x"] = 500
 
     # re-assign
     RUNHEADER.__dict__["target_name"] = RUNHEADER.target_id2name(

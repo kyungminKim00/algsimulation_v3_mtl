@@ -9,7 +9,6 @@ import collections
 import datetime
 import json
 import os
-import pickle
 import re
 import sys
 import time
@@ -18,6 +17,8 @@ from contextlib import contextmanager
 from itertools import groupby
 from operator import itemgetter
 
+# import pickle
+import _pickle as pickle
 import cloudpickle
 import gym
 import joblib
@@ -504,6 +505,7 @@ def getFileList(file_directory):
 
 
 # Serialization with pickle [0: pickle, 1: joblib, 2: cloudpickle]
+@funTime("writeFile pickle")
 def writeFile(file_name, data, pickle_type=0):
     file_name = "{0}.pkl".format(file_name)
     if pickle_type == 1:
@@ -511,7 +513,7 @@ def writeFile(file_name, data, pickle_type=0):
     else:
         with open(file_name, "wb") as fp:
             if pickle_type == 0:
-                pickle.dump(data, fp, protocol=4)
+                pickle.dump(data, fp, protocol=5)
             elif pickle_type == 2:
                 cloudpickle.dump(data, fp)
             fp.close()
@@ -548,6 +550,7 @@ def remove_duplicaated_dict_in_list(m_list):
 
 # Deserialization with pickle
 # @profile
+@funTime("load pickle")
 def loadFile(file_name, pickle_type=0):
     data = None
 

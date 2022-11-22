@@ -46,7 +46,7 @@ class Buffer(object):
         self.suessor = None
         self.selected_action = None
         self.diff_selected_action = None
-        self.returns_info = None
+        # self.returns_info = None
         self.hit = None
         self.bin_rewards = None
 
@@ -75,10 +75,10 @@ class Buffer(object):
         self.diff_selected_action = np.concatenate(
             (self.diff_selected_action, obj.diff_selected_action), axis=0
         )
-        self.returns_info = np.concatenate(
-            (self.returns_info, obj.returns_info), axis=0
-        )
-        self.hit = np.concatenate((self.hit, obj.hit), axis=0)
+        # self.returns_info = np.concatenate(
+        #     (self.returns_info, obj.returns_info), axis=0
+        # )
+        # self.hit = np.concatenate((self.hit, obj.hit), axis=0)
         self.bin_rewards = np.concatenate((self.bin_rewards, obj.bin_rewards), axis=0)
 
     def has_atleast(self, frames):
@@ -138,8 +138,6 @@ class Buffer(object):
         suessor,
         selected_action,
         diff_selected_action,
-        returns_info,
-        hit,
     ):
         """
         Adds a frame to the buffer
@@ -206,14 +204,7 @@ class Buffer(object):
                     self.diff_selected_action = np.empty(
                         [self.size, self.n_steps], dtype=np.int8
                     )
-                    self.returns_info = np.empty(
-                        [self.size, self.n_steps] + list(actions.shape[1:]),
-                        dtype=np.float32,
-                    )
-                    self.hit = np.empty(
-                        [self.size, self.n_steps] + list(hit.shape[1:]),
-                        dtype=np.float32,
-                    )
+                    
                     self.bin_rewards = np.empty(
                         [self.size] + [rewards.shape[-1]], dtype=np.float32
                     )
@@ -252,14 +243,15 @@ class Buffer(object):
                         diff_selected_action, [self.n_env, self.n_steps]
                     )[idx]
 
-                    self.returns_info[self.next_idx] = np.reshape(
-                        returns_info,
-                        [self.n_env, self.n_steps] + list(returns_info.shape[1:]),
-                    )[idx]
+                    # self.returns_info[self.next_idx] = np.reshape(
+                    #     returns_info,
+                    #     [self.n_env, self.n_steps] + list(returns_info.shape[1:]),
+                    # )[idx]
 
-                    self.hit[self.next_idx] = np.reshape(
-                        hit, [self.n_env, self.n_steps] + list(hit.shape[1:])
-                    )[idx]
+                    # self.hit[self.next_idx] = np.reshape(
+                    #     hit, [self.n_env, self.n_steps] + list(hit.shape[1:])
+                    # )[idx]
+                    
                     self.bin_rewards[self.next_idx] = np.sum(
                         np.reshape(
                             rewards,
@@ -326,8 +318,6 @@ class Buffer(object):
             diff_selected_action = self.take(
                 self.diff_selected_action, idx, envx, dummy=True
             )
-            returns_info = self.take(self.returns_info, idx, envx, dummy=True)
-            hit = self.take(self.hit, idx, envx, dummy=True)
             actions = self.take(self.actions, idx, envx)
             rewards = self.take(self.rewards, idx, envx)
             values = self.take(self.values, idx, envx)
@@ -340,15 +330,13 @@ class Buffer(object):
             diff_selected_action = self.take(
                 self.diff_selected_action, idx, envx, dummy=True
             ).transpose([1, 0])
-            returns_info = self.take(
-                self.returns_info, idx, envx, dummy=True
-            ).transpose([1, 0])
-            hit = self.take(self.hit, idx, envx, dummy=True).transpose([1, 0])
             actions = self.take(self.actions, idx, envx).transpose([1, 0, 2])
-            rewards = self.take(self.rewards, idx, envx).transpose([1, 0])
-            values = self.take(self.values, idx, envx).transpose([1, 0])
+            rewards = self.take(self.rewards, idx, envx).transpose([1, 0, 2])
+            values = self.take(self.values, idx, envx).transpose([1, 0, 2])
             masks = self.take(self.masks, idx, envx).transpose([1, 0])
-            obs = self.take(self.enc_obs, idx, envx).transpose([1, 0, 2, 3, 4])
+            obs = self.take(self.enc_obs, idx, envx).transpose([1, 0, 2, 3, 4, 5])
+
+        
 
         # it is a summarized values, so does not need transformation
         suessor = self.take(self.suessor, idx, envx, dummy=True)
@@ -365,8 +353,6 @@ class Buffer(object):
             suessor,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
         )
 
         # episode experience pop - sequential
@@ -393,8 +379,6 @@ class Buffer(object):
             diff_selected_action = self.take(
                 self.diff_selected_action, wrs, envx, dummy=True
             )
-            returns_info = self.take(self.returns_info, wrs, envx, dummy=True)
-            hit = self.take(self.hit, wrs, envx, dummy=True)
             actions = self.take(self.actions, wrs, envx)
             rewards = self.take(self.rewards, wrs, envx)
             values = self.take(self.values, wrs, envx)
@@ -407,15 +391,13 @@ class Buffer(object):
             diff_selected_action = self.take(
                 self.diff_selected_action, wrs, envx, dummy=True
             ).transpose([1, 0])
-            returns_info = self.take(
-                self.returns_info, wrs, envx, dummy=True
-            ).transpose([1, 0, 2])
-            hit = self.take(self.hit, wrs, envx, dummy=True).transpose([1, 0, 2])
             actions = self.take(self.actions, wrs, envx).transpose([1, 0, 2])
             rewards = self.take(self.rewards, wrs, envx).transpose([1, 0, 2])
             values = self.take(self.values, wrs, envx).transpose([1, 0, 2])
             masks = self.take(self.masks, wrs, envx).transpose([1, 0])
             obs = self.take(self.enc_obs, wrs, envx).transpose([1, 0, 2, 3, 4, 5])
+
+        
 
         # it is a summarized values, so does not need transformation
         suessor = self.take(self.suessor, wrs, envx, dummy=True)
@@ -432,8 +414,6 @@ class Buffer(object):
             suessor,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
         )
 
     # individual experience pop
@@ -452,8 +432,6 @@ class Buffer(object):
         diff_selected_action = self.take(
             self.diff_selected_action, idx, envx, dummy=True
         )
-        returns_info = self.take(self.returns_info, idx, envx, dummy=True)
-        hit = self.take(self.hit, idx, envx, dummy=True)
         suessor = self.take(self.suessor, idx, envx, dummy=True)
 
         return (
@@ -465,8 +443,6 @@ class Buffer(object):
             masks,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
             suessor,
         )
 
@@ -481,8 +457,6 @@ class Buffer(object):
         masks,
         selected_action,
         diff_selected_action,
-        returns_info,
-        hit,
         suessor,
         e_obs,
         e_actions,
@@ -506,8 +480,6 @@ class Buffer(object):
         masks_list = list()
         selected_action_list = list()
         diff_selected_action_list = list()
-        returns_info_list = list()
-        hit_list = list()
         suessor_list = list()
 
         # merge
@@ -530,10 +502,6 @@ class Buffer(object):
             diff_selected_action_list.append(
                 np.reshape(diff_selected_action, [self.n_env, self.n_steps])[idx]
             )
-            returns_info_list.append(
-                np.reshape(returns_info, [self.n_env, self.n_steps])[idx]
-            )
-            hit_list.append(np.reshape(hit, [self.n_env, self.n_steps])[idx])
             suessor_list.append(np.reshape(suessor, [self.n_env])[idx])
 
         for idx in range(len(e_rewards)):
@@ -545,8 +513,6 @@ class Buffer(object):
             masks_list.append(e_masks[idx])
             selected_action_list.append(e_selected_action[idx])
             diff_selected_action_list.append(e_diff_selected_action[idx])
-            returns_info_list.append(e_returns_info[idx])
-            hit_list.append(e_hit[idx])
             suessor_list.append(e_suessor[idx])
 
         # reshape
@@ -559,8 +525,6 @@ class Buffer(object):
             masks,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
             suessor,
         ) = self.reshape(
             np.array(obs_list, dtype=self.obs_dtype),
@@ -571,8 +535,6 @@ class Buffer(object):
             np.array(masks_list, dtype=np.bool),
             np.array(selected_action_list, dtype=np.int32),
             np.array(diff_selected_action_list, dtype=np.int32),
-            np.array(returns_info_list, dtype=np.float32),
-            np.array(hit_list, dtype=np.float32),
             np.array(suessor_list, dtype=np.int32),
         )
 
@@ -585,8 +547,6 @@ class Buffer(object):
             masks,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
             suessor,
         )
 
@@ -600,8 +560,6 @@ class Buffer(object):
         masks,
         selected_action,
         diff_selected_action,
-        returns_info,
-        hit,
         suessor,
     ):
         obs = np.reshape(obs, [self.n_env * self.n_steps] + list(obs.shape[2:]))
@@ -616,8 +574,6 @@ class Buffer(object):
         diff_selected_action = np.reshape(
             diff_selected_action, [self.n_env * self.n_steps]
         )
-        returns_info = np.reshape(returns_info, [self.n_env * self.n_steps])
-        hit = np.reshape(hit, [self.n_env * self.n_steps])
         suessor = np.reshape(suessor, [self.n_env])
 
         return (
@@ -629,7 +585,5 @@ class Buffer(object):
             masks,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
             suessor,
         )

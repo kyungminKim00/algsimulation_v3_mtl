@@ -29,7 +29,6 @@ class StepBuffer(object):
         self.values = None
         self.states = None
         self.dones = None
-        self.returns_info = None
 
         # Size indexes
         self.next_idx = 0

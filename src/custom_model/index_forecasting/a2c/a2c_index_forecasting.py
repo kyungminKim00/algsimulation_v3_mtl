@@ -151,8 +151,8 @@ class A2C(ActorCriticRLModel):
         self.sussesor_ph = None
         self.selected_action_ph = None
         self.diff_action_ph = None
-        self.returns_info_ph = None
-        self.hit_ph = None
+        # self.returns_info_ph = None
+        # self.hit_ph = None
         self.cur_lr = None
         self.loss_bias_ph = None
         self.record_tabular = []
@@ -362,12 +362,12 @@ class A2C(ActorCriticRLModel):
                     self.diff_action_ph = tf.compat.v1.placeholder(
                         tf.int32, [None], name="diff_action_ph"
                     )
-                    self.returns_info_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None, 15], name="returns_info_ph"
-                    )
-                    self.hit_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None, 15], name="hit_ph"
-                    )
+                    # self.returns_info_ph = tf.compat.v1.placeholder(
+                    #     tf.float32, [None, 15], name="returns_info_ph"
+                    # )
+                    # self.hit_ph = tf.compat.v1.placeholder(
+                    #     tf.float32, [None, 15], name="hit_ph"
+                    # )
 
                     # could not disable by "if self.full_tensorboard_log:", it updates from placeholders be careful
                     tf.compat.v1.summary.scalar(
@@ -380,13 +380,13 @@ class A2C(ActorCriticRLModel):
                     tf.compat.v1.summary.scalar(
                         "diff_action", tf.reduce_mean(input_tensor=self.diff_action_ph)
                     )
-                    tf.compat.v1.summary.scalar(
-                        "10day_return",
-                        tf.reduce_mean(input_tensor=self.returns_info_ph),
-                    )
-                    tf.compat.v1.summary.scalar(
-                        "hit", tf.reduce_mean(input_tensor=self.hit_ph)
-                    )
+                    # tf.compat.v1.summary.scalar(
+                    #     "10day_return",
+                    #     tf.reduce_mean(input_tensor=self.returns_info_ph),
+                    # )
+                    # tf.compat.v1.summary.scalar(
+                    #     "hit", tf.reduce_mean(input_tensor=self.hit_ph)
+                    # )
 
                 with tf.compat.v1.variable_scope("input_info", reuse=False):
                     tf.compat.v1.summary.scalar(
@@ -517,8 +517,6 @@ class A2C(ActorCriticRLModel):
         suessor=None,
         selected_action=None,
         diff_selected_action=None,
-        returns_info=None,
-        hit=None,
         replay=False,
     ):
         """
@@ -589,10 +587,6 @@ class A2C(ActorCriticRLModel):
             self.sussesor_ph: suessor,
             self.selected_action_ph: selected_action,
             self.diff_action_ph: diff_selected_action,
-            self.returns_info_ph: returns_info.reshape(
-                [returns_info.shape[0] * returns_info.shape[1], returns_info.shape[-1]]
-            ),
-            self.hit_ph: hit.reshape([hit.shape[0] * hit.shape[1], hit.shape[-1]]),
             self.loss_bias_ph: np.expand_dims(
                 np.mean(self.stack_loss_bias, axis=0), axis=0
             ),
@@ -884,8 +878,6 @@ class A2C(ActorCriticRLModel):
                         suessor,
                         selected_action,
                         diff_selected_action,
-                        returns_info,
-                        hit,
                     ) = runner.run()
 
                     assert not (
@@ -928,8 +920,6 @@ class A2C(ActorCriticRLModel):
                         suessor,
                         selected_action,
                         diff_selected_action,
-                        returns_info,
-                        hit,
                         current_iter_cnt,
                     )
                     sys.stdout.write(
@@ -962,8 +952,6 @@ class A2C(ActorCriticRLModel):
                         suessor,
                         selected_action,
                         diff_selected_action,
-                        returns_info,
-                        hit,
                     ) = short_term_buffer.get()
                 current_episode_idx = current_episode_idx + 1
 
@@ -980,8 +968,6 @@ class A2C(ActorCriticRLModel):
                         suessor,
                         selected_action,
                         diff_selected_action,
-                        returns_info,
-                        hit,
                     )
 
                 # 4. re-call experiences [sub-process of replay]
@@ -1001,8 +987,6 @@ class A2C(ActorCriticRLModel):
                             suessor,
                             selected_action,
                             diff_selected_action,
-                            returns_info,
-                            hit,
                             learned_experiences_ep,
                             non_pass_episode,
                         ) = self.re_call_buff(
@@ -1028,8 +1012,6 @@ class A2C(ActorCriticRLModel):
                     suessor,
                     selected_action,
                     diff_selected_action,
-                    returns_info,
-                    hit,
                 )
                 self.pg_loss_bias, self.vf_loss_bias = (
                     policy_loss,
@@ -1097,7 +1079,6 @@ class A2C(ActorCriticRLModel):
                     policy_loss=policy_loss,
                     value_loss=value_loss,
                     diff_selected_action=diff_selected_action,
-                    hit=hit,
                     suessor=suessor,
                     selected_action=selected_action,
                     model_location=model_location,
@@ -1123,7 +1104,6 @@ class A2C(ActorCriticRLModel):
                                         self.n_envs,
                                         self.n_steps,
                                         rewards.shape[-1],
-                                        RUNHEADER.mtl_target,
                                     ],
                                 )
                             )
@@ -1136,7 +1116,6 @@ class A2C(ActorCriticRLModel):
                                         self.n_envs,
                                         self.n_steps,
                                         true_reward.shape[-1],
-                                        RUNHEADER.mtl_target,
                                     ],
                                 )
                             )
@@ -1167,8 +1146,6 @@ class A2C(ActorCriticRLModel):
                             suessor,
                             selected_action,
                             diff_selected_action,
-                            returns_info,
-                            hit,
                         ) = self.retrive_experiences(buffer, runner)
 
                         self._train_step(
@@ -1183,8 +1160,6 @@ class A2C(ActorCriticRLModel):
                             suessor,
                             selected_action,
                             diff_selected_action,
-                            returns_info,
-                            hit,
                             replay=True,
                         )
                     learned_experiences_ep = learned_experiences_ep + samples_number
@@ -1283,8 +1258,6 @@ class A2C(ActorCriticRLModel):
                 _,
                 _,
                 _,
-                return_info_buffer,
-                _,
             ) = buffer.get()
         else:
             (
@@ -1297,8 +1270,6 @@ class A2C(ActorCriticRLModel):
                 _,
                 _,
                 _,
-                return_info_buffer,
-                _,
             ) = buffer.get_non_replacement(wrs)
 
         return runner.run(
@@ -1306,7 +1277,6 @@ class A2C(ActorCriticRLModel):
             action_buffer=action_buffer,
             rewards_buffer=rewards_buffer,
             dones_buffer=dones_buffer,
-            return_info_buffer=return_info_buffer,
             online_buffer=False,
         )
 
@@ -1316,14 +1286,14 @@ class A2C(ActorCriticRLModel):
             self.n_envs
         )  # rewrite - the numbers of generate and train agent might be changed
         samples_number = int(buffer.num_in_buffer / buffer.n_env)
-        (
-            values_summary,
-            rewards_summary,
-            policy_entropy_summary,
-            policy_loss_summary,
-            value_loss_summary,
-        ) = (list(), list(), list(), list(), list())
-        explained_var_summary, print_out_csv = list(), list()
+        # (
+        #     values_summary,
+        #     rewards_summary,
+        #     policy_entropy_summary,
+        #     policy_loss_summary,
+        #     value_loss_summary,
+        # ) = ([], [], [], [], [])
+        explained_var_summary, print_out_csv = [], []
         rewards, values = None, None
         print_out_csv_colname = None
 
@@ -1362,8 +1332,6 @@ class A2C(ActorCriticRLModel):
                     suessor,
                     selected_action,
                     diff_selected_action,
-                    returns_info,
-                    hit,
                 ) = self.retrive_experiences(buffer, runner, wrs)
 
                 self.offline_timestamps = self.offline_timestamps + 1
@@ -1386,8 +1354,6 @@ class A2C(ActorCriticRLModel):
                     suessor,
                     selected_action,
                     diff_selected_action,
-                    returns_info,
-                    hit,
                     replay=False,
                 )
                 self.pg_loss_bias, self.vf_loss_bias = (
@@ -1417,7 +1383,7 @@ class A2C(ActorCriticRLModel):
                             np.mean(
                                 np.reshape(
                                     rewards,
-                                    [buffer.n_env, self.n_steps, RUNHEADER.mtl_target],
+                                    [buffer.n_env, self.n_steps, rewards.shape[-1]],
                                 )
                             )
                         ),
@@ -1425,7 +1391,7 @@ class A2C(ActorCriticRLModel):
                             np.mean(
                                 np.reshape(
                                     values,
-                                    [buffer.n_env, self.n_steps, RUNHEADER.mtl_target],
+                                    [buffer.n_env, self.n_steps, values.shape[-1]],
                                 )
                             )
                         ),
@@ -1520,8 +1486,6 @@ class A2C(ActorCriticRLModel):
             suessor,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
         ) = self.retrive_experiences(buffer, runner)
 
         learned_experiences_ep = learned_experiences_ep + 1
@@ -1537,8 +1501,6 @@ class A2C(ActorCriticRLModel):
             suessor,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
             learned_experiences_ep,
             non_pass_episode,
         )
@@ -1571,7 +1533,7 @@ class A2C(ActorCriticRLModel):
 
         self._save_to_file(save_path, data=data, params=ema_params)
 
-    def _short_term_simulation(self, rewards, masks, hit, actions):
+    def _short_term_simulation(self, rewards, masks, actions):
         # dones
         cond = np.reshape(masks, [self.n_envs, self.n_steps])
         cond_idx = np.squeeze(
@@ -1606,13 +1568,11 @@ class A2C(ActorCriticRLModel):
         suessor,
         selected_action,
         diff_selected_action,
-        returns_info,
-        hit,
         current_iter_cnt,
     ):
 
         #  store examples to short-term memory
-        env_idx = self._short_term_simulation(rewards, masks, hit, actions)
+        env_idx = self._short_term_simulation(rewards, masks, actions)
         short_term_buffer.put(
             obs,
             actions,
@@ -1623,8 +1583,6 @@ class A2C(ActorCriticRLModel):
             suessor,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
             env_idx,
         )
         max_iter = max_iter + 1
@@ -1658,7 +1616,6 @@ class A2C(ActorCriticRLModel):
         policy_loss=None,
         value_loss=None,
         diff_selected_action=None,
-        hit=None,
         suessor=None,
         selected_action=None,
         model_location=None,
@@ -1708,7 +1665,7 @@ class A2C(ActorCriticRLModel):
                             np.mean(
                                 np.reshape(
                                     rewards,
-                                    [self.n_envs, self.n_steps, RUNHEADER.mtl_target],
+                                    [self.n_envs, self.n_steps, rewards.shape[-1]],
                                 )
                             )
                         ),
@@ -1716,7 +1673,7 @@ class A2C(ActorCriticRLModel):
                             np.mean(
                                 np.reshape(
                                     values,
-                                    [self.n_envs, self.n_steps, RUNHEADER.mtl_target],
+                                    [self.n_envs, self.n_steps, values.shape[-1]],
                                 )
                             )
                         ),
@@ -1758,14 +1715,14 @@ class A2C(ActorCriticRLModel):
                 values = float(
                     np.mean(
                         np.reshape(
-                            values, [self.n_envs, self.n_steps, RUNHEADER.mtl_target]
+                            values, [self.n_envs, self.n_steps, values.shape[-1]]
                         )
                     )
                 )
                 rewards = float(
                     np.mean(
                         np.reshape(
-                            rewards, [self.n_envs, self.n_steps, RUNHEADER.mtl_target]
+                            rewards, [self.n_envs, self.n_steps, rewards.shape[-1]]
                         )
                     )
                 )
@@ -1832,7 +1789,6 @@ class A2CRunner(AbstractEnvRunner):
         action_buffer=None,
         rewards_buffer=None,
         dones_buffer=None,
-        return_info_buffer=None,
         online_buffer=True,
     ):
         """
@@ -1851,8 +1807,8 @@ class A2CRunner(AbstractEnvRunner):
         self.dones = [False for _ in range(self.n_env)]
         selected_action = []
         diff_selected_action = []
-        returns_info = []
-        hit = []
+        # returns_info = []
+        # hit = []
 
         # step simulation
         for n_steps_idx in range(self.n_steps):
@@ -1867,14 +1823,12 @@ class A2CRunner(AbstractEnvRunner):
                     obs,
                     rewards,
                     dones,
-                    tmp_log,
                 ) = self.step_simulation_offline(
                     n_steps_idx=n_steps_idx,
                     obs_buffer=obs_buffer,
                     action_buffer=action_buffer,
                     rewards_buffer=rewards_buffer,
                     dones_buffer=dones_buffer,
-                    return_info_buffer=return_info_buffer,
                 )
             assert not np.sum(dones), "True condition detected!!!"
             selected_action.append(np.sum(actions, axis=1).tolist())
@@ -1892,14 +1846,16 @@ class A2CRunner(AbstractEnvRunner):
             # self.obs = obs
             mb_rewards.append(rewards)
 
-            if online_buffer:
-                tmp_info.append(info)
-                tmp_log = [tmp["10day_return"] for tmp in info]
-                returns_info.append(np.array(tmp_log).squeeze().tolist())
-                hit.append(np.where(np.array(tmp_log) > 0, 1, 0))
-            else:
-                returns_info.append(tmp_log.tolist())
-                hit.append(np.where(tmp_log > 0, 1, 0))
+            # if online_buffer:
+            #     tmp_info.append(info)
+            #     tmp_log = [tmp["10day_return"] for tmp in info]
+            #     # returns_info.append(np.array(tmp_log).squeeze().tolist())
+            #     # returns_info.append(np.array(tmp_log).tolist())
+            #     # hit.append(np.where(np.array(tmp_log) > 0, 1, 0))
+            # else:
+            #     # returns_info.append(tmp_log.tolist())
+            #     # returns_info.append(np.array(tmp_log).squeeze().tolist())
+            #     # hit.append(np.where(tmp_log > 0, 1, 0))
         # stack step experiences
         mb_dones.append(self.dones)
         # batch of steps to batch of rollouts
@@ -1957,8 +1913,6 @@ class A2CRunner(AbstractEnvRunner):
             suessor,
             np.reshape(np.array(selected_action).T, [self.n_env * self.n_steps]),
             np.reshape(np.array(diff_selected_action).T, [self.n_env * self.n_steps]),
-            np.array(returns_info),
-            np.array(hit).squeeze(),
         )
 
     def step_simulation(self, clipped_actions=0, n_steps_idx=None):
@@ -2061,7 +2015,6 @@ class A2CRunner(AbstractEnvRunner):
         action_buffer=None,
         rewards_buffer=None,
         dones_buffer=None,
-        return_info_buffer=None,
     ):
         sample_th = RUNHEADER.m_sample_th
         """get step example and stack to step memory
@@ -2073,14 +2026,13 @@ class A2CRunner(AbstractEnvRunner):
         actions = action_buffer[n_steps_idx]
 
         # get rewards, dones, info and next observation
-        obs, rewards, dones, return_info = (
+        obs, rewards, dones = (
             self.obs,
             rewards_buffer[n_steps_idx],
             dones_buffer[n_steps_idx],
-            return_info_buffer[n_steps_idx],
         )
 
-        return actions, values, states, obs, rewards, dones, return_info
+        return actions, values, states, obs, rewards, dones
 
     def step_validation(
         self, observation, initial_state, state, mask, deterministic=True

@@ -44,8 +44,6 @@ class SBuffer(object):
         self.suessor = None
         self.selected_action = None
         self.diff_selected_action = None
-        self.returns_info = None
-        self.hit = None
 
         # Size indexes
         self.next_idx = 0
@@ -62,8 +60,6 @@ class SBuffer(object):
         suessor,
         selected_action,
         diff_selected_action,
-        returns_info,
-        hit,
         env_idx,
     ):
         """
@@ -130,15 +126,6 @@ class SBuffer(object):
                         [self.n_env, self.n_steps], dtype=np.int32
                     )
 
-                    self.returns_info = np.empty(
-                        [self.n_env, self.n_steps] + list(returns_info.shape[1:]),
-                        dtype=np.float32,
-                    )
-                    self.hit = np.empty(
-                        [self.n_env, self.n_steps] + list(hit.shape[1:]),
-                        dtype=np.float32,
-                    )
-
                 for idx in env_idx:
                     self.enc_obs[self.next_idx] = np.reshape(
                         enc_obs, [self.n_env, self.n_steps] + list(enc_obs.shape[1:])
@@ -164,13 +151,6 @@ class SBuffer(object):
                     )[idx]
                     self.diff_selected_action[self.next_idx] = np.reshape(
                         diff_selected_action, [self.n_env, self.n_steps]
-                    )[idx]
-                    self.returns_info[self.next_idx] = np.reshape(
-                        returns_info,
-                        [self.n_env, self.n_steps] + list(returns_info.shape[1:]),
-                    )[idx]
-                    self.hit[self.next_idx] = np.reshape(
-                        hit, [self.n_env, self.n_steps] + list(hit.shape[1:])
                     )[idx]
 
                     self.next_idx = (self.next_idx + 1) % self.n_env
@@ -223,8 +203,6 @@ class SBuffer(object):
         diff_selected_action = self.take(
             self.diff_selected_action, idx, envx, dummy=True
         )
-        returns_info = self.take(self.returns_info, idx, envx, dummy=True)
-        hit = self.take(self.hit, idx, envx, dummy=True)
         suessor = self.take(self.suessor, idx, envx, dummy=True)
         states = self.take(self.states, idx, envx)
         actions = self.take(self.actions, idx, envx)
@@ -243,8 +221,6 @@ class SBuffer(object):
             masks,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
             suessor,
         ) = self.reshape(
             obs,
@@ -255,8 +231,6 @@ class SBuffer(object):
             masks,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
             suessor,
         )
 
@@ -270,8 +244,6 @@ class SBuffer(object):
             suessor,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
         )
 
     def reshape(
@@ -284,8 +256,6 @@ class SBuffer(object):
         masks,
         selected_action,
         diff_selected_action,
-        returns_info,
-        hit,
         suessor,
     ):
         obs = np.reshape(obs, [self.n_env * self.n_steps] + list(obs.shape[2:]))
@@ -304,10 +274,6 @@ class SBuffer(object):
         diff_selected_action = np.reshape(
             diff_selected_action, [self.n_env * self.n_steps]
         )
-        returns_info = np.reshape(
-            returns_info, [self.n_env * self.n_steps] + list(returns_info.shape[2:])
-        )
-        hit = np.reshape(hit, [self.n_env * self.n_steps] + list(hit.shape[2:]))
         suessor = np.reshape(suessor, [self.n_env])
 
         return (
@@ -319,7 +285,5 @@ class SBuffer(object):
             masks,
             selected_action,
             diff_selected_action,
-            returns_info,
-            hit,
             suessor,
         )

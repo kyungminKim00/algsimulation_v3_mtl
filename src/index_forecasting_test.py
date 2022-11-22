@@ -1,6 +1,4 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # -*- coding: utf-8 -*-
 """
@@ -8,24 +6,12 @@ Created on Mon Apr 16 14:21:21 2018
 
 @author: kim KyungMin
 """
-import header.index_forecasting.RUNHEADER as RUNHEADER
-import util
-
-# from multiprocessing.managers import BaseManager
-import numpy as np
-
-# import pandas as pd
-
 # from datasets.index_forecasting_protobuf2pickle import DataSet
 # from sklearn.metrics import classification_report
 # from sklearn.metrics import f1_score
 # from sklearn.metrics import mean_squared_error
 import os
 import pickle
-
-# import sys
-# import matplotlib
-# import matplotlib.pyplot as plt
 
 # matplotlib.use('agg')
 # import shutil
@@ -34,7 +20,21 @@ import pickle
 # from matplotlib.dates import date2num
 # import datetime
 import cloudpickle
+
+# from multiprocessing.managers import BaseManager
+import numpy as np
+
+import header.index_forecasting.RUNHEADER as RUNHEADER
 import plot_util
+import util
+
+# import pandas as pd
+
+
+# import sys
+# import matplotlib
+# import matplotlib.pyplot as plt
+
 
 # import copy
 
@@ -86,8 +86,8 @@ class Script:
         b_naive=True,
     ):
         # import modules
-        from custom_model.index_forecasting.common import SubprocVecEnv
         from custom_model.index_forecasting import A2C
+        from custom_model.index_forecasting.common import SubprocVecEnv
 
         dump_header = convert_pickable(RUNHEADER)
         env = SubprocVecEnv(
@@ -99,7 +99,7 @@ class Script:
         env.set_attr("mode", mode)
 
         filenames = list()
-        if (RUNHEADER.m_final_model is None) or (RUNHEADER.m_final_model is "None"):
+        if (RUNHEADER.m_final_model is None) or (RUNHEADER.m_final_model == "None"):
             [filenames.append(_model) for _model in models if ".pkl" in _model]
             filenames.sort()
         else:
@@ -367,7 +367,8 @@ def get_model_from_meta_repo(target_name, forward, use_historical_model=False):
     if len(a) > 0 and len(b) > 0:
         e = np.array(list(set(list(zip(a, b, c, d)))))
         return e[:, 0].tolist(), e[:, 1].tolist(), e[:, 2].tolist(), e[:, 3].tolist()
-    assert False, "There are no a latest tagged model"
+    else:
+        assert False, "There are no a latest tagged model"
 
 
 def configure_header(args):
