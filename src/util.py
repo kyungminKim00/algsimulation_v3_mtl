@@ -103,7 +103,7 @@ def get_working_dates(dates, data):
 def get_domain_on_CDSW_env(domain):
     for it in ["cdsw_20", "cdsw_60", "cdsw_120"]:
         if it in domain:  # experimental on CDSW environments
-            fp = open("{}.txt".format(domain), "r")
+            fp = open(f"{domain}.txt", "r")
             domain = fp.readline().replace("\n", "")
             fp.close()
     return domain

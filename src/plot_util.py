@@ -44,11 +44,8 @@ def gather_validation_performence(
 
     if current_y_unit(RUNHEADER.target_name) == "percent":
         p_index = p_return + today_index
-        p_index2 = p_return2 + today_index
-
     else:
         p_index = ((today_index * p_return) / 100) + today_index
-        p_index2 = ((today_index * p_return2) / 100) + today_index
 
     prediction_date = info[0]["p_date"]
 
@@ -92,8 +89,6 @@ def gather_validation_performence(
             b_info,
             b_info_return,
             today_index,
-            p_index2,
-            p_return2,
         ]
     )
     sys.stdout.write("\r>> (P) Test Date:  %s" % prediction_date)
@@ -511,8 +506,6 @@ def plot_save_validation_performence(tmp_info, save_dir, model_name, split_name=
             "b_info",
             "b_info_return",
             "today_index",
-            "P_index2",
-            "P_return2",
         ],
     )
     # up/down performance

@@ -302,6 +302,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["c_epoch"] = 600
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
@@ -357,6 +358,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["c_epoch"] = 600
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
@@ -412,6 +414,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["c_epoch"] = 600
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
@@ -467,6 +470,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["c_epoch"] = 600
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
@@ -522,6 +526,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["c_epoch"] = 600
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
@@ -577,6 +582,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["c_epoch"] = 600
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
@@ -628,6 +634,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["c_epoch"] = 2
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
@@ -680,6 +687,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["c_epoch"] = 600
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
@@ -732,6 +740,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["c_epoch"] = 600
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4

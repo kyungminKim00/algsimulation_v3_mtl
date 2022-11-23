@@ -597,7 +597,6 @@ class A2C(ActorCriticRLModel):
             td_map[self.train_model.masks_ph] = masks
 
         if writer is not None:
-            # run loss backprop with summary, but once every 10 runs save the metadata (memory, compute time, ...)
             if (
                 self.full_tensorboard_log
                 and (1 + update) % self.tensorboard_log_update == 0
@@ -620,7 +619,7 @@ class A2C(ActorCriticRLModel):
                 #  Add for replay memory
                 if not replay:
                     writer.add_run_metadata(
-                        run_metadata, "step%d" % (update * (self.n_batch + 1))
+                        run_metadata, f"step{update * (self.n_batch + 1):%d}"
                     )
             else:
                 (
@@ -671,95 +670,127 @@ class A2C(ActorCriticRLModel):
             vf_coef,
         )
 
+    # def offline_learning_with_buffer(self, runner, writer, model_location):
+
+    #     buffer = None
+    #     print_out_csv = None
+    #     print_out_csv_colname = None
+    #     epoch_print_out_csv = list()
+    #     file_names = os.listdir(RUNHEADER.m_offline_buffer_file)
+
+    #     # Merge all the chunks of buffers
+    #     buffer_names = [
+    #         buffer_name
+    #         for buffer_name in file_names
+    #         if ".pkl" and "buffer_" in buffer_name
+    #     ]
+    #     if RUNHEADER.on_cloud:
+    #         print("On cloud setting")
+    #         buffer_dict = {
+    #             buffer_names[idx]: loadFile(
+    #                 RUNHEADER.m_offline_buffer_file + "/" + buffer_names[idx][:-4]
+    #             )
+    #             for idx in range(len(buffer_names))
+    #         }
+
+    #         # Learning
+    #         for epoch in range(RUNHEADER.m_offline_learning_epoch):
+    #             for key in buffer_dict.keys():
+    #                 print_out_csv_tmp, print_out_csv_colname = self.offline_learn(
+    #                     writer, runner, buffer_dict[key], model_location, epoch
+    #                 )
+    #                 if print_out_csv is None:
+    #                     print_out_csv = np.array(print_out_csv_tmp)
+    #                 else:
+    #                     print_out_csv = np.append(
+    #                         print_out_csv, np.array(print_out_csv_tmp), axis=0
+    #                     )
+
+    #             aa = np.mean(np.array(print_out_csv), axis=0).tolist()
+    #             aa = aa[:7] + [np.mean(aa[7])]
+    #             epoch_print_out_csv.append(aa)
+    #         pd.DataFrame(epoch_print_out_csv, columns=print_out_csv_colname).to_csv(
+    #             f"{model_location}/record_tabular_epoch_summary.csv"
+    #         )
+    #         # re-init tabular summary for simulation mode
+    #         self.record_tabular = list()
+    #     else:
+    #         for epoch in range(RUNHEADER.m_offline_learning_epoch):
+    #             print_out_csv = None
+    #             print_out_csv_colname = None
+    #             for buffer_name in buffer_names:
+    #                 buffer = loadFile(
+    #                     RUNHEADER.m_offline_buffer_file + "/" + buffer_name[:-4]
+    #                 )
+    #                 print_out_csv_tmp, print_out_csv_colname = self.offline_learn(
+    #                     writer, runner, buffer, model_location, epoch
+    #                 )
+    #                 if print_out_csv is None:
+    #                     print_out_csv = np.array(print_out_csv_tmp)
+    #                 else:
+    #                     if print_out_csv is None:
+    #                         print_out_csv = np.array(print_out_csv_tmp)
+    #                     else:
+    #                         print_out_csv = np.append(
+    #                             print_out_csv, np.array(print_out_csv_tmp), axis=0
+    #                         )
+    #             aa = np.mean(np.array(print_out_csv), axis=0).tolist()
+    #             aa = aa[:7] + [np.mean(aa[7])]
+    #             epoch_print_out_csv.append(aa)
+    #         pd.DataFrame(epoch_print_out_csv, columns=print_out_csv_colname).to_csv(
+    #             f"{model_location}/record_tabular_epoch_summary.csv"
+    #         )
+    #         # re-init tabular summary for simulation mode
+    #         self.record_tabular = list()
+
+    #     #  break after offline learning
+    #     os._exit(0)
+
     def offline_learning_with_buffer(self, runner, writer, model_location):
 
-        buffer = None
-        print_out_csv = None
-        print_out_csv_colname = None
-        epoch_print_out_csv = list()
+        buffer, print_out_csv, print_out_csv_colname = None, None, None
+        epoch_print_out_csv = []
+
         file_names = os.listdir(RUNHEADER.m_offline_buffer_file)
 
-        # update version - generator with dict structure (reduce memory efficient)
-        if RUNHEADER.on_cloud:
-            # Merge all the chunks of buffers
-            buffer_names = [
-                buffer_name
-                for buffer_name in file_names
-                if ".pkl" and "buffer_" in buffer_name
-            ]
-            print(
-                "On cloud setting: it can be used for a incremental learning as well with the proper chunks of buffers"
+        # Merge all the chunks of buffers
+        buffer_names = [
+            buffer_name
+            for buffer_name in file_names
+            if ".pkl" and "buffer_" in buffer_name
+        ]
+
+        buffer_dict = {
+            buffer_names[idx]: loadFile(
+                RUNHEADER.m_offline_buffer_file + "/" + buffer_names[idx][:-4]
             )
-            buffer_dict = {
-                buffer_names[idx]: loadFile(
-                    RUNHEADER.m_offline_buffer_file + "/" + buffer_names[idx][:-4]
+            for idx in range(len(buffer_names))
+        }
+
+        # Learning
+        for epoch in range(RUNHEADER.m_offline_learning_epoch):
+            for key in buffer_dict.keys():
+                print_out_csv_tmp, print_out_csv_colname = self.offline_learn(
+                    writer, runner, buffer_dict[key], model_location, epoch
                 )
-                for idx in range(len(buffer_names))
-            }
-
-            # Learning
-            for epoch in range(RUNHEADER.m_offline_learning_epoch):
-                for key in buffer_dict.keys():
-                    print_out_csv_tmp, print_out_csv_colname = self.offline_learn(
-                        writer, runner, buffer_dict[key], model_location, epoch
+                if print_out_csv is None:
+                    print_out_csv = np.array(print_out_csv_tmp)
+                else:
+                    print_out_csv = np.append(
+                        print_out_csv, np.array(print_out_csv_tmp), axis=0
                     )
-                    if print_out_csv is None:
-                        print_out_csv = np.array(print_out_csv_tmp)
-                    else:
-                        print_out_csv = np.append(
-                            print_out_csv, np.array(print_out_csv_tmp), axis=0
-                        )
 
-                aa = np.mean(np.array(print_out_csv), axis=0).tolist()
-                aa = aa[:7] + [np.mean(aa[7])]
-                epoch_print_out_csv.append(aa)
-            pd.DataFrame(epoch_print_out_csv, columns=print_out_csv_colname).to_csv(
-                "{}/record_tabular_epoch_summary.csv".format(model_location)
-            )
-            # re-init tabular summary for simulation mode
-            self.record_tabular = list()
-            #  break after offline learning
-            os._exit(0)
-        else:
-            buffer_names = [
-                buffer_name
-                for buffer_name in file_names
-                if ".pkl" and "buffer_" in buffer_name
-            ]
+            aa = np.mean(np.array(print_out_csv), axis=0).tolist()
+            aa = aa[:7] + [np.mean(aa[7])]
+            epoch_print_out_csv.append(aa)
 
-            for epoch in range(RUNHEADER.m_offline_learning_epoch):
-                print_out_csv = None
-                print_out_csv_colname = None
-                for buffer_name in buffer_names:
-                    buffer = loadFile(
-                        RUNHEADER.m_offline_buffer_file + "/" + buffer_name[:-4]
-                    )
-                    print_out_csv_tmp, print_out_csv_colname = self.offline_learn(
-                        writer, runner, buffer, model_location, epoch
-                    )
-                    if print_out_csv is None:
-                        print_out_csv = np.array(print_out_csv_tmp)
-                    else:
-                        if len(print_out_csv_tmp) != 0:
-                            print_out_csv = np.append(
-                                print_out_csv, np.array(print_out_csv_tmp), axis=0
-                            )
-                        else:
-                            print(
-                                "{} - this buffer have been skipped. need more samples for the training".format(
-                                    buffer_name
-                                )
-                            )
-                aa = np.mean(np.array(print_out_csv), axis=0).tolist()
-                aa = aa[:7] + [np.mean(aa[7])]
-                epoch_print_out_csv.append(aa)
-            pd.DataFrame(epoch_print_out_csv, columns=print_out_csv_colname).to_csv(
-                "{}/record_tabular_epoch_summary.csv".format(model_location)
-            )
-            # re-init tabular summary for simulation mode
-            self.record_tabular = list()
-            #  break after offline learning
-            os._exit(0)
+        pd.DataFrame(epoch_print_out_csv, columns=print_out_csv_colname).to_csv(
+            f"{model_location}/record_tabular_epoch_summary.csv"
+        )
+        # re-init tabular summary for simulation mode
+        self.record_tabular = list()
+        # break after offline learning
+        os._exit(0)
 
     def learn(
         self,
@@ -782,14 +813,7 @@ class A2C(ActorCriticRLModel):
         ) as writer:
             self._setup_learn(seed)
 
-            if RUNHEADER.m_online_buffer:
-                learning_timestemp = total_timesteps
-                self.learning_rate_schedule = Scheduler(
-                    initial_value=self.learning_rate,
-                    n_values=learning_timestemp,
-                    schedule="linear",
-                )
-            else:
+            if not RUNHEADER.m_online_buffer:
                 learning_timestemp = (
                     self.n_envs
                     * self.n_steps
@@ -805,334 +829,69 @@ class A2C(ActorCriticRLModel):
                     total_step=int(self.total_example / self.n_envs)
                     * RUNHEADER.m_offline_learning_epoch,
                 )
+                runner = A2CRunner(
+                    self.env, self, n_steps=self.n_steps, gamma=self.gamma
+                )
+                self.episode_reward = np.zeros((self.n_envs,))
 
-            runner = A2CRunner(self.env, self, n_steps=self.n_steps, gamma=self.gamma)
+                # load offline-buffer and learning and exit after learning
+                self.offline_learning_with_buffer(runner, writer, model_location)
 
-            self.episode_reward = np.zeros((self.n_envs,))
-            # self.day_return = np.zeros(
-            #     (
-            #         self.n_envs,
-            #         5,
-            #     )
-            # )  # 0, 1, 5, 10, 20     2022.11.17 disable
+            else:  # generate buffer
+                learning_timestemp = total_timesteps
+                self.learning_rate_schedule = Scheduler(
+                    initial_value=self.learning_rate,
+                    n_values=learning_timestemp,
+                    schedule="linear",
+                )
+                runner = A2CRunner(
+                    self.env, self, n_steps=self.n_steps, gamma=self.gamma
+                )
+                self.episode_reward = np.zeros((self.n_envs,))
 
-            if RUNHEADER.m_online_buffer:  # generate buffer
                 buffer = Buffer(
                     env=self.env, n_steps=self.n_steps, size=self.buffer_size
                 )
-            else:  # load offline-buffer and learning
-                self.offline_learning_with_buffer(runner, writer, model_location)
+                # simulation learning or continue the simulation learning after the offline learning
+                print_rewards = []
+                current_timesteps = 0
+                current_episode_idx = 0
+                ep_dsr = []
+                ep_dones = []
+                entry_th = None
+                mask_th = None
+                learned_experiences_ep = 0
+                non_pass_episode = 0
+                short_term_roll_out = 0
+                delete_repeat_sample = 0  # 5times repeat
 
-            # simulation learning or continue the simulation learning after the offline learning
-            t_start = time.time()
-            print_rewards = []
-            current_timesteps = 0
-            current_episode_idx = 0
-            ep_dsr = []
-            ep_dones = []
-            entry_th = None
-            mask_th = None
-            learned_experiences_ep = 0
-            non_pass_episode = 0
-            short_term_roll_out = 0
-            delete_repeat_sample = 0  # 5times repeat
-            for update in range(1, total_timesteps // self.n_batch + 1):
-                if update == self.total_example:
-                    os._exit(0)  # without raising SystemExit
-                # print('\n')
-                """ Training
-                """
-                # 1. set current observation episode
-                if np.sum(self.env.get_attr("eoe")):
-                    current_episode_idx = 0
-                self.env.set_attr("current_episode_idx", current_episode_idx)
-                # self.env.env_method('clear_cache')
+                for update in range(1, total_timesteps // self.n_batch + 1):
+                    if update == self.total_example:
+                        os._exit(0)  # without raising SystemExit
 
-                # 2. gather simulation result
-                bool_runner = True
-                max_iter = 0
-                cond_cnt_1 = 0
-                cond_cnt_2 = 0
-                exit_cnt = 0
-                current_iter_cnt = 0
-                n_pushed_experiences = 0
-                replay_iteration = RUNHEADER.m_replay_iteration
+                    # 1. set current observation episode
+                    if np.sum(self.env.get_attr("eoe")):
+                        current_episode_idx = 0
+                    self.env.set_attr("current_episode_idx", current_episode_idx)
+                    # self.env.env_method('clear_cache')
 
-                # gather
-                sys.stdout.write("\n")
-                sys.stdout.flush()
-                short_term_buffer = SBuffer(env=self.env, n_steps=self.n_steps)
-                while bool_runner:
-                    self.env.env_method("clear_cache")
-                    # step memory
-                    (
-                        obs,
-                        states,
-                        rewards,
-                        masks,
-                        actions,
-                        values,
-                        true_reward,
-                        info,
-                        get_progress_info,
-                        suessor,
-                        selected_action,
-                        diff_selected_action,
-                    ) = runner.run()
+                    # 2. gather simulation result
+                    bool_runner = True
+                    max_iter = 0
+                    cond_cnt_1 = 0
+                    cond_cnt_2 = 0
+                    exit_cnt = 0
+                    current_iter_cnt = 0
+                    n_pushed_experiences = 0
+                    replay_iteration = RUNHEADER.m_replay_iteration
 
-                    assert not (
-                        (
-                            len(
-                                np.argwhere(
-                                    selected_action > self.env.action_space.shape
-                                )
-                            )
-                            > 0
-                        )
-                        or (len(np.argwhere(selected_action < 0)) > 0)
-                    ), "check selected action!!!"
-
-                    # short-term memory
-                    (
-                        bool_runner,
-                        entry_th,
-                        mask_th,
-                        cond_cnt_1,
-                        cond_cnt_2,
-                        max_iter,
-                        exit_cnt,
-                        short_term_buffer,
-                    ) = self.short_term_simulation(
-                        rewards,
-                        masks,
-                        entry_th,
-                        mask_th,
-                        cond_cnt_1,
-                        cond_cnt_2,
-                        max_iter,
-                        bool_runner,
-                        exit_cnt,
-                        short_term_buffer,
-                        obs,
-                        actions,
-                        values,
-                        states,
-                        suessor,
-                        selected_action,
-                        diff_selected_action,
-                        current_iter_cnt,
-                    )
-                    sys.stdout.write(
-                        "\r>> [%d] short-term memory:  %d/%d"
-                        % (
-                            current_iter_cnt,
-                            short_term_buffer.num_in_buffer,
-                            self.n_envs,
-                        )
-                    )
+                    # gather
+                    sys.stdout.write("\n")
                     sys.stdout.flush()
-                    current_iter_cnt = current_iter_cnt + 1
-                # gather end
-
-                if short_term_buffer.num_in_buffer > 0:
-                    # caution: this is a short-term simulation roll-out not a step-simulation one
-                    short_term_roll_out = int(
-                        self.n_envs - short_term_buffer.num_in_buffer
-                    )
-                    """ to calculate mean-variance of experience
-                    """
-                    # mark 1.
-                    (
-                        obs,
-                        actions,
-                        rewards,
-                        values,
-                        states,
-                        masks,
-                        suessor,
-                        selected_action,
-                        diff_selected_action,
-                    ) = short_term_buffer.get()
-                current_episode_idx = current_episode_idx + 1
-
-                # 3. add gathered experiences to buffer
-                # if buffer is not None:
-                if (buffer is not None) and (short_term_buffer.num_in_buffer > 0):
-                    buffer.put(
-                        obs,
-                        actions,
-                        rewards,
-                        values,
-                        states,
-                        masks,
-                        suessor,
-                        selected_action,
-                        diff_selected_action,
-                    )
-
-                # 4. re-call experiences [sub-process of replay]
-                if (
-                    buffer is not None
-                    and self.replay_ratio > 0
-                    and buffer.has_atleast(self.n_envs)
-                ):
-                    if short_term_buffer.num_in_buffer == 0:
-                        (
-                            obs,
-                            actions,
-                            rewards,
-                            values,
-                            states,
-                            masks,
-                            suessor,
-                            selected_action,
-                            diff_selected_action,
-                            learned_experiences_ep,
-                            non_pass_episode,
-                        ) = self.re_call_buff(
-                            buffer, learned_experiences_ep, non_pass_episode, runner
-                        )
-
-                # 5. fit training model
-                (
-                    policy_loss,
-                    value_loss,
-                    policy_entropy,
-                    pi_coef,
-                    vf_coef,
-                ) = self._train_step(
-                    obs,
-                    states,
-                    rewards,
-                    masks,
-                    actions,
-                    values,
-                    self.num_timesteps // (self.n_batch + 1),
-                    writer,
-                    suessor,
-                    selected_action,
-                    diff_selected_action,
-                )
-                self.pg_loss_bias, self.vf_loss_bias = (
-                    policy_loss,
-                    value_loss,
-                )
-
-                """ Trace actions
-                """
-                tmp = np.reshape(
-                    actions, [self.n_envs, self.n_steps, actions.shape[-1]]
-                )[0].T
-                # Disable
-                # plt.imsave('./save/images/{}_{}_{}.jpeg'.format(str(g_date), update,
-                #                                                 int(np.mean(np.sum(tmp, axis=0)))), tmp * 255)
-
-                """Blows describe post-processes during the training
-                """
-                # model save according to the time stamps
-                current_timesteps = current_timesteps + 1
-                # drop a model with every 0.5% of examples and buffers
-                # basically sample generation section or online learning + sample generation section
-                # if update % int(self.total_example // 200) == 0:
-                if update % int(self.total_example * 0.5) == 0:
-                    model_name = f"{model_location}/fs_{current_timesteps}_ev{np.mean(explained_var):3.3}_pe{policy_entropy:3.3}_pl{policy_loss:3.3}_vl{value_loss:3.3}.pkl"
-                    self.save(model_name)
-
-                # buffer save
-                if (buffer.num_in_buffer >= buffer.size) or (
-                    update == self.total_example - 1
-                ):
-                    writeFile(
-                        f"{RUNHEADER.m_offline_buffer_file}/buffer_E{self.n_envs}_S{self.n_steps}_U{update}",
-                        buffer,
-                    )
-                    buffer = None
-                    buffer = Buffer(
-                        env=self.env, n_steps=self.n_steps, size=self.buffer_size
-                    )  # re-init
-
-                if writer is not None:
-                    self.episode_reward = total_episode_reward_logger(
-                        self.episode_reward,
-                        true_reward.reshape(
-                            (self.n_envs, self.n_steps * true_reward.shape[-1])
-                        ),
-                        masks.reshape((self.n_envs, self.n_steps)),
-                        writer,
-                        self.num_timesteps,
-                    )
-                self.num_timesteps += self.n_batch + 1
-
-                if callback is not None:
-                    # Only stop training if return value is False, not when it is None. This is for backwards
-                    # compatibility with callbacks that have no return statement.
-                    if callback(locals(), globals()) is False:
-                        break
-
-                """Write printout and save csv
-                """
-                explained_var = self.print_out_tabular(
-                    update=update,
-                    values=values,
-                    rewards=rewards,
-                    policy_entropy=policy_entropy,
-                    policy_loss=policy_loss,
-                    value_loss=value_loss,
-                    diff_selected_action=diff_selected_action,
-                    suessor=suessor,
-                    selected_action=selected_action,
-                    model_location=model_location,
-                    entry_th=entry_th,
-                    mask_th=mask_th,
-                    buffer=buffer,
-                    learned_experiences_ep=learned_experiences_ep,
-                    non_pass_episode=non_pass_episode,
-                    short_term_roll_out=short_term_roll_out,
-                    log_interval=log_interval,
-                    pi_coef=pi_coef,
-                    vf_coef=vf_coef,
-                )
-                """Restore extra information
-                """
-                print_rewards.append(
-                    [
-                        float(
-                            np.mean(
-                                np.reshape(
-                                    rewards,
-                                    [
-                                        self.n_envs,
-                                        self.n_steps,
-                                        rewards.shape[-1],
-                                    ],
-                                )
-                            )
-                        ),
-                        float(
-                            np.mean(
-                                np.reshape(
-                                    true_reward,
-                                    [
-                                        self.n_envs,
-                                        self.n_steps,
-                                        true_reward.shape[-1],
-                                    ],
-                                )
-                            )
-                        ),
-                    ]
-                )
-
-                """ Replay [main-process of replay]
-                """
-                if (
-                    (self.replay_ratio > 0)
-                    and buffer.has_atleast(self.replay_start)
-                    and (update > self.main_replay_start)
-                ):
-                    samples_number = np.random.poisson(self.replay_ratio)
-                    for _ in range(samples_number * replay_iteration):
-                        # get obs, actions, rewards, mus, dones from buffer.
+                    short_term_buffer = SBuffer(env=self.env, n_steps=self.n_steps)
+                    while bool_runner:
+                        self.env.env_method("clear_cache")
+                        # step memory
                         (
                             obs,
                             states,
@@ -1146,101 +905,346 @@ class A2C(ActorCriticRLModel):
                             suessor,
                             selected_action,
                             diff_selected_action,
-                        ) = self.retrive_experiences(buffer, runner)
+                        ) = runner.run()
 
-                        self._train_step(
-                            obs,
-                            states,
+                        # short-term memory
+                        (
+                            bool_runner,
+                            entry_th,
+                            mask_th,
+                            cond_cnt_1,
+                            cond_cnt_2,
+                            max_iter,
+                            exit_cnt,
+                            short_term_buffer,
+                        ) = self.short_term_simulation(
                             rewards,
                             masks,
+                            entry_th,
+                            mask_th,
+                            cond_cnt_1,
+                            cond_cnt_2,
+                            max_iter,
+                            bool_runner,
+                            exit_cnt,
+                            short_term_buffer,
+                            obs,
                             actions,
                             values,
-                            self.num_timesteps // (self.n_batch + 1),
-                            writer,
+                            states,
                             suessor,
                             selected_action,
                             diff_selected_action,
-                            replay=True,
+                            current_iter_cnt,
                         )
-                    learned_experiences_ep = learned_experiences_ep + samples_number
+                        sys.stdout.write(
+                            f"\r>> [{current_iter_cnt:%d}] short-term memory:  {short_term_buffer.num_in_buffer:%d}/{self.n_envs:%d}"
+                        )
+                        sys.stdout.flush()
+                        current_iter_cnt = current_iter_cnt + 1
+                    # gather end
 
-            pd.DataFrame(
-                data=np.array(print_rewards), columns=["rewards", "true_rewards"]
-            ).to_csv("{}/train_rewards_records.csv".format(model_location))
+                    if short_term_buffer.num_in_buffer > 0:
+                        # caution: this is a short-term simulation roll-out not a step-simulation one
+                        short_term_roll_out = int(
+                            self.n_envs - short_term_buffer.num_in_buffer
+                        )
+                        """ to calculate mean-variance of experience
+                        """
+                        # mark 1.
+                        (
+                            obs,
+                            actions,
+                            rewards,
+                            values,
+                            states,
+                            masks,
+                            suessor,
+                            selected_action,
+                            diff_selected_action,
+                        ) = short_term_buffer.get()
+                    current_episode_idx = current_episode_idx + 1
+
+                    # 3. add gathered experiences to buffer
+                    # if buffer is not None:
+                    if (buffer is not None) and (short_term_buffer.num_in_buffer > 0):
+                        buffer.put(
+                            obs,
+                            actions,
+                            rewards,
+                            values,
+                            states,
+                            masks,
+                            suessor,
+                            selected_action,
+                            diff_selected_action,
+                        )
+
+                    # 4. re-call experiences [sub-process of replay]
+                    if (
+                        buffer is not None
+                        and self.replay_ratio > 0
+                        and buffer.has_atleast(self.n_envs)
+                    ):
+                        if short_term_buffer.num_in_buffer == 0:
+                            (
+                                obs,
+                                actions,
+                                rewards,
+                                values,
+                                states,
+                                masks,
+                                suessor,
+                                selected_action,
+                                diff_selected_action,
+                                learned_experiences_ep,
+                                non_pass_episode,
+                            ) = self.re_call_buff(
+                                buffer, learned_experiences_ep, non_pass_episode, runner
+                            )
+
+                    # 5. fit training model
+                    (
+                        policy_loss,
+                        value_loss,
+                        policy_entropy,
+                        pi_coef,
+                        vf_coef,
+                    ) = self._train_step(
+                        obs,
+                        states,
+                        rewards,
+                        masks,
+                        actions,
+                        values,
+                        self.num_timesteps // (self.n_batch + 1),
+                        writer,
+                        suessor,
+                        selected_action,
+                        diff_selected_action,
+                    )
+                    self.pg_loss_bias, self.vf_loss_bias = (
+                        policy_loss,
+                        value_loss,
+                    )
+
+                    """ Trace actions
+                    """
+                    tmp = np.reshape(
+                        actions, [self.n_envs, self.n_steps, actions.shape[-1]]
+                    )[0].T
+                    # Disable
+                    # plt.imsave('./save/images/{}_{}_{}.jpeg'.format(str(g_date), update,
+                    #                                                 int(np.mean(np.sum(tmp, axis=0)))), tmp * 255)
+
+                    """Blows describe post-processes during the training
+                    """
+                    # model save according to the time stamps
+                    current_timesteps = current_timesteps + 1
+                    # drop a model with every 0.5% of examples and buffers
+                    # basically sample generation section or online learning + sample generation section
+                    # if update % int(self.total_example // 200) == 0:
+                    if update % int(self.total_example * 0.5) == 0:
+                        model_name = f"{model_location}/fs_{current_timesteps}_ev{np.mean(explained_var):3.3}_pe{policy_entropy:3.3}_pl{policy_loss:3.3}_vl{value_loss:3.3}.pkl"
+                        self.save(model_name)
+
+                    # buffer save
+                    if (buffer.num_in_buffer >= buffer.size) or (
+                        update == self.total_example - 1
+                    ):
+                        writeFile(
+                            f"{RUNHEADER.m_offline_buffer_file}/buffer_E{self.n_envs}_S{self.n_steps}_U{update}",
+                            buffer,
+                        )
+                        buffer = None
+                        buffer = Buffer(
+                            env=self.env, n_steps=self.n_steps, size=self.buffer_size
+                        )  # re-init
+
+                    if writer is not None:
+                        self.episode_reward = total_episode_reward_logger(
+                            self.episode_reward,
+                            true_reward.reshape(
+                                (self.n_envs, self.n_steps * true_reward.shape[-1])
+                            ),
+                            masks.reshape((self.n_envs, self.n_steps)),
+                            writer,
+                            self.num_timesteps,
+                        )
+                    self.num_timesteps += self.n_batch + 1
+
+                    """Write printout and save csv
+                    """
+                    explained_var = self.print_out_tabular(
+                        update=update,
+                        values=values,
+                        rewards=rewards,
+                        policy_entropy=policy_entropy,
+                        policy_loss=policy_loss,
+                        value_loss=value_loss,
+                        diff_selected_action=diff_selected_action,
+                        suessor=suessor,
+                        selected_action=selected_action,
+                        model_location=model_location,
+                        entry_th=entry_th,
+                        mask_th=mask_th,
+                        buffer=buffer,
+                        learned_experiences_ep=learned_experiences_ep,
+                        non_pass_episode=non_pass_episode,
+                        short_term_roll_out=short_term_roll_out,
+                        log_interval=log_interval,
+                        pi_coef=pi_coef,
+                        vf_coef=vf_coef,
+                    )
+                    """Restore extra information
+                    """
+                    print_rewards.append(
+                        [
+                            float(
+                                np.mean(
+                                    np.reshape(
+                                        rewards,
+                                        [
+                                            self.n_envs,
+                                            self.n_steps,
+                                            rewards.shape[-1],
+                                        ],
+                                    )
+                                )
+                            ),
+                            float(
+                                np.mean(
+                                    np.reshape(
+                                        true_reward,
+                                        [
+                                            self.n_envs,
+                                            self.n_steps,
+                                            true_reward.shape[-1],
+                                        ],
+                                    )
+                                )
+                            ),
+                        ]
+                    )
+
+                    """ Replay [main-process of replay]
+                    """
+                    if (
+                        (self.replay_ratio > 0)
+                        and buffer.has_atleast(self.replay_start)
+                        and (update > self.main_replay_start)
+                    ):
+                        samples_number = np.random.poisson(self.replay_ratio)
+                        for _ in range(samples_number * replay_iteration):
+                            # get obs, actions, rewards, mus, dones from buffer.
+                            (
+                                obs,
+                                states,
+                                rewards,
+                                masks,
+                                actions,
+                                values,
+                                true_reward,
+                                info,
+                                get_progress_info,
+                                suessor,
+                                selected_action,
+                                diff_selected_action,
+                            ) = self.retrive_experiences(buffer, runner)
+
+                            self._train_step(
+                                obs,
+                                states,
+                                rewards,
+                                masks,
+                                actions,
+                                values,
+                                self.num_timesteps // (self.n_batch + 1),
+                                writer,
+                                suessor,
+                                selected_action,
+                                diff_selected_action,
+                                replay=True,
+                            )
+                        learned_experiences_ep = learned_experiences_ep + samples_number
+
+                pd.DataFrame(
+                    data=np.array(print_rewards), columns=["rewards", "true_rewards"]
+                ).to_csv("{}/train_rewards_records.csv".format(model_location))
 
         return self
 
-    # not in use mightbe
-    @util.funTime("validation_test")
-    def validation_test(self, runner, initial_state, epoch, model_name):
-        if (self.on_validation is True) and (epoch >= RUNHEADER.m_validation_min_epoch):
-            print("validation_test perform")
-            # dummy values for plotting
-            softmax_actions = np.zeros((1, RUNHEADER.mtl_target, 2))
-            index_bound = [0, 0, 0, 0, 0]
-            index_bound_return = [0, 0, 0, 0, 0]
+    # # not in use mightbe
+    # @util.funTime("validation_test")
+    # def validation_test(self, runner, initial_state, epoch, model_name):
+    #     if (self.on_validation is True) and (epoch >= RUNHEADER.m_validation_min_epoch):
+    #         print("validation_test perform")
+    #         # dummy values for plotting
+    #         softmax_actions = np.zeros((1, RUNHEADER.mtl_target, 2))
+    #         index_bound = [0, 0, 0, 0, 0]
+    #         index_bound_return = [0, 0, 0, 0, 0]
 
-            tmp_info, selected_fund, img_action, act_selection = (
-                list(),
-                list(),
-                list(),
-                list(),
-            )
-            p_states, action, info = initial_state, None, None
-            mask = [False for _ in range(self.n_envs)]
-            with util.restore_agents_status(self):
-                current_step = 0
-                self.env.set_attr("mode", "validation")
-                self.env.set_attr("current_step", current_step)
-                self.env.set_attr("eof", False)
-                self.env.set_attr("steps_beyond_done", None)
-                obs = self.env.reset()
+    #         tmp_info, selected_fund, img_action, act_selection = (
+    #             list(),
+    #             list(),
+    #             list(),
+    #             list(),
+    #         )
+    #         p_states, action, info = initial_state, None, None
+    #         mask = [False for _ in range(self.n_envs)]
+    #         with util.restore_agents_status(self):
+    #             current_step = 0
+    #             self.env.set_attr("mode", "validation")
+    #             self.env.set_attr("current_step", current_step)
+    #             self.env.set_attr("eof", False)
+    #             self.env.set_attr("steps_beyond_done", None)
+    #             obs = self.env.reset()
 
-                while np.sum(np.array(self.env.get_attr("eof"))) == 0:
-                    # # memory growing
-                    # action, states, values, neglogp, values2 = self.predict(obs, state=p_states,
-                    #                                                         mask=None, deterministic=True)
+    #             while np.sum(np.array(self.env.get_attr("eof"))) == 0:
+    #                 # # memory growing
+    #                 # action, states, values, neglogp, values2 = self.predict(obs, state=p_states,
+    #                 #                                                         mask=None, deterministic=True)
 
-                    # # memory growing
-                    # action, values, states, neglogp, values2 = self.step(obs, state=p_states, mask=mask, deterministic=False)
+    #                 # # memory growing
+    #                 # action, values, states, neglogp, values2 = self.step(obs, state=p_states, mask=mask, deterministic=False)
 
-                    # memory growing
-                    action, values, states, neglogp = runner.step_validation(
-                        obs,
-                        initial_state,
-                        state=p_states,
-                        mask=None,
-                        deterministic=False,
-                    )
-                    p_states = states
-                    _, rewards, _, info = self.env.step(action)
+    #                 # memory growing
+    #                 action, values, states, neglogp = runner.step_validation(
+    #                     obs,
+    #                     initial_state,
+    #                     state=p_states,
+    #                     mask=None,
+    #                     deterministic=False,
+    #                 )
+    #                 p_states = states
+    #                 _, rewards, _, info = self.env.step(action)
 
-                    current_step = current_step + 1
-                    self.env.set_attr("current_step", current_step)
-                    obs, _, _, _ = self.env.step(action)
+    #                 current_step = current_step + 1
+    #                 self.env.set_attr("current_step", current_step)
+    #                 obs, _, _, _ = self.env.step(action)
 
-                    # dummy for bound estimation
-                    b_info = list()
-                    b_info_return = list()
-                    _info = None
+    #                 # dummy for bound estimation
+    #                 b_info = list()
+    #                 b_info_return = list()
+    #                 _info = None
 
-                    # gather performence
-                    tmp_info = plot_util.gather_validation_performence(
-                        info,
-                        tmp_info,
-                        values,
-                        softmax_actions,
-                        index_bound,
-                        index_bound_return,
-                        b_info,
-                        b_info_return,
-                    )
-                # plot and save performance
-                plot_util.plot_save_validation_performence(
-                    tmp_info,
-                    model_name[: -len(model_name.split("/")[-1]) - 1] + "/validation",
-                    model_name,
-                )
+    #                 # gather performence
+    #                 tmp_info = plot_util.gather_validation_performence(
+    #                     info,
+    #                     tmp_info,
+    #                     values,
+    #                     softmax_actions,
+    #                     index_bound,
+    #                     index_bound_return,
+    #                     b_info,
+    #                     b_info_return,
+    #                 )
+    #             # plot and save performance
+    #             plot_util.plot_save_validation_performence(
+    #                 tmp_info,
+    #                 model_name[: -len(model_name.split("/")[-1]) - 1] + "/validation",
+    #                 model_name,
+    #             )
 
     def retrive_experiences(self, buffer, runner, wrs=None):
         # get obs, actions, rewards, mus, dones from buffer.
@@ -1304,20 +1308,13 @@ class A2C(ActorCriticRLModel):
 
             # for update in range(samples_number):  # learning for 1 epoch.. it investigates samples in a offline file at n_env times
             for update in range(samples_number + 1):  # learning for 1 epoch
-                # original version
-                # obs, states, rewards, masks, actions, values, true_reward, info, get_progress_info, suessor, \
-                # selected_action, diff_selected_action, returns_info, hit = \
-                #     self.retrive_experiences(buffer, runner)
-
                 r_idx = np.arange(update * buffer.n_env, (update + 1) * buffer.n_env)
                 if r_idx[-1] >= buffer.num_in_buffer:
                     dummy_idx = (r_idx[-1] - buffer.num_in_buffer) + 1
                     r_idx[-dummy_idx:] = np.random.randint(
                         0, buffer.num_in_buffer, dummy_idx
                     )
-                # if r_idx[-1] >= samples_number:
-                #     dummy_idx = (r_idx[-1] - samples_number) + 1
-                #     r_idx[-dummy_idx:] = np.random.randint(0, samples_number, dummy_idx)
+
                 wrs = without_replacement_sampling[r_idx]
                 (
                     obs,
@@ -1411,9 +1408,7 @@ class A2C(ActorCriticRLModel):
 
                 # sys.stdout.write('\r>> [{}] Offline Learning step: {}/{}'.format(epoch, update, samples_number))
                 sys.stdout.write(
-                    "\r>> [{}] Offline Learning step: {}/{}".format(
-                        epoch, (update + 1) * buffer.n_env, buffer.num_in_buffer
-                    )
+                    f"\r>> [{epoch}] Offline Learning step: {(update + 1) * buffer.n_env}/{buffer.num_in_buffer}"
                 )
                 sys.stdout.flush()
 
@@ -1451,7 +1446,9 @@ class A2C(ActorCriticRLModel):
                     if (epoch >= RUNHEADER.c_epoch) and ((int(epoch) % 2) == 1):
                         self.save(model_name)
 
-                self.validation_test(runner, self.initial_state, epoch, model_name)
+                # # not in use - memory overflow
+                # self.validation_test(runner, self.initial_state, epoch, model_name)
+
             # if True:  # drops all models corresponding each epochs
             #     # model drop
             #     # Drop the model
@@ -2074,7 +2071,3 @@ class A2CRunner(AbstractEnvRunner):
 
         search_cnt = search_cnt + 1
         return sample_th, terminate_cnt, search_cnt
-
-
-if __name__ == "__main__":
-    None

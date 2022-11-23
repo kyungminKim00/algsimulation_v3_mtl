@@ -1,6 +1,4 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # -*- coding: utf-8 -*-
 """
@@ -8,19 +6,20 @@ Created on Mon Apr 16 14:21:21 2018
 
 @author: kim KyungMin
 """
-import cython
-import header.index_forecasting.RUNHEADER as RUNHEADER
-import util
 import datetime
-from scipy.stats import entropy
-import numpy as np
-import pandas as pd
 import os
 import pickle
 import sys
 
+import cython
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy.stats import entropy
+
+import header.index_forecasting.RUNHEADER as RUNHEADER
+import util
 
 matplotlib.use("agg")
 
@@ -188,29 +187,29 @@ class Script:
         self.b_naive = b_naive
         self.performed_date = performed_date
 
-    def align_consistency(self, data):
-        tmp_dict = {0: "P_return", 1: "P_return2"}
-        for idx in range(len(data)):
-            min_idx = np.argmin([data["P_return"][idx], data["P_return2"][idx]])
-            max_idx = np.argmax([data["P_return"][idx], data["P_return2"][idx]])
+    # def align_consistency(self, data):
+    #     tmp_dict = {0: "P_return", 1: "P_return2"}
+    #     for idx in range(len(data)):
+    #         min_idx = np.argmin([data["P_return"][idx], data["P_return2"][idx]])
+    #         max_idx = np.argmax([data["P_return"][idx], data["P_return2"][idx]])
 
-            if data["P_20days"][idx] == 1:
-                if data[tmp_dict[max_idx]][idx] >= 0:
-                    pass
-                else:
-                    data[tmp_dict[max_idx]][idx] = np.abs(data[tmp_dict[max_idx]][idx])
-            else:
-                if data[tmp_dict[min_idx]][idx] < 0:
-                    pass
-                else:
-                    data[tmp_dict[min_idx]][idx] = -1 * data[tmp_dict[min_idx]][idx]
-        return data
+    #         if data["P_20days"][idx] == 1:
+    #             if data[tmp_dict[max_idx]][idx] >= 0:
+    #                 pass
+    #             else:
+    #                 data[tmp_dict[max_idx]][idx] = np.abs(data[tmp_dict[max_idx]][idx])
+    #         else:
+    #             if data[tmp_dict[min_idx]][idx] < 0:
+    #                 pass
+    #             else:
+    #                 data[tmp_dict[min_idx]][idx] = -1 * data[tmp_dict[min_idx]][idx]
+    #     return data
 
     def get_dates(self, dates, forward):
-        base_dates = list()
-        for i in range(len(dates)):
+        base_dates = []
+        for i, it in enumerate(dates):
             cnt = 0
-            datetime_obj = datetime.datetime.strptime(dates[i], "%Y-%m-%d")
+            datetime_obj = datetime.datetime.strptime(it, "%Y-%m-%d")
             while True:
                 datetime_obj += datetime.timedelta(days=-1)
                 if datetime_obj.weekday() < 5:  # keep working days
@@ -254,10 +253,6 @@ class Script:
         base_date = np.array(
             self.get_dates(data["P_Date"], int(info.split("_")[1][1:]))
         )
-        prediction_index_min = np.min([data["P_index"], data["P_index2"]], axis=0)
-        prediction_index_max = np.max([data["P_index"], data["P_index2"]], axis=0)
-        prediction_return_min = np.min([data["P_return"], data["P_return2"]], axis=0)
-        prediction_return_max = np.max([data["P_return"], data["P_return2"]], axis=0)
 
         report = (
             np.concatenate(
@@ -269,10 +264,6 @@ class Script:
                     base_date,
                     data["today_index"],
                     data["P_Date"],
-                    prediction_index_min,
-                    prediction_index_max,
-                    prediction_return_min,
-                    prediction_return_max,
                     data["P_20days"],
                     data["P_Confidence"],
                 ]
@@ -310,14 +301,14 @@ class Script:
         )
 
         # get final result
-        s_model_result = "{}/{}".format(self.model_location, self.f_model)
+        s_model_result = f"{self.model_location}/{self.f_model}"
 
         # apply adhoc process
         data = pd.read_csv(s_model_result, index_col=[0])
-        data["P_Confidence"] = confidence
-        data["P_Probability"] = probability
-        data = self.align_consistency(data)
-        pd.DataFrame(data=data).to_csv("{}/{}".format(self.result, self.adhoc_file))
+        # data["P_Confidence"] = confidence
+        # data["P_Probability"] = probability
+        # data = self.align_consistency(data)
+        # pd.DataFrame(data=data).to_csv("{}/{}".format(self.result, self.adhoc_file))
 
         if self.infer_mode:
             file_name = (

@@ -1,15 +1,11 @@
-from __future__ import absolute_import, division, print_function
-
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 16 14:21:21 2018
 
 @author: kim KyungMin
 """
-# from datasets.index_forecasting_protobuf2pickle import DataSet
-# from sklearn.metrics import classification_report
-# from sklearn.metrics import f1_score
-# from sklearn.metrics import mean_squared_error
+from __future__ import absolute_import, division, print_function
+
 import os
 import pickle
 
@@ -343,7 +339,7 @@ def load(filepath, method):
 def get_model_from_meta_repo(target_name, forward, use_historical_model=False):
     a, b, c, d = list(), list(), list(), list()
     model_info = load(
-        "./save/model_repo_meta/{}_T{}.pkl".format(target_name, forward), "pickle"
+        f"./save/model_repo_meta/{target_name}_T{forward}.pkl", "pickle"
     )
     for model in model_info:
         if not use_historical_model:
@@ -351,9 +347,7 @@ def get_model_from_meta_repo(target_name, forward, use_historical_model=False):
                 return model["m_name"], model["model_name"]
         else:
             if os.path.isfile(
-                "./save/model/rllearn/{}/{}".format(
-                    model["m_name"], model["model_name"]
-                )
+                f"./save/model/rllearn/{model['m_name']}/{, model['model_name']}"
             ):
                 a.append(model["m_name"])
                 b.append(model["model_name"])

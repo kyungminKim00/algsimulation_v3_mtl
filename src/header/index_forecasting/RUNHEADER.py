@@ -97,7 +97,7 @@ weighted_random_sample: bool = False
 enable_non_shared_part: bool = False
 enable_lstm: bool = True
 default_net: bool = "inception_resnet_v2_Dummy"
-c_epoch: int = 600
+c_epoch: int = 600  # learning model drop epoch
 derived_vars_th: Dict[int, float] = {0: "094", 1: 0.94}
 buffer_drop_rate: bool = 1  # 0.05 -> 0.1
 # (total_samples * 0.1) / buffer_drop_rate / train_batch_size * target_epoch

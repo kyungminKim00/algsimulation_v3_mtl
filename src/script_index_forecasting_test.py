@@ -68,7 +68,7 @@ def run(
     performence_stacks=None,
 ):
     dict_RUNHEADER = util.json2dict(
-        "./save/model/rllearn/{}/agent_parameter.json".format(json_location)
+        f"./save/model/rllearn/{json_location}/agent_parameter.json"
     )
 
     # re-load from model environments
@@ -83,9 +83,8 @@ def run(
     RUNHEADER.__dict__["dataset_version"] = args.dataset_version
     RUNHEADER.__dict__[
         "m_dataset_dir"
-    ] = "./save/tf_record/index_forecasting/if_x0_20_y{}_{}".format(
-        args.forward_ndx, args.dataset_version
-    )
+    ] = f"./save/tf_record/index_forecasting/if_x0_20_y{args.forward_ndx}_{args.dataset_version}"
+
     # additional dataset info
     RUNHEADER.__dict__[
         "raw_x"
@@ -252,20 +251,28 @@ if __name__ == "__main__":
         """
         parser = argparse.ArgumentParser("")
         # init args
-        parser.add_argument("--process_id", type=int, default=1)
+        parser.add_argument("--process_id", type=int, default=None)
         parser.add_argument("--domain", type=str, required=True)
         parser.add_argument("--actual_inference", type=int, default=0)
         parser.add_argument("--m_target_index", type=int, default=None)
         parser.add_argument("--forward_ndx", type=int, default=None)
         parser.add_argument("--dataset_version", type=str, default=None)
 
-        # # For Demo
+        # # Debug - test operation
         # parser.add_argument("--process_id", type=int, default=None)
         # parser.add_argument("--m_target_index", type=int, default=None)
         # parser.add_argument("--forward_ndx", type=int, default=None)
         # parser.add_argument("--actual_inference", type=int, default=1)
         # parser.add_argument("--dataset_version", type=str, default=None)
-        # parser.add_argument("--domain", type=str, default="INX_20")
+        # parser.add_argument("--domain", type=str, default="TOTAL_20")
+
+        # # Debug - test experimental
+        # parser.add_argument("--process_id", type=int, default=2)
+        # parser.add_argument("--m_target_index", type=int, default=None)
+        # parser.add_argument("--forward_ndx", type=int, default=None)
+        # parser.add_argument("--actual_inference", type=int, default=0)
+        # parser.add_argument("--dataset_version", type=str, default=None)
+        # parser.add_argument("--domain", type=str, default="TOTAL_20")
 
         args = parser.parse_args()
         args.domain = get_domain_on_CDSW_env(args.domain)
@@ -288,7 +295,7 @@ if __name__ == "__main__":
                 str(args.forward_ndx),
                 RUNHEADER.use_historical_model,
             )
-            if type(json_location_list) is str:
+            if type(json_location_list) is str:  # there is only 1 model
                 (
                     json_location_list,
                     f_test_model_list,
@@ -335,7 +342,7 @@ if __name__ == "__main__":
                         performence_stacks,
                     )
                 else:  # final evaluation to calculate confidence score
-                    print("[{}] Model Inference".format(f_test_model))
+                    print(f"[{f_test_model}] Model Inference")
                     selected_model = None
                     # 0 - json_location, 1 - f_test_model, 2 - current_period, 3 - model_performence, 4 - metrics_mae, 5 - metrics_ratio, 6 - metrics_accuray
                     performence_stacks = sorted(
@@ -378,19 +385,19 @@ if __name__ == "__main__":
 
                     # adhoc-process - confidence and align reg and classifier
                     target_name = RUNHEADER.target_id2name(args.m_target_index)
-                    domain_detail = "{}_T{}_{}".format(
-                        target_name, str(args.forward_ndx), args.dataset_version
+                    domain_detail = (
+                        f"{target_name}_T{str(args.forward_ndx)}_{dataset_version}"
                     )
-                    domain = "{}_T{}".format(target_name, str(args.forward_ndx))
-                    t_info = "{}_{}".format(domain, time_now)
-                    target_file = "./save/model_repo_meta/{}.pkl".format(domain)
+                    domain = f"{target_name}_T{str(args.forward_ndx)}"
+                    t_info = f"{domain}_{time_now}"
+                    target_file = f"./save/model_repo_meta/{domain}.pkl"
                     meta_list = index_forecasting_adhoc.load(target_file, "pickle")
                     meta = [
                         meta for meta in meta_list if meta["m_name"] == json_location
                     ][-1]
 
                     # result: 후처리 결과 파일 떨어지는 위치, model_location: 에폭별 실험결과 위치, f_base_model
-                    print("\n*****== Adhoc Process: {}".format(_result))
+                    print(f"\n*****== Adhoc Process: {_result}")
                     sc = index_forecasting_adhoc.Script(
                         result=_result + "/final",
                         model_location=_result,
@@ -407,11 +414,11 @@ if __name__ == "__main__":
 
                 # print test environments
                 if enable_confidence:
-                    print("\nEnvs ID: {}".format(print_foot_note["_env_name"]))
-                    print("Data Set Number: {}".format(print_foot_note["_cv_number"]))
-                    print("Num Agents: {}".format(print_foot_note["_n_cpu"]))
-                    print("Num Step: {}".format(print_foot_note["_n_step"]))
-                    print("Result Directory: {}".format(print_foot_note["exp_result"]))
+                    print(f"\nEnvs ID: {print_foot_note['_env_name']}")
+                    print(f"Data Set Number: {print_foot_note['_cv_number']}")
+                    print(f"Num Agents: {print_foot_note['_n_cpu']}")
+                    print(f"Num Step: {print_foot_note['_n_step']}")
+                    print(f"Result Directory: {print_foot_note['exp_result']}")
         else:
             """
             Intermediate model inference section to evaluate the model performence for a current best model
@@ -429,7 +436,7 @@ if __name__ == "__main__":
 
             target_list = None
             _result = "./save/result"
-            _result = "{}/{}".format(_result, _model_location.split("/")[-1])
+            _result = f"{_result}/{_model_location.split('/')[-1]}"
             target_list = [
                 _result,
                 _result + "/fig_index",
@@ -459,15 +466,12 @@ if __name__ == "__main__":
                 "/shuffled_episode_index.txt",
             ]
 
-            dir_name = "./save/model/rllearn/{}".format(
-                index_forecasting_test.recent_procedure(
-                    "./agent_log/working_model_p", args.process_id, "r"
-                )
+            m_name = index_forecasting_test.recent_procedure(
+                "./agent_log/working_model_p", args.process_id, "r"
             )
-            [
+            dir_name = f"./save/model/rllearn/{m_name}"
+            for file_name in copy_file:
                 shutil.copy2(dir_name + file_name, target_list[-6] + file_name)
-                for file_name in copy_file
-            ]
 
             # check _dataset_dir in operation mode
             (
@@ -488,7 +492,7 @@ if __name__ == "__main__":
                 manager.start(index_forecasting_test.init_start, (pickable_header,))
 
                 if _mode == "validation":
-                    exp_result = "{}/validation".format(_result)
+                    exp_result = f"{_result}/validation"
                 else:
                     exp_result = _result
 
@@ -514,12 +518,12 @@ if __name__ == "__main__":
                     m_inference_buffer=m_inference_buffer,
                 )
             # print test environments
-            print("\nEnvs ID: {}".format(_env_name))
-            print("Data Set Number: {}".format(_cv_number))
-            print("Num Agents: {}".format(_n_cpu))
-            print("Num Step: {}".format(_n_step))
-            print("Result Directory: {}".format(exp_result))
+            print(f"\nEnvs ID: {_env_name}")
+            print(f"Data Set Number: {_cv_number}")
+            print(f"Num Agents: {_n_cpu}")
+            print(f"Num Step: {_n_step}")
+            print(f"Result Directory: {exp_result}")
 
     except Exception as e:
-        print("\n{}".format(e))
+        print(f"\n{e}")
         exit(1)
