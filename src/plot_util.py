@@ -9,6 +9,7 @@ import datetime
 import os
 import sys
 
+import bottleneck as bn
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -21,19 +22,31 @@ from matplotlib.dates import date2num
 from mplfinance.original_flavor import candlestick_ohlc
 from sklearn.metrics import classification_report, f1_score, mean_squared_error
 
-import header.index_forecasting.RUNHEADER as RUNHEADER
+from header.index_forecasting import RUNHEADER
 from util import current_y_unit
+
+# the data structure for res_info or tmp_info
+data_dict = {
+    "prediction_date": 0,
+    "p_index": 1,
+    "r_index": 2,
+    "p_return": 3,
+    "r_return": 4,
+    "p_action": 5,
+    "r_action": 6,
+    "today_index": 7,
+}
 
 
 def gather_validation_performence(
     info,
-    tmp_info,
+    performence_info,
     values,
-    softmax_actions,
-    index_bound,
-    index_bound_return,
-    b_info,
-    b_info_return,
+    # softmax_actions,
+    # index_bound,
+    # index_bound_return,
+    # b_info,
+    # b_info_return,
 ):
     r_action = info[0]["real_action"]
     p_action = info[0]["selected_action"]
@@ -49,162 +62,210 @@ def gather_validation_performence(
 
     prediction_date = info[0]["p_date"]
 
-    tmp_info.append(
-        [
-            prediction_date,
-            p_index,
-            r_index,
-            p_return,
-            r_return,
-            p_action[0],
-            r_action[0],
-            p_action[1],
-            r_action[1],
-            p_action[2],
-            r_action[2],
-            p_action[3],
-            r_action[3],
-            p_action[4],
-            r_action[4],
-            softmax_actions[0, 0, 0],
-            softmax_actions[0, 0, 1],
-            softmax_actions[0, 1, 0],
-            softmax_actions[0, 1, 1],
-            softmax_actions[0, 2, 0],
-            softmax_actions[0, 2, 1],
-            softmax_actions[0, 3, 0],
-            softmax_actions[0, 3, 1],
-            softmax_actions[0, 4, 0],
-            softmax_actions[0, 4, 1],
-            index_bound[0],
-            index_bound[1],
-            index_bound[2],
-            index_bound[3],
-            index_bound[4],
-            index_bound_return[0],
-            index_bound_return[1],
-            index_bound_return[2],
-            index_bound_return[3],
-            index_bound_return[4],
-            b_info,
-            b_info_return,
-            today_index,
-        ]
-    )
-    sys.stdout.write("\r>> (P) Test Date:  %s" % prediction_date)
+    # data = [
+    #         prediction_date,
+    #         p_index,
+    #         r_index,
+    #         p_return,
+    #         r_return,
+    #         p_action[0],
+    #         r_action[0],
+    #         p_action[1],
+    #         r_action[1],
+    #         p_action[2],
+    #         r_action[2],
+    #         p_action[3],
+    #         r_action[3],
+    #         p_action[4],
+    #         r_action[4],
+    #         softmax_actions[0, 0, 0],
+    #         softmax_actions[0, 0, 1],
+    #         softmax_actions[0, 1, 0],
+    #         softmax_actions[0, 1, 1],
+    #         softmax_actions[0, 2, 0],
+    #         softmax_actions[0, 2, 1],
+    #         softmax_actions[0, 3, 0],
+    #         softmax_actions[0, 3, 1],
+    #         softmax_actions[0, 4, 0],
+    #         softmax_actions[0, 4, 1],
+    #         index_bound[0],
+    #         index_bound[1],
+    #         index_bound[2],
+    #         index_bound[3],
+    #         index_bound[4],
+    #         index_bound_return[0],
+    #         index_bound_return[1],
+    #         index_bound_return[2],
+    #         index_bound_return[3],
+    #         index_bound_return[4],
+    #         b_info,
+    #         b_info_return,
+    #         today_index,
+    #     ]
+
+    # np.array(r_action)[0,:].tolist()  # 20 up/down
+    data = [
+        prediction_date,
+        p_index,
+        r_index,
+        p_return,
+        r_return,
+        p_action,
+        np.array(r_action)[0, :].tolist(),
+        # softmax_actions,
+        # index_bound,
+        # index_bound_return,
+        # b_info,
+        # b_info_return,
+        today_index,
+    ]
+    performence_info.append(data)
+    sys.stdout.write(f"\r>> (P) Test Date:  {prediction_date}")
     sys.stdout.flush()
-    return tmp_info
+    return performence_info
 
 
-def plot_prediction(
-    tmp_info,
-    save_dir,
-    current_model,
-    consistency,
-    correct_percent,
-    summary,
-    mse,
-    direction_f1,
-    ev,
-    direction_from_regression,
-    total,
+# def plot_prediction(
+#     tmp_info,
+#     save_dir,
+#     current_model,
+#     consistency,
+#     correct_percent,
+#     summary,
+#     mse,
+#     direction_f1,
+#     ev,
+#     direction_from_regression,
+#     total,
+# ):
+#     # 1. index
+#     plt_manager = plt.get_current_fig_manager()
+#     plt_manager.resize(
+#         int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
+#     )
+#     # sub plot index
+#     plt.subplot(2, 1, 1)
+#     plt.xticks(np.arange(0, total, 40))
+#     plt.grid(True)
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 1].tolist(), label="prediction (index)")
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 2].tolist(), label="real (index)")
+#     # plt.plot(date, tmp_info[:, 38].tolist(), label='prediction2 (index)')
+#     plt.legend()
+#     # sub plot up/down
+#     plt.subplot(2, 1, 2)
+#     plt.xticks(np.arange(0, total, 40))
+#     plt.grid(True)
+#     plt.plot(
+#         tmp_info[:, 0], direction_from_regression, label="prediction (up/down)"
+#     )  # from regression
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 6].tolist(), label="real (up/down)")
+#     # plt.plot(tmp_info[:, 0], tmp_info[:, 5].tolist(), label='prediction (up/down)')
+#     # plt.plot(tmp_info[:, 0], tmp_info[:, 6].tolist(), label='real (up/down)')
+#     plt.legend()
+
+#     # plt.subplot(3, 1, 3)
+#     # plt.xticks(np.arange(0, total, 40))
+#     # plt.plot(tmp_info[:, 0], direction_prediction_label.tolist(), label='prediction (up/down)')
+#     # plt.grid(True)
+#     plt.pause(1)
+#     plt.savefig(
+#         "{}/fig_index/index/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}_{:3.2}.jpeg".format(
+#             save_dir,
+#             current_model,
+#             consistency,
+#             correct_percent,
+#             summary,
+#             mse,
+#             direction_f1,
+#             ev,
+#         ),
+#         format="jpeg",
+#         dpi=600,
+#     )
+#     plt.close()
+
+#     # 2. returns
+#     plt_manager = plt.get_current_fig_manager()
+#     plt_manager.resize(
+#         int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
+#     )
+#     # # sub plot index 1
+#     # plt.subplot(3, 1, 1)
+#     # plt.xticks(np.arange(0, total, 40))
+#     # plt.grid(True)
+#     # plt.plot(date, tmp_info[:, 2].tolist(), label='real (index)')
+#     # sub plot index 2
+#     plt.subplot(2, 1, 1)
+#     plt.xticks(np.arange(0, total, 40))
+#     plt.grid(True)
+#     plt.plot(
+#         tmp_info[:, 0], tmp_info[:, 3].tolist(), label="prediction (return)"
+#     )  # from regression
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 4].tolist(), label="real (return)")
+#     # plt.plot(date, tmp_info[:, 39].tolist(), label='prediction2 (return)')  # from regression
+#     plt.legend()
+#     # sub plot up/down
+#     plt.subplot(2, 1, 2)
+#     plt.xticks(np.arange(0, total, 40))
+#     plt.grid(True)
+#     plt.plot(
+#         tmp_info[:, 0], tmp_info[:, 5].tolist(), label="prediction (up/down)"
+#     )  # from classifier
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 6].tolist(), label="real (up/down)")
+#     plt.legend()
+#     plt.pause(1)
+#     plt.savefig(
+#         "{}/fig_index/return/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}_{:3.2}.jpeg".format(
+#             save_dir,
+#             current_model,
+#             consistency,
+#             correct_percent,
+#             summary,
+#             mse,
+#             direction_f1,
+#             ev,
+#         ),
+#         format="jpeg",
+#         dpi=600,
+#     )
+#     plt.close()
+
+
+def find_cur_band(
+    date,
+    data,
+    predefined_std_return,
+    predefined_std_index,
+    mode="return",
+    market_name=None,
 ):
-    # 1. index
-    plt_manager = plt.get_current_fig_manager()
-    plt_manager.resize(
-        int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
-    )
-    # sub plot index
-    plt.subplot(2, 1, 1)
-    plt.xticks(np.arange(0, total, 40))
-    plt.grid(True)
-    plt.plot(tmp_info[:, 0], tmp_info[:, 1].tolist(), label="prediction (index)")
-    plt.plot(tmp_info[:, 0], tmp_info[:, 2].tolist(), label="real (index)")
-    # plt.plot(date, tmp_info[:, 38].tolist(), label='prediction2 (index)')
-    plt.legend()
-    # sub plot up/down
-    plt.subplot(2, 1, 2)
-    plt.xticks(np.arange(0, total, 40))
-    plt.grid(True)
-    plt.plot(
-        tmp_info[:, 0], direction_from_regression, label="prediction (up/down)"
-    )  # from regression
-    plt.plot(tmp_info[:, 0], tmp_info[:, 6].tolist(), label="real (up/down)")
-    # plt.plot(tmp_info[:, 0], tmp_info[:, 5].tolist(), label='prediction (up/down)')
-    # plt.plot(tmp_info[:, 0], tmp_info[:, 6].tolist(), label='real (up/down)')
-    plt.legend()
+    if mode == "return":
+        predefined_std = predefined_std_return
+    else:
+        predefined_std = predefined_std_index
 
-    # plt.subplot(3, 1, 3)
-    # plt.xticks(np.arange(0, total, 40))
-    # plt.plot(tmp_info[:, 0], direction_prediction_label.tolist(), label='prediction (up/down)')
-    # plt.grid(True)
-    plt.pause(1)
-    plt.savefig(
-        "{}/fig_index/index/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}_{:3.2}.jpeg".format(
-            save_dir,
-            current_model,
-            consistency,
-            correct_percent,
-            summary,
-            mse,
-            direction_f1,
-            ev,
-        ),
-        format="jpeg",
-        dpi=600,
+    predefined_std["TradeDate"] = pd.to_datetime(
+        predefined_std["TradeDate"], format="%Y-%m-%d"
     )
-    plt.close()
+    s_date = datetime.datetime.strftime(date[0], "%Y-%m-%d")
+    e_date = datetime.datetime.strftime(date[-1], "%Y-%m-%d")
 
-    # 2. returns
-    plt_manager = plt.get_current_fig_manager()
-    plt_manager.resize(
-        int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
-    )
-    # # sub plot index 1
-    # plt.subplot(3, 1, 1)
-    # plt.xticks(np.arange(0, total, 40))
-    # plt.grid(True)
-    # plt.plot(date, tmp_info[:, 2].tolist(), label='real (index)')
-    # sub plot index 2
-    plt.subplot(2, 1, 1)
-    plt.xticks(np.arange(0, total, 40))
-    plt.grid(True)
-    plt.plot(
-        tmp_info[:, 0], tmp_info[:, 3].tolist(), label="prediction (return)"
-    )  # from regression
-    plt.plot(tmp_info[:, 0], tmp_info[:, 4].tolist(), label="real (return)")
-    # plt.plot(date, tmp_info[:, 39].tolist(), label='prediction2 (return)')  # from regression
-    plt.legend()
-    # sub plot up/down
-    plt.subplot(2, 1, 2)
-    plt.xticks(np.arange(0, total, 40))
-    plt.grid(True)
-    plt.plot(
-        tmp_info[:, 0], tmp_info[:, 5].tolist(), label="prediction (up/down)"
-    )  # from classifier
-    plt.plot(tmp_info[:, 0], tmp_info[:, 6].tolist(), label="real (up/down)")
-    plt.legend()
-    plt.pause(1)
-    plt.savefig(
-        "{}/fig_index/return/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}_{:3.2}.jpeg".format(
-            save_dir,
-            current_model,
-            consistency,
-            correct_percent,
-            summary,
-            mse,
-            direction_f1,
-            ev,
-        ),
-        format="jpeg",
-        dpi=600,
-    )
-    plt.close()
+    varience = predefined_std.query("@s_date<= TradeDate <= @e_date")
+
+    if str.upper(market_name) == "KS":
+        market_name = "KS200"
+    if str.upper(market_name) == "GOLD":
+        market_name = "XAU"
+
+    top = data + varience[market_name].values
+    bottom = data - varience[market_name].values
+
+    return top, bottom
 
 
 def plot_prediction_band(
     tmp_info,
-    save_dir,
+    prefix,
     current_model,
     consistency,
     correct_percent,
@@ -214,6 +275,9 @@ def plot_prediction_band(
     ev,
     direction_from_regression,
     total,
+    predefined_std_return,
+    predefined_std_index,
+    market_name,
 ):
     def top_bottom(data1, data2, date):
         assert (len(data1) == len(data2)) and (data1.shape == data2.shape)
@@ -230,27 +294,39 @@ def plot_prediction_band(
         top = np.max(np.concatenate([open, close], axis=0), axis=0)
         bottom = np.min(np.concatenate([open, close], axis=0), axis=0)
         # tmp =[[date[idx], data1[idx], top[idx], bottom[idx], data2[idx]] for idx in range(len(date))]
-        tmp = list()
+        tmp = []
         # print('{:3.2}_{:3.2}_{:3.2}-{}-{}'.format(len(date), len(data1), len(data2), len(top), len(bottom)))
-        for idx in range(len(date)):
-            tmp.append([date[idx], data1[idx], top[idx], bottom[idx], data2[idx]])
+        for idx, item in enumerate(date):
+            tmp.append([item, data1[idx], top[idx], bottom[idx], data2[idx]])
         return tmp
 
-    date = [datetime.datetime.strptime(d_str, "%Y-%m-%d") for d_str in tmp_info[:, 0]]
+    date = [
+        datetime.datetime.strptime(d_str, "%Y-%m-%d")
+        for d_str in tmp_info[:, data_dict["prediction_date"]]
+    ]
 
     # 1. index
     plt_manager = plt.get_current_fig_manager()
     plt_manager.resize(
         int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
     )
+
     # sub plot index
+    top, bottom = find_cur_band(
+        date,
+        tmp_info[:, data_dict["p_index"]],
+        predefined_std_return,
+        predefined_std_index,
+        mode="index",
+        market_name=market_name,
+    )
     ax1 = plt.subplot(2, 1, 1)
     # plt.xticks(np.arange(0, total, 40))  # Disable for mlp_finance
     plt.grid(True)
-    plt.plot(date, tmp_info[:, 2].tolist(), label="real (index)")
+    plt.plot(date, tmp_info[:, data_dict["r_index"]].tolist(), label="real (index)")
     candlestick_ohlc(
         ax1,
-        top_bottom(tmp_info[:, 1], tmp_info[:, 38], date),
+        top_bottom(top, bottom, date),
         width=0.4,
         colorup="#77d879",
         colordown="#db3f3f",
@@ -261,23 +337,23 @@ def plot_prediction_band(
     plt.xticks(np.arange(0, total, 40))
     plt.grid(True)
     plt.plot(
-        tmp_info[:, 0], direction_from_regression, label="prediction (up/down)"
+        tmp_info[:, data_dict["prediction_date"]],
+        direction_from_regression,
+        label="prediction (up/down)",
     )  # from regression
-    plt.plot(tmp_info[:, 0], tmp_info[:, 6].tolist(), label="real (up/down)")
+    plt.plot(
+        tmp_info[:, data_dict["prediction_date"]],
+        tmp_info[:, data_dict["r_action"]].tolist(),
+        label="real (up/down)",
+    )
     plt.legend()
-
     plt.pause(1)
+
+    f_name = f"{prefix}/index"
+    if not os.path.isdir(f_name):
+        os.makedirs(f_name)
     plt.savefig(
-        "{}/fig_index/index/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}_{:3.2}.jpeg".format(
-            save_dir,
-            current_model,
-            consistency,
-            correct_percent,
-            summary,
-            mse,
-            direction_f1,
-            ev,
-        ),
+        f"{f_name}/{current_model}_C_{consistency:3.2}___{correct_percent:3.2}_{summary:3.2}___{mse:3.2}_{direction_f1:3.2}_{ev:3.2}.jpeg",
         format="jpeg",
         dpi=int(RUNHEADER.img_jpeg["dpi"]),
     )
@@ -288,17 +364,26 @@ def plot_prediction_band(
     plt_manager.resize(
         int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
     )
+    # sub plot index
+    top, bottom = find_cur_band(
+        date,
+        tmp_info[:, data_dict["p_return"]],
+        predefined_std_return,
+        predefined_std_index,
+        mode="return",
+        market_name=market_name,
+    )
     ax1 = plt.subplot(2, 1, 1)
     # plt.xticks(np.arange(0, total, 40))  # Disable for mlp_finance
     plt.grid(True)
     plt.plot(
         date,
-        tmp_info[:, 4].tolist(),
-        label="{} real (return)".format(current_model.split("_")[4]),
+        tmp_info[:, data_dict["r_return"]].tolist(),
+        label=f"{current_model.split('_')[4]} real (return)",
     )
     candlestick_ohlc(
         ax1,
-        top_bottom(tmp_info[:, 3], tmp_info[:, 39], date),
+        top_bottom(top, bottom, date),
         width=0.4,
         colorup="#77d879",
         colordown="#db3f3f",
@@ -309,321 +394,297 @@ def plot_prediction_band(
     plt.xticks(np.arange(0, total, 40))
     plt.grid(True)
     plt.plot(
-        tmp_info[:, 0], tmp_info[:, 5].tolist(), label="prediction (up/down)"
+        tmp_info[:, data_dict["prediction_date"]],
+        tmp_info[:, data_dict["p_action"]].tolist(),
+        label="prediction (up/down)",
     )  # from classifier
-    plt.plot(tmp_info[:, 0], tmp_info[:, 6].tolist(), label="real (up/down)")
+    plt.plot(
+        tmp_info[:, data_dict["prediction_date"]],
+        tmp_info[:, data_dict["r_action"]].tolist(),
+        label="real (up/down)",
+    )
     plt.legend()
     plt.pause(1)
+
+    f_name = f"{prefix}/return"
+    if not os.path.isdir(f_name):
+        os.makedirs(f_name)
     plt.savefig(
-        "{}/fig_index/return/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}_{:3.2}.jpeg".format(
-            save_dir,
-            current_model,
-            consistency,
-            correct_percent,
-            summary,
-            mse,
-            direction_f1,
-            ev,
-        ),
+        f"{f_name}/{current_model}_C_{consistency:3.2}___{correct_percent:3.2}_{summary:3.2}___{mse:3.2}_{direction_f1:3.2}_{ev:3.2}.jpeg",
         format="jpeg",
         dpi=int(RUNHEADER.img_jpeg["dpi"]),
     )
     plt.close()
 
 
-# it may cause errors with correct incoming data, so modify code for plotting if go on
-def plot_bound_type1(
-    tmp_info,
-    save_dir,
-    current_model,
-    consistency,
-    correct_percent,
-    summary,
-    mse,
-    direction_f1,
-    total,
-):
-    # 1. index
-    plt_manager = plt.get_current_fig_manager()
-    plt_manager.resize(
-        int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
-    )
-    plt.xticks(np.arange(0, total, 40))
-    plt.grid(True)
-    plt.plot(tmp_info[:, 0], tmp_info[:, 1].tolist(), label="prediction (index)")
-    plt.plot(tmp_info[:, 0], tmp_info[:, 2].tolist(), label="real (index)")
-    plt.plot(tmp_info[:, 0], tmp_info[:, 25].tolist(), label="min (index)")
-    plt.plot(tmp_info[:, 0], tmp_info[:, 26].tolist(), label="max (index)")
-    plt.plot(tmp_info[:, 0], tmp_info[:, 27].tolist(), label="avg (index)")
-    plt.legend()
-    plt.pause(1)
-    plt.savefig(
-        "{}/fig_bound/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}.jpeg".format(
-            save_dir,
-            current_model,
-            consistency,
-            correct_percent,
-            summary,
-            mse,
-            direction_f1,
-        ),
-        format="jpeg",
-    )
-    plt.close()
+# # it may cause errors with correct incoming data, so modify code for plotting if go on
+# def plot_bound_type1(
+#     tmp_info,
+#     save_dir,
+#     current_model,
+#     consistency,
+#     correct_percent,
+#     summary,
+#     mse,
+#     direction_f1,
+#     total,
+# ):
+#     # 1. index
+#     plt_manager = plt.get_current_fig_manager()
+#     plt_manager.resize(
+#         int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
+#     )
+#     plt.xticks(np.arange(0, total, 40))
+#     plt.grid(True)
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 1].tolist(), label="prediction (index)")
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 2].tolist(), label="real (index)")
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 25].tolist(), label="min (index)")
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 26].tolist(), label="max (index)")
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 27].tolist(), label="avg (index)")
+#     plt.legend()
+#     plt.pause(1)
+#     plt.savefig(
+#         "{}/fig_bound/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}.jpeg".format(
+#             save_dir,
+#             current_model,
+#             consistency,
+#             correct_percent,
+#             summary,
+#             mse,
+#             direction_f1,
+#         ),
+#         format="jpeg",
+#     )
+#     plt.close()
 
-    # scatter plot
-    plt_manager = plt.get_current_fig_manager()
-    plt_manager.resize(
-        int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
-    )
-    plt.xticks(np.arange(0, total, 40))
-    plt.grid(True)
-    X = list()
-    Y = list()
-    for row in range(len(tmp_info)):
-        data = tmp_info[row, -2]
-        for col in range(len(data)):
-            X.append(tmp_info[row, 0])
-            Y.append(data[col])
-    plt.scatter(X, Y)
-    plt.plot(tmp_info[:, 0], tmp_info[:, 2].tolist(), label="real (index)")
-    plt.pause(1)
-    plt.savefig(
-        "{}/fig_scatter/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}.jpeg".format(
-            save_dir,
-            current_model,
-            consistency,
-            correct_percent,
-            summary,
-            mse,
-            direction_f1,
-        ),
-        format="jpeg",
-    )
-    plt.close()
+#     # scatter plot
+#     plt_manager = plt.get_current_fig_manager()
+#     plt_manager.resize(
+#         int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
+#     )
+#     plt.xticks(np.arange(0, total, 40))
+#     plt.grid(True)
+#     X = list()
+#     Y = list()
+#     for row in range(len(tmp_info)):
+#         data = tmp_info[row, -2]
+#         for col in range(len(data)):
+#             X.append(tmp_info[row, 0])
+#             Y.append(data[col])
+#     plt.scatter(X, Y)
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 2].tolist(), label="real (index)")
+#     plt.pause(1)
+#     plt.savefig(
+#         "{}/fig_scatter/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}.jpeg".format(
+#             save_dir,
+#             current_model,
+#             consistency,
+#             correct_percent,
+#             summary,
+#             mse,
+#             direction_f1,
+#         ),
+#         format="jpeg",
+#     )
+#     plt.close()
 
-    # 2. return
-    plt_manager = plt.get_current_fig_manager()
-    plt_manager.resize(
-        int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
-    )
-    plt.xticks(np.arange(0, total, 40))
-    plt.grid(True)
-    plt.plot(tmp_info[:, 0], tmp_info[:, 3].tolist(), label="prediction (return)")
-    plt.plot(tmp_info[:, 0], tmp_info[:, 4].tolist(), label="real (return)")
-    plt.plot(tmp_info[:, 0], tmp_info[:, 28].tolist(), label="min (return)")
-    plt.plot(tmp_info[:, 0], tmp_info[:, 29].tolist(), label="max (return)")
-    plt.plot(tmp_info[:, 0], tmp_info[:, 30].tolist(), label="avg (return)")
-    plt.legend()
-    plt.pause(1)
-    plt.savefig(
-        "{}/fig_bound/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}.jpeg".format(
-            save_dir,
-            current_model,
-            consistency,
-            correct_percent,
-            summary,
-            mse,
-            direction_f1,
-        ),
-        format="jpeg",
-    )
-    plt.close()
+#     # 2. return
+#     plt_manager = plt.get_current_fig_manager()
+#     plt_manager.resize(
+#         int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
+#     )
+#     plt.xticks(np.arange(0, total, 40))
+#     plt.grid(True)
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 3].tolist(), label="prediction (return)")
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 4].tolist(), label="real (return)")
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 28].tolist(), label="min (return)")
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 29].tolist(), label="max (return)")
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 30].tolist(), label="avg (return)")
+#     plt.legend()
+#     plt.pause(1)
+#     plt.savefig(
+#         "{}/fig_bound/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}.jpeg".format(
+#             save_dir,
+#             current_model,
+#             consistency,
+#             correct_percent,
+#             summary,
+#             mse,
+#             direction_f1,
+#         ),
+#         format="jpeg",
+#     )
+#     plt.close()
 
-    # scatter plot
-    plt_manager = plt.get_current_fig_manager()
-    plt_manager.resize(
-        int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
-    )
-    plt.xticks(np.arange(0, total, 40))
-    plt.grid(True)
-    X = list()
-    Y = list()
-    for row in range(len(tmp_info)):
-        data = tmp_info[row, -1]
-        for col in range(len(data)):
-            X.append(tmp_info[row, 0])
-            Y.append(data[col])
-    plt.scatter(X, Y)
-    plt.plot(tmp_info[:, 0], tmp_info[:, 4].tolist(), label="real (index)")
-    plt.pause(1)
-    plt.savefig(
-        "{}/fig_scatter/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}.jpeg".format(
-            save_dir,
-            current_model,
-            consistency,
-            correct_percent,
-            summary,
-            mse,
-            direction_f1,
-        ),
-        format="jpeg",
-    )
-    plt.close()
+#     # scatter plot
+#     plt_manager = plt.get_current_fig_manager()
+#     plt_manager.resize(
+#         int(RUNHEADER.img_jpeg["width"]), int(RUNHEADER.img_jpeg["height"])
+#     )
+#     plt.xticks(np.arange(0, total, 40))
+#     plt.grid(True)
+#     X = list()
+#     Y = list()
+#     for row in range(len(tmp_info)):
+#         data = tmp_info[row, -1]
+#         for col in range(len(data)):
+#             X.append(tmp_info[row, 0])
+#             Y.append(data[col])
+#     plt.scatter(X, Y)
+#     plt.plot(tmp_info[:, 0], tmp_info[:, 4].tolist(), label="real (index)")
+#     plt.pause(1)
+#     plt.savefig(
+#         "{}/fig_scatter/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}.jpeg".format(
+#             save_dir,
+#             current_model,
+#             consistency,
+#             correct_percent,
+#             summary,
+#             mse,
+#             direction_f1,
+#         ),
+#         format="jpeg",
+#     )
+#     plt.close()
+
+
+def get_res_by_market(data, market_idx):
+    res = [
+        (
+            it[data_dict["prediction_date"]],
+            it[data_dict["p_index"]][market_idx],
+            it[data_dict["r_index"]][market_idx],
+            it[data_dict["p_return"]][market_idx],
+            it[data_dict["r_return"]][market_idx],
+            it[data_dict["p_action"]][market_idx],
+            it[data_dict["r_action"]][market_idx],
+            it[data_dict["today_index"]][market_idx],
+        )
+        for it in data
+    ]
+
+    return np.array(res, dtype=np.object)
 
 
 def plot_save_validation_performence(tmp_info, save_dir, model_name, split_name="test"):
-    """File out information"""
-    tmp_info = np.array(tmp_info, dtype=np.object)
-    df = pd.DataFrame(
-        data=tmp_info,
-        columns=[
-            "P_Date",
-            "P_index",
-            "Index",
-            "P_return",
-            "Return",
-            "P_20days",
-            "20days",
-            "P_10days",
-            "10days",
-            "P_15days",
-            "15days",
-            "P_25days",
-            "25days",
-            "P_30days",
-            "30days",
-            "P_Confidence",
-            "P_Probability",
-            "P_10days_False_Confidence",
-            "10days_True_Confidence",
-            "P_15days_False_Confidence",
-            "15days_True_Confidence",
-            "P_25days_False_Confidence",
-            "25days_True_Confidence",
-            "P_30days_False_Confidence",
-            "30days_True_Confidence",
-            "min",
-            "max",
-            "avg",
-            "std",
-            "median",
-            "min_return",
-            "max_return",
-            "avg_return",
-            "std_return",
-            "median_return",
-            "b_info",
-            "b_info_return",
-            "today_index",
-        ],
+    # toal performence
+    total_consistency, total_correct_percent, total_f1, total_mse, total_ev = (
+        [],
+        [],
+        [],
+        [],
+        [],
     )
-    # up/down performance
-    total = len(tmp_info)
-    half = int(total * 0.5)
-    correct_percent = 1 - (
-        np.sum(
-            np.abs(
-                np.array(tmp_info[:, 6].tolist()) - np.array(tmp_info[:, 5].tolist())
-            )
+
+    predefined_std_index = pd.read_csv(
+        f"{RUNHEADER.predefined_std}{RUNHEADER.forward_ndx}_index.csv"
+    )
+    predefined_std_return = pd.read_csv(
+        f"{RUNHEADER.predefined_std}{RUNHEADER.forward_ndx}_return.csv"
+    )
+
+    for market_idx in range(RUNHEADER.mtl_target):
+        """File out information"""
+        # res_info = np.array(res_info, dtype=np.object)
+        res_info = get_res_by_market(tmp_info, market_idx)
+        market_name = RUNHEADER.mkidx_mkname[market_idx]
+
+        df = pd.DataFrame(
+            data=res_info,
+            columns=[
+                "P_Date",
+                "P_index",
+                "Index",
+                "P_return",
+                "Return",
+                "P_20days",
+                "20days",
+                # "P_10days",
+                # "10days",
+                # "P_15days",
+                # "15days",
+                # "P_25days",
+                # "25days",
+                # "P_30days",
+                # "30days",
+                # "P_Confidence",
+                # "P_Probability",
+                # "P_10days_False_Confidence",
+                # "10days_True_Confidence",
+                # "P_15days_False_Confidence",
+                # "15days_True_Confidence",
+                # "P_25days_False_Confidence",
+                # "25days_True_Confidence",
+                # "P_30days_False_Confidence",
+                # "30days_True_Confidence",
+                # "min",
+                # "max",
+                # "avg",
+                # "std",
+                # "median",
+                # "min_return",
+                # "max_return",
+                # "avg_return",
+                # "std_return",
+                # "median_return",
+                # "b_info",
+                # "b_info_return",
+                "today_index",
+            ],
         )
-        / total
-    )
-    try:
-        aa = tmp_info[:, 6].tolist()
-        bb = tmp_info[:, 5].tolist()
-        if np.allclose(aa, bb):
-            if len(np.unique(aa)) == 1:
-                aa = aa + [1]
-                bb = bb + [1]
-        summary_detail = classification_report(aa, bb, target_names=["Down", "Up"])
-    except ValueError:
-        summary_detail = None
-        pass
-
-    summary = f1_score(
-        np.array(tmp_info[:, 6], dtype=np.int).tolist(),
-        np.array(tmp_info[:, 5], dtype=np.int).tolist(),
-        average="weighted",
-    )
-    cf_val = f1_score(
-        np.array(tmp_info[:half, 6], dtype=np.int).tolist(),
-        np.array(tmp_info[:half, 5], dtype=np.int).tolist(),
-        average="weighted",
-    )
-    cf_test = f1_score(
-        np.array(tmp_info[half:, 6], dtype=np.int).tolist(),
-        np.array(tmp_info[half:, 5], dtype=np.int).tolist(),
-        average="weighted",
-    )
-    consistency = 1 - (
-        np.sum(
-            np.abs(
-                np.where(np.array(tmp_info[:, 3].tolist()) > 0, 1, 0)
-                - np.array(tmp_info[:, 5].tolist())
-            )
-        )
-        / total
-    )
-
-    # up/down from index forecasting
-    direction_from_regression = np.where(tmp_info[:, 3] > 0, 1, 0).tolist()
-    direction_real = np.diff(tmp_info[:, 4])
-    direction_prediction = np.diff(tmp_info[:, 3])
-    direction_real = np.append([direction_real[0]], direction_real)
-    direction_prediction = np.append([np.zeros(1)], direction_prediction)
-    direction_real_label = np.where(direction_real > 0, 1, 0)
-    direction_prediction_label = np.where(direction_prediction > 0, 1, 0)
-    direction_f1 = f1_score(
-        np.array(direction_real_label, dtype=np.int).tolist(),
-        np.array(direction_prediction_label, dtype=np.int).tolist(),
-        average="weighted",
-    )
-
-    # returns error
-    mse = mean_squared_error(tmp_info[:, 4].tolist(), tmp_info[:, 3].tolist())
-    mse_val = mean_squared_error(
-        tmp_info[:half, 4].tolist(), tmp_info[:half, 3].tolist()
-    )
-    mse_test = mean_squared_error(
-        tmp_info[half:, 4].tolist(), tmp_info[half:, 3].tolist()
-    )
-
-    # subtract T/F confidences
-    # subtract_confidences_p = np.array(tmp_info[:, 16].tolist()) - np.array(tmp_info[:, 15].tolist())
-    # min_max_subtract_confidences = (subtract_confidences_p - np.min(subtract_confidences_p)) / \
-    #                                (np.max(subtract_confidences_p) - np.min(subtract_confidences_p) + 1E-4)
-    # differ_subtract_confidences = np.diff(min_max_subtract_confidences)
-    # differ_subtract_confidences = np.insert(differ_subtract_confidences, 0, 0)
-    # differ_subtract_confidences_normal_p = (differ_subtract_confidences -
-    #                                         np.mean(differ_subtract_confidences) + 1E-15) / \
-    #                                        np.std(differ_subtract_confidences)
-    # differ_subtract_condifences_tan_p = np.tan(differ_subtract_confidences_normal_p)
-
-    subtract_confidences_p = 0
-    min_max_subtract_confidences = 0
-    differ_subtract_confidences = 0
-    differ_subtract_confidences = 0
-    differ_subtract_confidences_normal_p = 0
-    differ_subtract_condifences_tan_p = 0
-
-    # ev
-    ev = 1 - np.var(tmp_info[:, 4] - tmp_info[:, 3]) / np.var(tmp_info[:, 4])
-    ev_val = 1 - np.var(tmp_info[:half, 4] - tmp_info[:half, 3]) / np.var(
-        tmp_info[:half, 4]
-    )
-    ev_test = 1 - np.var(tmp_info[half:, 4] - tmp_info[half:, 3]) / np.var(
-        tmp_info[half:, 4]
-    )
-
-    # ev for unseen validation only
-    if split_name != "test":  # validation
-        mse = mean_squared_error(tmp_info[-20:, 4].tolist(), tmp_info[-20:, 3].tolist())
-        ev = 1 - np.var(tmp_info[-20:, 4] - tmp_info[-20:, 3]) / np.var(
-            tmp_info[-20:, 4]
-        )
-        consistency = 1 - (
+        # up/down performance
+        total = len(res_info)
+        half = int(total * 0.5)
+        correct_percent = 1 - (
             np.sum(
                 np.abs(
-                    np.where(np.array(tmp_info[-20:, 3].tolist()) > 0, 1, 0)
-                    - np.array(tmp_info[-20:, 5].tolist())
+                    np.array(res_info[:, 6].tolist())
+                    - np.array(res_info[:, 5].tolist())
                 )
             )
             / total
         )
-        # regression up/down
-        direction_real = np.diff(tmp_info[-20:, 4])
-        direction_prediction = np.diff(tmp_info[-20:, 3])
+        try:
+            aa = res_info[:, 6].tolist()
+            bb = res_info[:, 5].tolist()
+            if np.allclose(aa, bb):
+                if len(np.unique(aa)) == 1:
+                    aa = aa + [1]
+                    bb = bb + [1]
+            summary_detail = classification_report(aa, bb, target_names=["Down", "Up"])
+        except ValueError:
+            summary_detail = None
+            pass
+
+        summary = f1_score(
+            np.array(res_info[:, 6], dtype=np.int).tolist(),
+            np.array(res_info[:, 5], dtype=np.int).tolist(),
+            average="weighted",
+        )
+        cf_val = f1_score(
+            np.array(res_info[:half, 6], dtype=np.int).tolist(),
+            np.array(res_info[:half, 5], dtype=np.int).tolist(),
+            average="weighted",
+        )
+        cf_test = f1_score(
+            np.array(res_info[half:, 6], dtype=np.int).tolist(),
+            np.array(res_info[half:, 5], dtype=np.int).tolist(),
+            average="weighted",
+        )
+        consistency = 1 - (
+            np.sum(
+                np.abs(
+                    np.where(np.array(res_info[:, 3].tolist()) > 0, 1, 0)
+                    - np.array(res_info[:, 5].tolist())
+                )
+            )
+            / total
+        )
+
+        # up/down from index forecasting
+        direction_from_regression = np.where(res_info[:, 3] > 0, 1, 0).tolist()
+        direction_real = np.diff(res_info[:, 4])
+        direction_prediction = np.diff(res_info[:, 3])
         direction_real = np.append([direction_real[0]], direction_real)
         direction_prediction = np.append([np.zeros(1)], direction_prediction)
         direction_real_label = np.where(direction_real > 0, 1, 0)
@@ -634,177 +695,276 @@ def plot_save_validation_performence(tmp_info, save_dir, model_name, split_name=
             average="weighted",
         )
 
-    """File out
-    """
-    # save csv (total performance)
-    current_model = model_name.split("/")[-1]
-    current_model = current_model.split(".pkl")[0]
-    current_model = current_model.split("_")
-    current_model.remove(current_model[5])
-    current_model = "_".join(current_model)
-    prefix = save_dir + "/" + current_model
-    df.to_csv(
-        prefix
-        + "_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}___{:3.2}.csv".format(
-            consistency, correct_percent, summary, mse, ev
+        # returns error
+        mse = mean_squared_error(res_info[:, 4].tolist(), res_info[:, 3].tolist())
+        mse_val = mean_squared_error(
+            res_info[:half, 4].tolist(), res_info[:half, 3].tolist()
         )
-    )
-    pname = "{}_CF[{:3.2}_{:3.2}_{:3.2}]_RE[{:3.2}_{:3.2}_{:3.2}]_EV[{:3.2}_{:3.2}_{:3.2}].txt".format(
-        prefix, cf_val, cf_test, summary, mse_val, mse_test, mse, ev_val, ev_test, ev
-    )
-    fp = open(pname, "w")
-    print("validation-test-total performance", file=fp)
-    fp.close()
-
-    """Plot
-    """
-    # plot_file_prefix = current_model.replace('_fs_epoch', '_ep')
-    # file_name_list = plot_file_prefix.split('_')
-    # file_name_list.remove(file_name_list[5])
-    # file_name_list.remove(file_name_list[4])
-    # plot_file_prefix = '_'.join(file_name_list)
-    plot_file_prefix = current_model
-    if not RUNHEADER.m_bound_estimation:  # band with y prediction
-        if RUNHEADER.m_bound_estimation_y:  # band estimation (plot bound type 2)
-            plot_prediction_band(
-                tmp_info,
-                save_dir,
-                plot_file_prefix,
-                consistency,
-                correct_percent,
-                summary,
-                mse,
-                direction_f1,
-                ev,
-                direction_from_regression,
-                total,
-            )
-        else:  # point estimation
-            plot_prediction(
-                tmp_info,
-                save_dir,
-                plot_file_prefix,
-                consistency,
-                correct_percent,
-                summary,
-                mse,
-                direction_f1,
-                ev,
-                direction_from_regression,
-                total,
-            )
-    # band with y prediction
-    else:  # plot bound type 1 (this method takes tremendous time so not in use for now)
-        plot_bound_type1(
-            tmp_info,
-            save_dir,
-            plot_file_prefix,
-            consistency,
-            correct_percent,
-            summary,
-            mse,
-            direction_f1,
-            total,
+        mse_test = mean_squared_error(
+            res_info[half:, 4].tolist(), res_info[half:, 3].tolist()
         )
 
-    # text out for classification result
+        # subtract T/F confidences
+        # subtract_confidences_p = np.array(tmp_info[:, 16].tolist()) - np.array(tmp_info[:, 15].tolist())
+        # min_max_subtract_confidences = (subtract_confidences_p - np.min(subtract_confidences_p)) / \
+        #                                (np.max(subtract_confidences_p) - np.min(subtract_confidences_p) + 1E-4)
+        # differ_subtract_confidences = np.diff(min_max_subtract_confidences)
+        # differ_subtract_confidences = np.insert(differ_subtract_confidences, 0, 0)
+        # differ_subtract_confidences_normal_p = (differ_subtract_confidences -
+        #                                         np.mean(differ_subtract_confidences) + 1E-15) / \
+        #                                        np.std(differ_subtract_confidences)
+        # differ_subtract_condifences_tan_p = np.tan(differ_subtract_confidences_normal_p)
+
+        subtract_confidences_p = 0
+        min_max_subtract_confidences = 0
+        differ_subtract_confidences = 0
+        differ_subtract_confidences = 0
+        differ_subtract_confidences_normal_p = 0
+        differ_subtract_condifences_tan_p = 0
+
+        # ev
+        ev = 1 - np.var(res_info[:, 4] - res_info[:, 3]) / np.var(res_info[:, 4])
+        ev_val = 1 - np.var(res_info[:half, 4] - res_info[:half, 3]) / np.var(
+            res_info[:half, 4]
+        )
+        ev_test = 1 - np.var(res_info[half:, 4] - res_info[half:, 3]) / np.var(
+            res_info[half:, 4]
+        )
+
+        # ev for unseen validation only
+        if split_name != "test":  # validation
+            mse = mean_squared_error(
+                res_info[-20:, 4].tolist(), res_info[-20:, 3].tolist()
+            )
+            ev = 1 - np.var(res_info[-20:, 4] - res_info[-20:, 3]) / np.var(
+                res_info[-20:, 4]
+            )
+            consistency = 1 - (
+                np.sum(
+                    np.abs(
+                        np.where(np.array(res_info[-20:, 3].tolist()) > 0, 1, 0)
+                        - np.array(res_info[-20:, 5].tolist())
+                    )
+                )
+                / total
+            )
+            # regression up/down
+            direction_real = np.diff(res_info[-20:, 4])
+            direction_prediction = np.diff(res_info[-20:, 3])
+            direction_real = np.append([direction_real[0]], direction_real)
+            direction_prediction = np.append([np.zeros(1)], direction_prediction)
+            direction_real_label = np.where(direction_real > 0, 1, 0)
+            direction_prediction_label = np.where(direction_prediction > 0, 1, 0)
+            direction_f1 = f1_score(
+                np.array(direction_real_label, dtype=np.int).tolist(),
+                np.array(direction_prediction_label, dtype=np.int).tolist(),
+                average="weighted",
+            )
+
+        """File out
+        """
+        # save csv (total performance)
+        current_model = model_name.split("/")[-1]
+        current_model = current_model.split(".pkl")[0]
+        current_model = current_model.split("_")
+        current_model.remove(current_model[5])
+        current_model = "_".join(current_model)
+        prefix = f"{save_dir}/{market_name}"
+        if not os.path.isdir(prefix):
+            os.makedirs(prefix)
+        prefix = f"{prefix}/{current_model}"
+
+        df.to_csv(
+            f"{prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{summary:3.2}___{mse:3.2}___{ev:3.2}.csv"
+        )
+
+        total_consistency.append(consistency)
+        total_correct_percent.append(correct_percent)
+        total_f1.append(summary)
+        total_mse.append(mse)
+        total_ev.append(ev)
+
+        # pname = "{}_CF[{:3.2}_{:3.2}_{:3.2}]_RE[{:3.2}_{:3.2}_{:3.2}]_EV[{:3.2}_{:3.2}_{:3.2}].txt".format(
+        #     prefix,
+        #     cf_val,
+        #     cf_test,
+        #     summary,
+        #     mse_val,
+        #     mse_test,
+        #     mse,
+        #     ev_val,
+        #     ev_test,
+        #     ev,
+        # )
+        # fp = open(pname, "w")
+        # print("validation-test-total performance", file=fp)
+        # fp.close()
+
+        """Plot
+        """
+        # plot_file_prefix = current_model.replace('_fs_epoch', '_ep')
+        # file_name_list = plot_file_prefix.split('_')
+        # file_name_list.remove(file_name_list[5])
+        # file_name_list.remove(file_name_list[4])
+        # plot_file_prefix = '_'.join(file_name_list)
+        # plot_file_prefix = current_model
+        if not RUNHEADER.m_bound_estimation:  # band with y prediction
+            if RUNHEADER.m_bound_estimation_y:  # band estimation (plot bound type 2)
+                plot_prediction_band(
+                    res_info,
+                    prefix,
+                    current_model,
+                    consistency,
+                    correct_percent,
+                    summary,
+                    mse,
+                    direction_f1,
+                    ev,
+                    direction_from_regression,
+                    total,
+                    predefined_std_return,
+                    predefined_std_index,
+                    market_name,
+                )
+            else:  # point estimation
+                assert (
+                    False
+                ), "not defined yet, RUNHEADER.m_bound_estimation_y should be True"
+                # plot_prediction(
+                #     res_info,
+                #     save_dir,
+                #     plot_file_prefix,
+                #     consistency,
+                #     correct_percent,
+                #     summary,
+                #     mse,
+                #     direction_f1,
+                #     ev,
+                #     direction_from_regression,
+                #     total,
+                # )
+        # band with y prediction
+        else:  # plot bound type 1 (this method takes tremendous time so not in use for now)
+            assert (
+                False
+            ), "not defined yet, RUNHEADER.m_bound_estimation should be False"
+            # plot_bound_type1(
+            #     res_info,
+            #     save_dir,
+            #     plot_file_prefix,
+            #     consistency,
+            #     correct_percent,
+            #     summary,
+            #     mse,
+            #     direction_f1,
+            #     total,
+            # )
+
+        # text out for classification result
+        with open(
+            f"{prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{summary:3.2}___{mse:3.2}_{direction_f1:3.2}.txt",
+            "w",
+        ) as txt_fp:
+            print(summary_detail, file=txt_fp)
+            txt_fp.close()
+
+    # file out total summary
+    total_prefix = f"{save_dir}/{current_model}"
+    consistency = np.mean(np.array(total_consistency))
+    correct_percent = np.mean(np.array(total_correct_percent))
+    f1 = np.mean(np.array(total_f1))
+    mse = np.mean(np.array(total_mse))
+    ev = np.mean(np.array(total_ev))
+
     with open(
-        "{}/{}_C_{:3.2}___{:3.2}_{:3.2}___{:3.2}_{:3.2}.txt".format(
-            save_dir,
-            plot_file_prefix,
-            consistency,
-            correct_percent,
-            summary,
-            mse,
-            direction_f1,
-        ),
+        f"{total_prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{f1:3.2}___{mse:3.2}___{ev:3.2}.csv",
         "w",
     ) as txt_fp:
-        print(summary_detail, file=txt_fp)
+        print("", file=txt_fp)
         txt_fp.close()
 
 
-def epoch_summary(save_dir):
-    def find_col_idx(cols, col_name):
-        return [idx for idx in range(len(cols)) if cols[idx] == col_name][0]
+# def epoch_summary(save_dir):
+#     def find_col_idx(cols, col_name):
+#         return [idx for idx in range(len(cols)) if cols[idx] == col_name][0]
 
-    list_dict = {
-        "epoch": 4,
-        "val_EV": 18,
-        "PL": 5,
-        "VL": 6,
-        "EV": 7,
-        "consistency": 9,
-        "CF": 13,
-        "RE": 16,
-        "RF": 17,
-    }
-    data_rows_column = list(list_dict.keys())
-    file_location = "{}/fig_index/return/".format(save_dir)
+#     list_dict = {
+#         "epoch": 4,
+#         "val_EV": 18,
+#         "PL": 5,
+#         "VL": 6,
+#         "EV": 7,
+#         "consistency": 9,
+#         "CF": 13,
+#         "RE": 16,
+#         "RF": 17,
+#     }
+#     data_rows_column = list(list_dict.keys())
+#     file_location = "{}/return/".format(save_dir)
 
-    # text tokenizing
-    data_rows = list()
-    for performence in os.listdir(file_location):
-        if "jpeg" in performence:
-            torken = str.split(performence, "_")
-            assert (
-                len(torken) == 19
-            ), "file name format may be changed.. check it: {}".format(torken)
+#     # text tokenizing
+#     data_rows = []
+#     for performence in os.listdir(file_location):
+#         if "jpeg" in performence:
+#             torken = str.split(performence, "_")
+#             assert (
+#                 len(torken) == 19
+#             ), "file name format may be changed.. check it: {}".format(torken)
 
-            tmp = list()
-            for list_idx in list(list_dict.values()):
-                if (
-                    list_dict["EV"] == list_idx
-                    or list_dict["VL"] == list_idx
-                    or list_dict["PL"] == list_idx
-                ):
-                    p_data = float(torken[list_idx][2:])
-                else:
-                    if "jpeg" in torken[list_idx]:
-                        p_data = float(torken[list_idx][:-5])
-                    else:
-                        p_data = float(torken[list_idx])
-                tmp.append(p_data)
-            data_rows.append(tmp)
-    assert not len(data_rows) == 0, FileNotFoundError("check file names")
+#             tmp = list()
+#             for list_idx in list(list_dict.values()):
+#                 if (
+#                     list_dict["EV"] == list_idx
+#                     or list_dict["VL"] == list_idx
+#                     or list_dict["PL"] == list_idx
+#                 ):
+#                     p_data = float(torken[list_idx][2:])
+#                 else:
+#                     if "jpeg" in torken[list_idx]:
+#                         p_data = float(torken[list_idx][:-5])
+#                     else:
+#                         p_data = float(torken[list_idx])
+#                 tmp.append(p_data)
+#             data_rows.append(tmp)
+#     assert not len(data_rows) == 0, FileNotFoundError("check file names")
 
-    # summary performance by epoch
-    data_rows = np.array(data_rows)
-    colname_epoch_idx = find_col_idx(data_rows_column, "epoch")
-    epoch_idx = sorted(list(set(data_rows[:, colname_epoch_idx].tolist())))
-    epoch_performance = list()
-    for epoch in epoch_idx:
-        row_idxs = (
-            np.argwhere(data_rows[:, colname_epoch_idx] == epoch).squeeze().tolist()
-        )
-        tmp = data_rows[row_idxs]
-        if np.ndim(tmp) == 1:
-            epoch_performance.append(tmp.tolist())
-        else:
-            epoch_performance.append(np.mean(tmp, axis=0).tolist())
+#     # summary performance by epoch
+#     data_rows = np.array(data_rows)
+#     colname_epoch_idx = find_col_idx(data_rows_column, "epoch")
+#     epoch_idx = sorted(list(set(data_rows[:, colname_epoch_idx].tolist())))
+#     epoch_performance = list()
+#     for epoch in epoch_idx:
+#         row_idxs = (
+#             np.argwhere(data_rows[:, colname_epoch_idx] == epoch).squeeze().tolist()
+#         )
+#         tmp = data_rows[row_idxs]
+#         if np.ndim(tmp) == 1:
+#             epoch_performance.append(tmp.tolist())
+#         else:
+#             epoch_performance.append(np.mean(tmp, axis=0).tolist())
 
-    # file out
-    # align data
-    file_out_column_name = [
-        "epoch",
-        "val_EV",
-        "PL",
-        "VL",
-        "EV",
-        "consistency",
-        "CF",
-        "RE",
-        "RF",
-    ]
-    file_out_columns_idx = [
-        find_col_idx(data_rows_column, s_name) for s_name in file_out_column_name
-    ]
-    epoch_performance = np.array(epoch_performance).T[file_out_columns_idx].T.round(3)
+#     # file out
+#     # align data
+#     file_out_column_name = [
+#         "epoch",
+#         "val_EV",
+#         "PL",
+#         "VL",
+#         "EV",
+#         "consistency",
+#         "CF",
+#         "RE",
+#         "RF",
+#     ]
+#     file_out_columns_idx = [
+#         find_col_idx(data_rows_column, s_name) for s_name in file_out_column_name
+#     ]
+#     epoch_performance = np.array(epoch_performance).T[file_out_columns_idx].T.round(3)
 
-    # file out
-    pd.DataFrame(data=epoch_performance, columns=file_out_column_name).to_csv(
-        file_location + "summary_by_epoch.csv"
-    )
+#     # file out
+#     pd.DataFrame(data=epoch_performance, columns=file_out_column_name).to_csv(
+#         file_location + "summary_by_epoch.csv"
+#     )
 
 
 # def naive_filter(model_list):

@@ -4,7 +4,7 @@ import numpy as np
 
 """ Agent parameter
 """
-_debug_on: bool = True
+_debug_on: bool = False
 full_tensorboard_log: bool = False
 disable_derived_vars: bool = True
 m_on_validation: bool = False
@@ -56,6 +56,8 @@ pkexample_type: Dict[str, Any] = {
 }  # {pkexample_type_A: 'Original', pkexample_type_B: 'Use var mask', pkexample_type_C: 'Enable WR'}
 raw_x: str
 raw_x2: str
+raw_y = "./datasets/rawdata/index_data/gold_index.csv"
+predefined_std = "./datasets/rawdata/index_data/predefined_std_"
 gen_var: int
 use_c_name: str
 use_var_mask: bool
@@ -97,7 +99,7 @@ weighted_random_sample: bool = False
 enable_non_shared_part: bool = False
 enable_lstm: bool = True
 default_net: bool = "inception_resnet_v2_Dummy"
-c_epoch: int = 600  # learning model drop epoch
+c_epoch: int = 0  # learning model drop epoch
 derived_vars_th: Dict[int, float] = {0: "094", 1: 0.94}
 buffer_drop_rate: bool = 1  # 0.05 -> 0.1
 # (total_samples * 0.1) / buffer_drop_rate / train_batch_size * target_epoch
@@ -301,8 +303,13 @@ if _debug_on:
         "dpi": 600,
     }  # full_jpeg = {'width': 1860, 'height': 980]
 else:
-    img_jpeg = {
-        "width": 18,
-        "height": 10,
-        "dpi": 10,
+    img_jpeg: Dict[str, int] = {
+        "width": 1860,
+        "height": 980,
+        "dpi": 600,
     }  # full_jpeg = {'width': 1860, 'height': 980]
+    # img_jpeg = {
+    #     "width": 18,
+    #     "height": 10,
+    #     "dpi": 10,
+    # }  # full_jpeg = {'width': 1860, 'height': 980]

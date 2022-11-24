@@ -22,6 +22,7 @@ import index_forecasting_test
 import sc_parameters as scp
 import util
 from datasets import generate_val_test_with_X, index_forecasting_protobuf2pickle
+from datasets.index_forecasting_protobuf2pickle import DataSet
 from header.index_forecasting import RUNHEADER
 from util import get_domain_on_CDSW_env
 
@@ -109,11 +110,10 @@ def run(
     _full_tensorboard_log = False
 
     target_list = None
-    _result_sub1 = "./save/result/{}".format(time_now)
-    _result_sub2 = "./save/result/{}/{}_T{}".format(
-        time_now, RUNHEADER.target_id2name(args.m_target_index), str(args.forward_ndx)
-    )
-    _result = "{}/{}".format(_result_sub2, _model_location.split("/")[-1])
+    _result_sub1 = f"./save/result/{time_now}"
+    _result_sub2 = f"./save/result/{time_now}/{RUNHEADER.target_id2name(args.m_target_index)}_T{str(args.forward_ndx)}"
+    _result = f"{_result_sub2}/{_model_location.split('/')[-1]}"
+
     if candidate_model is not None:
         candidate_model = candidate_model + [_result]
 
@@ -121,16 +121,16 @@ def run(
         _result_sub1,
         _result_sub2,
         _result,
-        _result + "/fig_index",
-        _result + "/fig_bound",
-        _result + "/fig_scatter",
-        _result + "/fig_index/index",
-        _result + "/fig_index/return",
-        _result + "/fig_index/analytics",
+        # _result + "/fig_index",
+        # _result + "/fig_bound",
+        # _result + "/fig_scatter",
+        # _result + "/fig_index/index",
+        # _result + "/fig_index/return",
+        # _result + "/fig_index/analytics",
         _result + "/validation",
-        _result + "/validation/fig_index",
-        _result + "/validation/fig_index/index",
-        _result + "/validation/fig_index/return",
+        # _result + "/validation/fig_index",
+        # _result + "/validation/fig_index/index",
+        # _result + "/validation/fig_index/return",
         _result + "/final",
     ]
 
@@ -203,9 +203,9 @@ def run(
             )
         )
 
-        print("Creating env and inference for {} data set ...".format(_mode))
+        print(f"Creating env and inference for {_mode} data set ...")
         if _mode == "validation":
-            exp_result = "{}/validation".format(_result)
+            exp_result = f"{_result}/validation"
         else:
             exp_result = _result
         sc.run(
@@ -239,6 +239,63 @@ def run(
     )
 
 
+target_type = {
+    "US10YT": "yield",
+    "GB10YT": "yield",
+    "DE10YT": "yield",
+    "KR10YT": "yield",
+    "CN10YT": "yield",
+    "JP10YT": "yield",
+    "BR10YT": "yield",
+    "INX": "prc",
+    "KS200": "prc",
+    "XAU": "prc",
+    "FTSE": "prc",
+    "GDAXI": "prc",
+    "SSEC": "prc",
+    "BVSP": "prc",
+    "N225": "prc",
+}
+
+
+def generate_std():
+    y_df = pd.read_csv(RUNHEADER.raw_y)
+    y_df = y_df.ffill(axis=0)
+    y_df = y_df.bfill(axis=0)
+
+    # index std
+    index_df = pd.DataFrame()
+    for f_ndx in list(RUNHEADER.forward_map.keys()):
+        for key in list(y_df.keys()):
+            if key == "TradeDate":
+                index_df[key] = y_df[key]
+            else:
+                v_init = y_df[key].shift(f_ndx)
+                df = y_df[key].pct_change(periods=f_ndx) * v_init
+                index_df[key] = df.rolling(f_ndx).std()
+        index_df = index_df.ffill(axis=0)
+        index_df = index_df.bfill(axis=0)
+        index_df.to_csv(f"{RUNHEADER.predefined_std}{f_ndx}_index.csv", index=None)
+
+    # return std
+    index_df = pd.DataFrame()
+    for f_ndx in list(RUNHEADER.forward_map.keys()):
+        for key in list(y_df.keys()):
+            if key == "TradeDate":
+                index_df[key] = y_df[key]
+            else:
+                v_init = y_df[key].shift(f_ndx)
+                if target_type[key] == "yield":
+                    df = y_df[key].pct_change(periods=f_ndx) * v_init
+                    index_df[key] = df.rolling(f_ndx).std()
+                else:
+                    df = y_df[key].pct_change(periods=f_ndx) * 100
+                    index_df[key] = df.rolling(f_ndx).std()
+        index_df = index_df.ffill(axis=0)
+        index_df = index_df.bfill(axis=0)
+        index_df.to_csv(f"{RUNHEADER.predefined_std}{f_ndx}_return.csv", index=None)
+
+
 if __name__ == "__main__":
     try:
         time_now = (
@@ -250,13 +307,13 @@ if __name__ == "__main__":
         """configuration
         """
         parser = argparse.ArgumentParser("")
-        # # init args
-        # parser.add_argument("--process_id", type=int, default=None)
-        # parser.add_argument("--domain", type=str, required=True)
-        # parser.add_argument("--actual_inference", type=int, default=0)
-        # parser.add_argument("--m_target_index", type=int, default=None)
-        # parser.add_argument("--forward_ndx", type=int, default=None)
-        # parser.add_argument("--dataset_version", type=str, default=None)
+        # init args
+        parser.add_argument("--process_id", type=int, default=None)
+        parser.add_argument("--domain", type=str, required=True)
+        parser.add_argument("--actual_inference", type=int, default=0)
+        parser.add_argument("--m_target_index", type=int, default=None)
+        parser.add_argument("--forward_ndx", type=int, default=None)
+        parser.add_argument("--dataset_version", type=str, default=None)
 
         # # Debug - test operation
         # parser.add_argument("--process_id", type=int, default=None)
@@ -266,13 +323,13 @@ if __name__ == "__main__":
         # parser.add_argument("--dataset_version", type=str, default=None)
         # parser.add_argument("--domain", type=str, default="TOTAL_20")
 
-        # Debug - test experimental
-        parser.add_argument("--process_id", type=int, default=1)
-        parser.add_argument("--m_target_index", type=int, default=None)
-        parser.add_argument("--forward_ndx", type=int, default=None)
-        parser.add_argument("--actual_inference", type=int, default=0)
-        parser.add_argument("--dataset_version", type=str, default=None)
-        parser.add_argument("--domain", type=str, default="TOTAL_20")
+        # # Debug - test experimental
+        # parser.add_argument("--process_id", type=int, default=1)
+        # parser.add_argument("--m_target_index", type=int, default=None)
+        # parser.add_argument("--forward_ndx", type=int, default=None)
+        # parser.add_argument("--actual_inference", type=int, default=0)
+        # parser.add_argument("--dataset_version", type=str, default=None)
+        # parser.add_argument("--domain", type=str, default="TOTAL_20")
 
         args = parser.parse_args()
         args.domain = get_domain_on_CDSW_env(args.domain)
@@ -281,6 +338,9 @@ if __name__ == "__main__":
         args = scp.ScriptParameters(
             args.domain, args, job_id_int=args.process_id
         ).update_args()
+
+        # Drop predefined std for targets
+        generate_std()
 
         enable_confidence = False  # Disalbe for the sevice, (computation cost issue)
         # re-write RUNHEADER
@@ -322,7 +382,7 @@ if __name__ == "__main__":
                 ),
                 MAX_HISTORICAL_MODELS=5,
             )
-            performence_stacks = list()
+            performence_stacks = []
             for idx in range(len(json_location_list) + 1):
                 if idx < len(json_location_list):  # inference with candidate models
                     json_location, f_test_model, current_period = (
@@ -332,7 +392,7 @@ if __name__ == "__main__":
                     )
                     candidate_model = [json_location, f_test_model, current_period]
 
-                    print("[{}] Model Evaluation".format(f_test_model))
+                    print(f"[{f_test_model}] Model Evaluation")
                     selected_model, print_foot_note, performence_stacks = run(
                         args,
                         json_location,
@@ -385,8 +445,11 @@ if __name__ == "__main__":
 
                     # adhoc-process - confidence and align reg and classifier
                     target_name = RUNHEADER.target_id2name(args.m_target_index)
+                    # domain_detail = (
+                    #     f"{target_name}_T{str(args.forward_ndx)}_{dataset_version}"
+                    # )
                     domain_detail = (
-                        f"{target_name}_T{str(args.forward_ndx)}_{dataset_version}"
+                        f"{target_name}_T{str(args.forward_ndx)}_{args.dataset_version}"
                     )
                     domain = f"{target_name}_T{str(args.forward_ndx)}"
                     t_info = f"{domain}_{time_now}"
@@ -439,16 +502,16 @@ if __name__ == "__main__":
             _result = f"{_result}/{_model_location.split('/')[-1]}"
             target_list = [
                 _result,
-                _result + "/fig_index",
-                _result + "/fig_bound",
-                _result + "/fig_scatter",
-                _result + "/fig_index/index",
-                _result + "/fig_index/return",
-                _result + "/fig_index/analytics",
+                # _result + "/fig_index",
+                # _result + "/fig_bound",
+                # _result + "/fig_scatter",
+                # _result + "/fig_index/index",
+                # _result + "/fig_index/return",
+                # _result + "/fig_index/analytics",
                 _result + "/validation",
-                _result + "/validation/fig_index",
-                _result + "/validation/fig_index/index",
-                _result + "/validation/fig_index/return",
+                # _result + "/validation/fig_index",
+                # _result + "/validation/fig_index/index",
+                # _result + "/validation/fig_index/return",
             ]
 
             for target in target_list:
@@ -471,7 +534,8 @@ if __name__ == "__main__":
             )
             dir_name = f"./save/model/rllearn/{m_name}"
             for file_name in copy_file:
-                shutil.copy2(dir_name + file_name, target_list[-6] + file_name)
+                # shutil.copy2(dir_name + file_name, target_list[-6] + file_name)
+                shutil.copy2(dir_name + file_name, target_list[0] + file_name)
 
             # check _dataset_dir in operation mode
             (

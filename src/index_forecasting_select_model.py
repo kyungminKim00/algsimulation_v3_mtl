@@ -383,10 +383,10 @@ class Script:
             tmp_dir = "./save/result/" + dir_name
             if b_batch_test:
                 tmp_dir = "./save/result/" + self.rDir + "/" + dir_name
-            val_dir_return = tmp_dir + "/validation/fig_index/return/"
-            val_dir_index = tmp_dir + "/validation/fig_index/index/"
-            test_dir_return = tmp_dir + "/fig_index/return/"
-            test_dir_index = tmp_dir + "/fig_index/index/"
+            val_dir_return = tmp_dir + "/validation/return/"
+            val_dir_index = tmp_dir + "/validation/index/"
+            test_dir_return = tmp_dir + "/return/"
+            test_dir_index = tmp_dir + "/index/"
 
             # file validation
             r = re.compile(".*jpeg")

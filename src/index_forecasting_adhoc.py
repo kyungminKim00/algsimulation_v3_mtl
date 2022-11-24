@@ -1,17 +1,16 @@
-from __future__ import absolute_import, division, print_function
-
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 16 14:21:21 2018
 
 @author: kim KyungMin
 """
+from __future__ import absolute_import, division, print_function
+
 import datetime
 import os
-import pickle
 import sys
 
-import cython
+import _pickle as pickle
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +25,6 @@ matplotlib.use("agg")
 from sklearn.metrics import f1_score
 
 
-@cython.ccall
 def load(filepath, method):
     with open(filepath, "rb") as fs:
         if method == "pickle":
@@ -35,7 +33,6 @@ def load(filepath, method):
     return data
 
 
-@cython.ccall
 def save(filepath, method, obj):
     with open(filepath, "wb") as fs:
         if method == "pickle":
@@ -43,9 +40,6 @@ def save(filepath, method, obj):
     fs.close()
 
 
-@cython.cfunc
-@cython.locals(file_name=cython.p_char, process_id=cython.int, mode=cython.char)
-@cython.returns(cython.p_char)
 def recent_procedure(file_name, process_id, mode):
     json_file_location = ""
     with open("{}{}.txt".format(file_name, str(process_id)), mode) as _f_out:
@@ -69,16 +63,6 @@ def convert_pickable(RUNHEADER):
     return dict(_dict)
 
 
-@cython.ccall
-@cython.returns(cython.int)
-@cython.locals(target_name=cython.int, forward_ndx=cython.int)
-def test(a, b):
-    return a + b
-
-
-@cython.ccall
-@cython.returns(cython.void)
-@cython.locals(target_name=cython.p_char, forward_ndx=cython.p_char)
 def print_confidence_performance(target_name, forward_ndx):
     stacks = None
     idxs = None
@@ -108,16 +92,6 @@ def print_confidence_performance(target_name, forward_ndx):
                     )
         except FileNotFoundError:
             pass
-
-    # f_name = loc
-    # if stacks is None:
-    #     data = pd.read_csv('{}'.format(f_name), index_col=0)
-    #     stacks = data.values
-    #     keys = data.keys()
-    #     idxs = dict(zip(keys, range(len(keys))))
-    # else:
-    #     data = pd.read_csv('{}/{}'.format(dirs, f_name), index_col=0)
-    #     stacks = np.concatenate([stacks, data.values], axis=0)
 
     summary = list()
 
@@ -450,13 +424,12 @@ class Script:
         return model_result
 
     def get_model_results_selected(self, models):
-        model_result, models_results = list(), list()
+        model_result, models_results = [], []
         models_result_loc = os.listdir(self.model_location)
-        [
-            models_results.append(_model)
-            for _model in models_result_loc
-            if ".csv" in _model
-        ]
+
+        for _model in models_result_loc:
+            if ".csv" in _model:
+                models_results.append(_model)
 
         for _model in models:
             for _model_result in models_results:
@@ -487,7 +460,7 @@ class Adhoc:
         self.target_name = RUNHEADER.target_id2name(self.m_target_index)
         self.result_dir = "./save/result/"
         # self.tDir_ = '{}_T{}_{}'.format(self.target_name, self.forward_ndx, self.dataset_version)
-        self.tDir_ = "{}_T{}".format(self.target_name, self.forward_ndx)
+        self.tDir_ = f"{self.target_name}_T{self.forward_ndx}"
         self.tDir = self.result_dir + "selected/" + self.tDir_ + "/final"
         self.adhoc_file = "AC_Adhoc.csv"
         self.performed_date = performed_date
@@ -526,23 +499,23 @@ class Adhoc:
             pd.set_option("mode.chained_assignment", "warn")
 
             # print test environments
-            print("\nadhoc dataset: {}".format(self.tDir_))
-            print("target loc: {}".format(self.tDir))
+            print(f"\nadhoc dataset: {self.tDir_}")
+            print(f"target loc: {self.tDir}")
             return 1
         else:  # the prediction would be performed with a predefined base model
             print(
                 "there is no final model, the prediction would be performed with a predefined base model"
             )
-            print("Pass: {}".format(self.tDir_))
+            print(f"Pass: {self.tDir_}")
             return 0
 
 
 def get_header_info(json_location):
-    return util.json2dict("{}/agent_parameter.json".format(json_location))
+    return util.json2dict(f"{json_location}/agent_parameter.json")
 
 
 def get_model_name(model_dir, model_name):
-    search = "./save/model/rllearn/{}".format(model_dir)
+    search = f"./save/model/rllearn/{model_dir}"
     for it in os.listdir(search):
         if model_name in it:
             return it
@@ -552,11 +525,11 @@ def update_model_pool(
     m_target_index, forward_ndx, dataset_version, flag, init_repo_model=0
 ):
     target_name = RUNHEADER.target_id2name(m_target_index)
-    domain_detail = "{}_T{}_{}".format(target_name, forward_ndx, dataset_version)
-    domain = "{}_T{}".format(target_name, forward_ndx)
+    domain_detail = f"{target_name}_T{forward_ndx}_{dataset_version}"
+    domain = f"{target_name}_T{forward_ndx}"
     # src_dir = './save/result/selected/{}/final'.format(domain_detail)
-    src_dir = "./save/result/selected/{}/final".format(domain)
-    target_file = "./save/model_repo_meta/{}.pkl".format(domain)
+    src_dir = f"./save/result/selected/{domain}/final"
+    target_file = f"./save/model_repo_meta/{domain}.pkl"
     base_dir = None
     model_name = None
     time_now = (
@@ -575,7 +548,7 @@ def update_model_pool(
                     base_dir = it
 
         if base_dir is not None and model_name is not None:
-            header = get_header_info("./save/model/rllearn/{}".format(base_dir))
+            header = get_header_info(f"./save/model/rllearn/{base_dir}")
             meta = {
                 "domain_detail": domain_detail,
                 "domain": domain,
@@ -584,9 +557,7 @@ def update_model_pool(
                 "base_dir": base_dir,
                 "model_name": get_model_name(
                     base_dir,
-                    "sub_epo_{}".format(
-                        model_name.split("sub_epo_")[1:][0].split("_")[0]
-                    ),
+                    f"sub_epo_{model_name.split('sub_epo_')[1:][0].split('_')[0]}",
                 ),
                 "create_date": time_now,
                 "target_name": header["target_name"],
@@ -605,7 +576,7 @@ def update_model_pool(
                 meta_list.append(meta)
                 save(target_file, "pickle", meta_list)
             else:
-                meta_list = list()
+                meta_list = []
                 meta_list.append(meta)
                 save(target_file, "pickle", meta_list)
     else:  # use base model for prediction

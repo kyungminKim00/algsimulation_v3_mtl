@@ -155,12 +155,12 @@ if __name__ == "__main__":
         validation = _model_location + "/validation"
         target_list = [
             validation,
-            validation + "/fig_index",
-            validation + "/fig_bound",
-            validation + "/fig_scatter",
-            validation + "/fig_index/index",
-            validation + "/fig_index/return",
-            validation + "/fig_index/analytics",
+            # validation + "/fig_index",
+            # validation + "/fig_bound",
+            # validation + "/fig_scatter",
+            # validation + "/fig_index/index",
+            # validation + "/fig_index/return",
+            # validation + "/fig_index/analytics",
         ]
         for target in target_list:
             if os.path.isdir(target):

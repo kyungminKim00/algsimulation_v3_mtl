@@ -14,8 +14,10 @@ def animate_gif(source_dir, duration=200):
 
     for dir_name in os.listdir(source_dir):
         for target, mode in [
-            ["/fig_index/return", "test"],
-            ["/validation/fig_index/return", "validation"],
+            ["/return", "test"],
+            ["/validation/return", "validation"],
+            # ["/fig_index/return", "test"],
+            # ["/validation/fig_index/return", "validation"],
         ]:
             img, *imgs = None, None
             t_dir = source_dir + "/" + dir_name + target
