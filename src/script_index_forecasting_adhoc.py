@@ -85,7 +85,7 @@ if __name__ == "__main__":
         if args.operation_mode == 0:
             operation_mode_simulation = True
             if operation_mode_simulation:
-                for idx, it in enumerate(target_result)
+                for idx, it in enumerate(target_result):
                     index_forecasting_adhoc.update_model_pool(
                         it[0],
                         it[1],
