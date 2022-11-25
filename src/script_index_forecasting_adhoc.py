@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 16 14:21:21 2018
@@ -9,36 +5,35 @@ Created on Mon Apr 16 14:21:21 2018
 @author: kim KyungMin
 """
 
-import sc_parameters as scp
-import header.index_forecasting.RUNHEADER as RUNHEADER
+from __future__ import absolute_import, division, print_function
 
-if RUNHEADER.release:
-    from libs import index_forecasting_adhoc
-else:
-    import index_forecasting_adhoc
 import argparse
+
+import index_forecasting_adhoc
+import sc_parameters as scp
+from header.index_forecasting import RUNHEADER
 from util import get_domain_on_CDSW_env
 
 if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser("")
-        # init
-        parser.add_argument("--m_target_index", type=int, default=None)
-        parser.add_argument("--forward_ndx", type=int, default=None)
-        parser.add_argument("--dataset_version", type=str, default=None)
-        parser.add_argument("--operation_mode", type=int, default=1)
-        parser.add_argument("--domain", type=str, required=True)
-        parser.add_argument("--init_repo_model", type=int, default=0)
-        parser.add_argument("--performed_date", type=str, default=None)
-
-        # # Demo
-        # parser.add_argument('--m_target_index', type=int, default=3)
-        # parser.add_argument('--forward_ndx', type=int, default=60)
-        # parser.add_argument('--dataset_version', type=str, default='v14')
-        # parser.add_argument('--operation_mode', type=int, default=1)
-        # parser.add_argument("--domain", type=str, default='US10YT_60')
+        # # init
+        # parser.add_argument("--m_target_index", type=int, default=None)
+        # parser.add_argument("--forward_ndx", type=int, default=None)
+        # parser.add_argument("--dataset_version", type=str, default=None)
+        # parser.add_argument("--operation_mode", type=int, default=1)
+        # parser.add_argument("--domain", type=str, required=True)
         # parser.add_argument("--init_repo_model", type=int, default=0)
         # parser.add_argument("--performed_date", type=str, default=None)
+
+        # # Debug - asdhoc process
+        parser.add_argument("--m_target_index", type=int, default=3)
+        parser.add_argument("--forward_ndx", type=int, default=60)
+        parser.add_argument("--dataset_version", type=str, default="v14")
+        parser.add_argument("--operation_mode", type=int, default=1)
+        parser.add_argument("--domain", type=str, default="US10YT_60")
+        parser.add_argument("--init_repo_model", type=int, default=0)
+        parser.add_argument("--performed_date", type=str, default=None)
         args = parser.parse_args()
         args.domain = get_domain_on_CDSW_env(args.domain)
         args = scp.ScriptParameters(args.domain, args).update_args()
