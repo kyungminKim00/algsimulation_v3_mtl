@@ -113,7 +113,7 @@ def check_training_status(b_activate, count, target_name, forward_ndx):
     model_dir = "./save/model/rllearn/"
     _status = None
     cnt = 0
-    min_num_models = 100
+    min_num_models = 1  # 100 -> 1 in fact, disable logic
 
     if b_activate:
         files = [

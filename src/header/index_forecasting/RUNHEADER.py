@@ -44,7 +44,7 @@ m_main_replay_start: int = None
 m_target_index: int = None
 target_name: str = None
 m_name: str = None  # Caution: the directory would be deleted and then re-created
-b_activate: bool = True  # check status before running the model selection script
+b_activate: bool = False  # check status before running the model selection script
 r_model_cnt: int = (
     7  # at least 10 models are required to run the model selection script
 )

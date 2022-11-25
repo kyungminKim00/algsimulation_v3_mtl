@@ -7,13 +7,8 @@ Created on Mon Apr 16 14:21:21 2018
 @author: kim KyungMin
 """
 
-import argparse
 import os
 import pickle
-import re
-import shutil
-import sys
-from distutils.dir_util import copy_tree
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -25,6 +20,10 @@ import header.index_forecasting.RUNHEADER as RUNHEADER
 import util
 
 matplotlib.use("agg")
+import argparse
+import re
+import shutil
+import sys
 
 
 class Data:
@@ -82,10 +81,10 @@ class Data:
         self.selected = self.naive_filter()
 
     def _get_test_csv(self):
-        loc = f"{self.rDir}/{self.model_name}"
+        loc = "{}/{}".format(self.rDir, self.model_name)
         for f_name in os.listdir(loc):
             if ("csv" in f_name) and ("sub_epo_" + self.id in f_name):
-                return f"{loc}/{f_name}"
+                return "{}/{}".format(loc, f_name)
 
     def _get_id(self, f_name):
         token = f_name.split("_")
@@ -96,21 +95,21 @@ class Data:
         self.train_c_acc = token[12]
         self.v_mae = token[16]
         self.v_r_acc = token[17]
-        self.v_ev = token[19][:-4]
+        self.v_ev = token[18][:-5]
         return token[4]
 
     def _get_test_result(self, test_dir, id):
         for f_name in os.listdir(test_dir):
-            if "csv" in f_name:
+            if "jpeg" in f_name:
                 token = f_name.split("_")
                 if id == token[4]:
                     self.t_c = token[9]
                     self.t_c_acc = token[12]
                     self.t_mae = token[16]
                     self.t_r_acc = token[17]
-                    self.t_ev = token[19][:-4]
-                    self.test_return_file = f"{self.test_dir_return}/marketname/{'_'.join(f_name.split('_')[:8])}"
-                    self.test_index_file = None
+                    self.t_ev = token[18][:-5]
+                    self.test_return_file = "{}{}".format(self.test_dir_return, f_name)
+                    self.test_index_file = "{}{}".format(self.test_dir_index, f_name)
                     break
 
     def tolist(self):
@@ -180,7 +179,25 @@ class Data:
         if b_print:  # global variables
             print(print_str.format(model_name))
             print(
-                f"\tid:{self.id} pl:{self.pl}/{self.th_pl} vl:{self.vl}/{self.th_vl} ev:{self.ev}/{self.th_ev} v_c:{self.v_c}/{self.th_v_c} train_c_acc:{self.train_c_acc}/{self.th_train_c_acc} v_mae:{self.v_mae}/{self.th_v_mae} v_r_acc:{self.v_r_acc}/{self.th_v_r_acc} v_ev:{self.v_ev}/{self.th_v_ev}"
+                "\tid:{} pl:{}/{} vl:{}/{} ev:{}/{} v_c:{}/{} train_c_acc:{}/{} v_mae:{}/{} v_r_acc:{}/{} v_ev:{}/{}".format(
+                    self.id,
+                    self.pl,
+                    self.th_pl,
+                    self.vl,
+                    self.th_vl,
+                    self.ev,
+                    self.th_ev,
+                    self.v_c,
+                    self.th_v_c,
+                    self.train_c_acc,
+                    self.th_train_c_acc,
+                    self.v_mae,
+                    self.th_v_mae,
+                    self.v_r_acc,
+                    self.th_v_r_acc,
+                    self.v_ev,
+                    self.th_v_ev,
+                )
             )
 
     def naive_filter(self):
@@ -347,40 +364,42 @@ class Script:
                             idx, self.dict_col2idx["m_avg_train_c_acc"]
                         ] = item[2]
 
-    def _gather_result_information(self, output=False, retry=0, soft_cond_retry=0):
+    def _gather_result_information(
+        self, output=False, retry=0, soft_cond_retry=0, b_batch_test=False
+    ):
         # get model list for evaluate performance
         self.item_container = []
         gathered_results = []
         column_name = None
         models = self.rDir
+        # if b_batch_test:
+        #     models = os.listdir("./save/result/" + self.rDir)
         models = self._sort(models)
         self.pool_best = None  # no proper model but it is a pool best model
 
         # for dir_name in models:
         for dir_name in models:
-            # tmp_dir = "./save/result/" + dir_name
-            # val_dir_return = tmp_dir + "/validation/return/"
-            # val_dir_index = tmp_dir + "/validation/index/"
-            # test_dir_return = tmp_dir + "/return/"
-            # test_dir_index = tmp_dir + "/index/"
-
             tmp_dir = "./save/result/" + dir_name
-            val_dir_return = tmp_dir + "/validation/"
-            val_dir_index = None
-            test_dir_return = tmp_dir
-            test_dir_index = None
+            # if b_batch_test:
+            #     tmp_dir = "./save/result/" + self.rDir + "/" + dir_name
+            val_dir_return = tmp_dir + "/validation/return/"
+            val_dir_index = tmp_dir + "/validation/index/"
+            test_dir_return = tmp_dir + "/return/"
+            test_dir_index = tmp_dir + "/index/"
 
             # file validation
-            r = re.compile(".*csv")
+            r = re.compile(".*jpeg")
             r2 = re.compile(".*csv")
+            if b_batch_test:
+                if len(list(filter(r.match, os.listdir(val_dir_return)))) == len(
+                    list(filter(r.match, os.listdir(test_dir_return)))
+                ):
 
-            try:
-                if len(list(filter(r2.match, os.listdir(tmp_dir)))) > 0:
                     for file_name in os.listdir(val_dir_return):
-                        if "csv" in file_name:
+                        if "jpeg" in file_name:
                             if int(file_name.split("_")[4]) >= self.th_dict["th_epoch"]:
                                 item = Data(
-                                    rDir="./save/result",
+                                    rDir="./save/result/" + self.rDir,
                                     tDir=self.tDir,
                                     model_name=dir_name,
                                     val_dir_return=val_dir_return,
@@ -400,8 +419,44 @@ class Script:
                                 self.item_container.append(item)
                                 gathered_results.append(item.tolist())
                                 column_name = item.columns
-            except Exception as e:
-                pass
+            else:
+                try:
+                    if len(list(filter(r2.match, os.listdir(tmp_dir)))) >= 0:
+                        if (
+                            len(list(filter(r.match, os.listdir(val_dir_return))))
+                            == len(list(filter(r.match, os.listdir(test_dir_return))))
+                            == len(list(filter(r2.match, os.listdir(tmp_dir))))
+                        ):
+
+                            for file_name in os.listdir(val_dir_return):
+                                if "jpeg" in file_name:
+                                    if (
+                                        int(file_name.split("_")[4])
+                                        >= self.th_dict["th_epoch"]
+                                    ):
+                                        item = Data(
+                                            rDir="./save/result",
+                                            tDir=self.tDir,
+                                            model_name=dir_name,
+                                            val_dir_return=val_dir_return,
+                                            val_dir_index=val_dir_index,
+                                            test_dir_return=test_dir_return,
+                                            test_dir_index=test_dir_index,
+                                            file_name=file_name,
+                                            retry=retry,
+                                            max_cnt=self.max_cnt,
+                                            th_m_score=[
+                                                self.th_sub_score,
+                                                self.select_criteria,
+                                            ],
+                                            th_dict=self.th_dict,
+                                            soft_cond_retry=soft_cond_retry,
+                                        )
+                                        self.item_container.append(item)
+                                        gathered_results.append(item.tolist())
+                                        column_name = item.columns
+                except Exception as e:
+                    pass
         self.column_name = column_name
         self.dict_col2idx = dict(
             list(zip(self.column_name, range(len(self.column_name))))
@@ -445,8 +500,7 @@ class Script:
         assert (
             len(self.item_container) == self.gathered_results.shape[0]
         ), "should be the same"
-
-        for i, _ in enumerate(self.item_container):
+        for i in range(len(self.item_container)):
             self.item_container[i].sub_m_score = self.gathered_results[i][
                 self.dict_col2idx["sub_m_score"]
             ]
@@ -507,10 +561,12 @@ class Script:
             "m_avg_train_c_acc",
         ]
 
-        f_name = f"{m_info[self.dict_col2idx['tDir']]}/final/{m_info[self.dict_col2idx['model_name']]}"
+        f_name = "{}/final/{}".format(
+            m_info[self.dict_col2idx["tDir"]], m_info[self.dict_col2idx["model_name"]]
+        )
         fp = open(f_name, "w")
         for col_name in range(len(colname)):
-            fp.write(f"{col_name} : {m_info[col_name]}")
+            fp.write("{} : {}".format(col_name, m_info[col_name]))
         fp.close()
 
         # 컨피던스 Score 사용시는 아래코드 삭제 하여야 함. 컨피던스 스코어가 유의미하지 않고 속도 및 저장공간 이슈로 최종 모형외 삭제 함
@@ -518,25 +574,34 @@ class Script:
             pass
         else:
             for rm_file in os.listdir(
-                f"./save/model/rllearn/{m_info[self.dict_col2idx['model_name']]}"
+                "./save/model/rllearn/{}".format(
+                    m_info[self.dict_col2idx["model_name"]]
+                )
             ):
                 if ".pkl" in rm_file:
-                    if f"sub_epo_{str(m_info[self.dict_col2idx['id']])}" in rm_file:
+                    if (
+                        "sub_epo_{}".format(str(m_info[self.dict_col2idx["id"]]))
+                        in rm_file
+                    ):
                         pass
                     else:
                         os.remove(
-                            f"./save/model/rllearn/{m_info[self.dict_col2idx['model_name']]}/{rm_file}"
+                            "./save/model/rllearn/{}/{}".format(
+                                m_info[self.dict_col2idx["model_name"]], rm_file
+                            )
                         )
 
     def post_decision(self, selected_model):
-        criteria_list = []
+        criteria_list = list()
         for model in selected_model:
             base_dir = "/".join(
-                model[self.dict_col2idx["validate_dir_return"]].split("/")[:-2]
+                model[self.dict_col2idx["validate_dir_return"]].split("/")[:-3]
             )
             for fn in os.listdir(base_dir):
                 if "sub_epo_" + model[self.dict_col2idx["id"]] in fn and ".csv" in fn:
                     data = pd.read_csv(base_dir + "/" + fn)
+                    # if np.array(data['20days'])[-1] == np.array(data['P_20days'])[-1]:
+                    #     criteria_list.append((np.square(data['Return'][-10:] - data['P_return'][-10:])).mean(axis=0))
                     criteria_list.append(
                         (
                             np.corrcoef(data["Return"][-10:], data["P_return"][-10:])[
@@ -550,7 +615,7 @@ class Script:
         else:
             return None
 
-    def run_s_model(self, dset_v=None, b_batch_test=False):
+    def run_s_model(self, dset_v=None, index_result=True, b_batch_test=False):
         b_exit = False
         retry = 0
         soft_cond_retry = 0
@@ -559,9 +624,9 @@ class Script:
             sys.stdout.flush()
 
             # copy candidate model to
-            selected_model = []
+            selected_model = list()
             m_pass = False
-            self._gather_result_information(True, retry, soft_cond_retry)
+            self._gather_result_information(True, retry, soft_cond_retry, b_batch_test)
             for item in self.item_container:
                 if soft_cond_retry == 5:  # pick pool best .. get reasonable models
                     if (
@@ -589,25 +654,15 @@ class Script:
 
                 if m_pass:
                     selected_model.append(item.tolist())
-                    for market_name in list(RUNHEADER.mkidx_mkname.values()):
-                        if market_name != "TOTAL":
-                            sourceDir = item.test_return_file.replace(
-                                "marketname", market_name
-                            )
-                            m_name = sourceDir.split("/")[-1]
-                            # shutil.copy2(
-                            #     item.test_return_file,
-                            #     f"{item.tDir}/R_{item.test_return_file.split('/')[-1]}",
-                            # )
-                            copy_tree(
-                                sourceDir,
-                                f"{item.tDir}/{m_name}/{market_name}",
-                            )
-                    # if index_result:
-                    #     shutil.copy2(
-                    #         item.test_index_file,
-                    #         f"{item.tDir}/I_{item.test_index_file.split('/')[-1]}",
-                    #     )
+                    shutil.copy2(
+                        item.test_return_file,
+                        f"{item.tDir}/R_{item.test_return_file.split('/')[-1]}",
+                    )
+                    if index_result:
+                        shutil.copy2(
+                            item.test_index_file,
+                            f"{item.tDir}/I_{item.test_index_file.split('/')[-1]}",
+                        )
                     m_pass = False
             pd.DataFrame(data=selected_model, columns=self.column_name).to_csv(
                 self.tDir + "/selected_model_results.csv"
@@ -643,42 +698,37 @@ class Script:
                         if selected_model[i_idx][self.dict_col2idx["model_name"]]
                         == pick_model
                     ]
-                    print(f" \nSelected base model by likely-hood: {pick_model}")
+                    print(
+                        " \nSelected base model by likely-hood: {}".format(pick_model)
+                    )
 
                 idx = self.post_decision(selected_model)
 
                 # copy files
                 m_info = selected_model[idx]
-                for market_name in list(RUNHEADER.mkidx_mkname.values()):
-                    if market_name != "TOTAL":
-                        sourceDir = m_info[
-                            self.dict_col2idx["test_return_file"]
-                        ].replace("marketname", market_name)
-                        m_name = sourceDir.split("/")[-1]
-                        copy_tree(
-                            sourceDir,
-                            f"{m_info[self.dict_col2idx['tDir']]}/final/{m_name}/{market_name}",
-                        )
+                shutil.copy2(
+                    m_info[self.dict_col2idx["test_return_file"]],
+                    "{}/final/R_{}".format(
+                        m_info[self.dict_col2idx["tDir"]],
+                        m_info[self.dict_col2idx["test_return_file"]].split("/")[-1],
+                    ),
+                )
+                if index_result:
+                    shutil.copy2(
+                        m_info[self.dict_col2idx["test_index_file"]],
+                        "{}/final/I_{}".format(
+                            m_info[self.dict_col2idx["tDir"]],
+                            m_info[self.dict_col2idx["test_index_file"]].split("/")[-1],
+                        ),
+                    )
                 if m_info[self.dict_col2idx["test_csv_file"]] is not None:
                     shutil.copy2(
                         m_info[self.dict_col2idx["test_csv_file"]],
-                        f"{m_info[self.dict_col2idx['tDir']]}/final/{m_info[self.dict_col2idx['test_csv_file']].split('/')[-1]}",
+                        "{}/final/C_{}".format(
+                            m_info[self.dict_col2idx["tDir"]],
+                            m_info[self.dict_col2idx["test_csv_file"]].split("/")[-1],
+                        ),
                     )
-
-                # shutil.copy2(
-                #     m_info[self.dict_col2idx["test_return_file"]],
-                #     f"{m_info[self.dict_col2idx['tDir']]}/final/R_{m_info[self.dict_col2idx['test_return_file']].split('/')[-1]}",
-                # )
-                # if index_result:
-                #     shutil.copy2(
-                #         m_info[self.dict_col2idx["test_index_file"]],
-                #         f"{m_info[self.dict_col2idx['tDir']]}/final/I_{m_info[self.dict_col2idx['test_index_file']].split('/')[-1]}",
-                #     )
-                # if m_info[self.dict_col2idx["test_csv_file"]] is not None:
-                #     shutil.copy2(
-                #         m_info[self.dict_col2idx["test_csv_file"]],
-                #         f"{m_info[self.dict_col2idx['tDir']]}/final/C_{m_info[self.dict_col2idx['test_csv_file']].split('/')[-1]}",
-                #     )
                 self.printout_model_info(m_info)
 
                 b_exit = True
@@ -688,7 +738,7 @@ class Script:
                     self.select_criteria = float(self.select_criteria - 0.1)
                     soft_cond_retry = soft_cond_retry + 1
                     retry = 0
-                    print(f"\nSoft condition is trying: {soft_cond_retry}")
+                    print("\nSoft condition is trying: {}".format(soft_cond_retry))
                 else:
                     b_exit = True
 
@@ -707,11 +757,11 @@ class Script:
 
 
 def print_summary(data_list, th_dict):
-    tmp = []
+    tmp = list()
     for item in data_list:
-        tmp.append(float(item.split("_")[17]))
+        tmp.append(float(item.split("_")[14]))
 
-    _str = f"f_result: {np.mean(np.array(tmp))}"
+    _str = "f_result: {}".format(np.mean(np.array(tmp)))
     for it in th_dict.items():
         _str = _str + " " + str(it[0]) + ":" + str(it[1]) + ", "
     fp = open("./save/result/selected/history.txt", "a")

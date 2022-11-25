@@ -1,11 +1,11 @@
-from __future__ import absolute_import, division, print_function
-
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 16 14:21:21 2018
 
 @author: kim KyungMin
 """
+
+from __future__ import absolute_import, division, print_function
 
 import argparse
 import os
@@ -37,17 +37,17 @@ class TrainMoreError(Exception):
 if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser("")
-        # # init args
-        # parser.add_argument("--m_target_index", type=int, default=None)
-        # parser.add_argument("--forward_ndx", type=int, default=None)
-        # parser.add_argument("--dataset_version", type=str, default=None)
-        # parser.add_argument("--domain", type=str, required=True)
-
-        # # Debug - operation/experimental
+        # init args
         parser.add_argument("--m_target_index", type=int, default=None)
         parser.add_argument("--forward_ndx", type=int, default=None)
         parser.add_argument("--dataset_version", type=str, default=None)
-        parser.add_argument("--domain", type=str, default="INX_20")
+        parser.add_argument("--domain", type=str, required=True)
+
+        # # # Debug - operation/experimental
+        # parser.add_argument("--m_target_index", type=int, default=None)
+        # parser.add_argument("--forward_ndx", type=int, default=None)
+        # parser.add_argument("--dataset_version", type=str, default=None)
+        # parser.add_argument("--domain", type=str, default="TOTAL_20")
 
         args = parser.parse_args()
         args.domain = get_domain_on_CDSW_env(args.domain)
@@ -69,9 +69,6 @@ if __name__ == "__main__":
             )
 
         roof = True
-        index_result = (
-            False  # remove to reduce drive spaces, enable when a operation mode
-        )
         while roof:
             roof = False
             """configuration
@@ -133,6 +130,20 @@ if __name__ == "__main__":
                 "th_epoch": 150,  # default: 200, but KS11 has been trained with 200 epoch -> 150
                 "th_sub_score": 0,
             }
+
+            # # debug test version - remove later
+            # th_dict = {
+            #     "th_pl": np.inf,
+            #     "th_vl": np.inf,
+            #     "th_ev": -np.inf,
+            #     "th_v_c": 0,
+            #     "th_train_c_acc": 0.0,
+            #     "th_v_mae": np.inf,
+            #     "th_v_r_acc": 0.0,
+            #     "th_v_ev": -np.inf,
+            #     "th_epoch": 0,  # default: 200, but KS11 has been trained with 200 epoch -> 150
+            #     "th_sub_score": 0,
+            # }
 
             final_performance = []
             ver_list = [
@@ -223,7 +234,6 @@ if __name__ == "__main__":
                 )
                 flag = sc.run_s_model(
                     dataset_version,
-                    index_result=index_result,
                     b_batch_test=RUNHEADER.b_select_model_batch,
                 )
 
@@ -239,18 +249,14 @@ if __name__ == "__main__":
                 # stack final result
                 base_model = ""
                 for final_result in os.listdir(tDir + "/final"):
-                    if (
-                        "jpeg" not in final_result
-                        and "R_" not in final_result
-                        and "csv" not in final_result
-                    ):
-                        base_model = final_result
-                        print(f"Base model: {base_model}")
-                    if "jpeg" in final_result and "R_" in final_result:
+                    if "csv" in final_result:
                         final_performance.append(final_result)
                         print(
-                            f"name: {final_result[:-5]} \n{dataset_version}: {float(final_result.split('_')[14])}\n"
+                            f"name: {final_result[:-5]} \n{dataset_version}: {float(final_result.split('_')[17])}\n"
                         )
+                    # else:
+                    #     base_model = final_result
+                    #     print(f"Base model: {base_model}")
 
             # if flag == 1:
             #     index_forecasting_select_model.print_summary(final_performance, th_dict)

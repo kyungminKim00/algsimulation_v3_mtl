@@ -307,13 +307,13 @@ if __name__ == "__main__":
         """configuration
         """
         parser = argparse.ArgumentParser("")
-        # # init args
-        # parser.add_argument("--process_id", type=int, default=None)
-        # parser.add_argument("--domain", type=str, required=True)
-        # parser.add_argument("--actual_inference", type=int, default=0)
-        # parser.add_argument("--m_target_index", type=int, default=None)
-        # parser.add_argument("--forward_ndx", type=int, default=None)
-        # parser.add_argument("--dataset_version", type=str, default=None)
+        # init args
+        parser.add_argument("--process_id", type=int, default=None)
+        parser.add_argument("--domain", type=str, required=True)
+        parser.add_argument("--actual_inference", type=int, default=0)
+        parser.add_argument("--m_target_index", type=int, default=None)
+        parser.add_argument("--forward_ndx", type=int, default=None)
+        parser.add_argument("--dataset_version", type=str, default=None)
 
         # # Debug - operation
         # parser.add_argument("--process_id", type=int, default=None)
@@ -323,13 +323,13 @@ if __name__ == "__main__":
         # parser.add_argument("--dataset_version", type=str, default=None)
         # parser.add_argument("--domain", type=str, default="TOTAL_20")
 
-        # Debug - experimental
-        parser.add_argument("--process_id", type=int, default=2)
-        parser.add_argument("--m_target_index", type=int, default=None)
-        parser.add_argument("--forward_ndx", type=int, default=None)
-        parser.add_argument("--actual_inference", type=int, default=0)
-        parser.add_argument("--dataset_version", type=str, default=None)
-        parser.add_argument("--domain", type=str, default="TOTAL_20")
+        # # Debug - experimental
+        # parser.add_argument("--process_id", type=int, default=2)
+        # parser.add_argument("--m_target_index", type=int, default=None)
+        # parser.add_argument("--forward_ndx", type=int, default=None)
+        # parser.add_argument("--actual_inference", type=int, default=0)
+        # parser.add_argument("--dataset_version", type=str, default=None)
+        # parser.add_argument("--domain", type=str, default="TOTAL_20")
 
         args = parser.parse_args()
         args.domain = get_domain_on_CDSW_env(args.domain)

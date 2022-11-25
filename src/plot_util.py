@@ -568,12 +568,24 @@ def get_res_by_market(data, market_idx):
 
 def plot_save_validation_performence(tmp_info, save_dir, model_name, split_name="test"):
     # toal performence
-    total_consistency, total_correct_percent, total_f1, total_mse, total_ev = (
+    (
+        total_consistency,
+        total_correct_percent,
+        total_f1,
+        total_mse,
+        total_ev,
+        total_direction_f1,
+        total_rtn,
+        total_p_rtn,
+    ) = (
         [],
         [],
         [],
         [],
         [],
+        [],
+        (),
+        (),
     )
 
     predefined_std_index = pd.read_csv(
@@ -632,6 +644,14 @@ def plot_save_validation_performence(tmp_info, save_dir, model_name, split_name=
                 "today_index",
             ],
         )
+
+        if split_name == "test":
+            total_rtn = total_rtn + tuple(df["Return"])
+            total_p_rtn = total_p_rtn + tuple(df["P_return"])
+        else:
+            total_rtn = total_rtn + tuple(df["Return"][-10:])
+            total_p_rtn = total_p_rtn + tuple(df["P_return"][-10:])
+
         # up/down performance
         total = len(res_info)
         half = int(total * 0.5)
@@ -775,7 +795,7 @@ def plot_save_validation_performence(tmp_info, save_dir, model_name, split_name=
         prefix = f"{prefix}/{current_model}"
 
         df.to_csv(
-            f"{prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{summary:3.2}___{mse:3.2}___{ev:3.2}.csv"
+            f"{prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{summary:3.2}___{mse:3.2}_{direction_f1:3.2}__{ev:3.2}.csv"
         )
 
         total_consistency.append(consistency)
@@ -783,6 +803,7 @@ def plot_save_validation_performence(tmp_info, save_dir, model_name, split_name=
         total_f1.append(summary)
         total_mse.append(mse)
         total_ev.append(ev)
+        total_direction_f1.append(direction_f1)
 
         # pname = "{}_CF[{:3.2}_{:3.2}_{:3.2}]_RE[{:3.2}_{:3.2}_{:3.2}]_EV[{:3.2}_{:3.2}_{:3.2}].txt".format(
         #     prefix,
@@ -875,13 +896,19 @@ def plot_save_validation_performence(tmp_info, save_dir, model_name, split_name=
     f1 = np.mean(np.array(total_f1))
     mse = np.mean(np.array(total_mse))
     ev = np.mean(np.array(total_ev))
+    direction_f1 = np.mean(np.array(total_direction_f1))
 
-    with open(
-        f"{total_prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{f1:3.2}___{mse:3.2}___{ev:3.2}.csv",
-        "w",
-    ) as txt_fp:
-        print("", file=txt_fp)
-        txt_fp.close()
+    pd.DataFrame(
+        data=np.array([total_rtn, total_p_rtn]).T, columns=["Return", "P_return"]
+    ).to_csv(
+        f"{total_prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{f1:3.2}___{mse:3.2}_{direction_f1:3.2}__{ev:3.2}.csv"
+    )
+    # with open(
+    #     f"{total_prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{f1:3.2}___{mse:3.2}_{direction_f1:3.2}__{ev:3.2}.csv",
+    #     "w",
+    # ) as txt_fp:
+    #     print("", file=txt_fp)
+    #     txt_fp.close()
 
 
 # def epoch_summary(save_dir):
