@@ -85,11 +85,11 @@ if __name__ == "__main__":
         if args.operation_mode == 0:
             operation_mode_simulation = True
             if operation_mode_simulation:
-                for idx in range(len(target_result)):
+                for idx, it in enumerate(target_result)
                     index_forecasting_adhoc.update_model_pool(
-                        target_result[idx][0],
-                        target_result[idx][1],
-                        target_result[idx][2],
+                        it[0],
+                        it[1],
+                        it[2],
                         flag[idx],
                         args.init_repo_model,
                     )
@@ -100,5 +100,5 @@ if __name__ == "__main__":
                 )
                 print("Done: confidence_calibration")
     except Exception as e:
-        print("\n{}".format(e))
+        print(f"\n{e}")
         exit(1)
