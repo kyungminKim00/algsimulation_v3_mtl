@@ -938,7 +938,7 @@ class A2C(ActorCriticRLModel):
                             current_iter_cnt,
                         )
                         sys.stdout.write(
-                            f"\r>> [{current_iter_cnt:%d}] short-term memory:  {short_term_buffer.num_in_buffer:%d}/{self.n_envs:%d}"
+                            f"\r>> [{current_iter_cnt:}] short-term memory:  {short_term_buffer.num_in_buffer}/{self.n_envs}"
                         )
                         sys.stdout.flush()
                         current_iter_cnt = current_iter_cnt + 1

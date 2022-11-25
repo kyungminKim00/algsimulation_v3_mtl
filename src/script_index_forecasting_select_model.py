@@ -1,6 +1,4 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # -*- coding: utf-8 -*-
 """
@@ -9,18 +7,16 @@ Created on Mon Apr 16 14:21:21 2018
 @author: kim KyungMin
 """
 
-import header.index_forecasting.RUNHEADER as RUNHEADER
-
-if RUNHEADER.release:
-    from libs import index_forecasting_select_model
-else:
-    import index_forecasting_select_model
+import argparse
+import os
+import shutil
 
 import numpy as np
 
-import os
-import shutil
-import argparse
+import index_forecasting_select_model
+import sc_parameters as scp
+from header.index_forecasting import RUNHEADER
+from util import check_training_status, get_domain_on_CDSW_env
 
 # import pandas as pd
 # from scipy.stats import entropy
@@ -31,8 +27,6 @@ import argparse
 #
 # import re
 # import sys
-from util import check_training_status, get_domain_on_CDSW_env
-import sc_parameters as scp
 
 
 class TrainMoreError(Exception):
@@ -43,16 +37,18 @@ class TrainMoreError(Exception):
 if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser("")
-        # init args
+        # # init args
+        # parser.add_argument("--m_target_index", type=int, default=None)
+        # parser.add_argument("--forward_ndx", type=int, default=None)
+        # parser.add_argument("--dataset_version", type=str, default=None)
+        # parser.add_argument("--domain", type=str, required=True)
+
+        # # Debug - operation/experimental
         parser.add_argument("--m_target_index", type=int, default=None)
         parser.add_argument("--forward_ndx", type=int, default=None)
         parser.add_argument("--dataset_version", type=str, default=None)
-        parser.add_argument("--domain", type=str, required=True)
-        # # Demo
-        # parser.add_argument('--m_target_index', type=int, default=None)  # for operation mode
-        # parser.add_argument('--forward_ndx', type=int, default=None)  # for operation mode
-        # parser.add_argument('--dataset_version', type=str, default=None)
-        # parser.add_argument("--domain", type=str, default='INX_20')
+        parser.add_argument("--domain", type=str, default="INX_20")
+
         args = parser.parse_args()
         args.domain = get_domain_on_CDSW_env(args.domain)
         args = scp.ScriptParameters(args.domain, args).update_args()
@@ -69,9 +65,7 @@ if __name__ == "__main__":
         )
         if not b_c_t_s:
             raise TrainMoreError(
-                "The number of trained models are {}. at least {} trained models are required!! Keep Traning ... ".format(
-                    str(cnt), str(RUNHEADER.r_model_cnt)
-                )
+                f"The number of trained models are {str(cnt)}. at least {str(RUNHEADER.r_model_cnt)} trained models are required!! Keep Traning ... "
             )
 
         roof = True
@@ -84,7 +78,7 @@ if __name__ == "__main__":
             """
             max_cnt = 10  # 10 fixed
             soft_cond = True  # disable when operation mode. A decision making after a experimental
-            select_criteria = 0.1  # Recommend value is at least positive but for the fast evaluation of models, the value is set to -2
+            select_criteria = 0.1  # Recommend value is at least positive but the value is set to -2 for the fast evaluation of models,
             th_dict = {
                 "th_pl": 1.85,
                 "th_vl": 1.9,
@@ -140,7 +134,7 @@ if __name__ == "__main__":
                 "th_sub_score": 0,
             }
 
-            final_performance = list()
+            final_performance = []
             ver_list = [
                 [
                     it
@@ -151,45 +145,45 @@ if __name__ == "__main__":
                 ]
             ]
 
-            if RUNHEADER.b_select_model_batch:
-                ver_list = [
-                    "v30",
-                    "v31",
-                    "v32",
-                    "v33",
-                    "v34",
-                    "v35",
-                    "v36",
-                    "v37",
-                    "v38",
-                    "v39",
-                    "v40",
-                    "v41",
-                    "v10",
-                    "v11",
-                    "v12",
-                    "v13",
-                    "v14",
-                    "v15",
-                    "v16",
-                    "v17",
-                    "v18",
-                    "v19",
-                    "v20",
-                    "v21",
-                    "v50",
-                    "v51",
-                    "v52",
-                    "v53",
-                    "v54",
-                    "v55",
-                    "v56",
-                    "v57",
-                    "v58",
-                    "v59",
-                    "v60",
-                    "v61",
-                ]
+            # if RUNHEADER.b_select_model_batch:
+            #     ver_list = [
+            #         "v30",
+            #         "v31",
+            #         "v32",
+            #         "v33",
+            #         "v34",
+            #         "v35",
+            #         "v36",
+            #         "v37",
+            #         "v38",
+            #         "v39",
+            #         "v40",
+            #         "v41",
+            #         "v10",
+            #         "v11",
+            #         "v12",
+            #         "v13",
+            #         "v14",
+            #         "v15",
+            #         "v16",
+            #         "v17",
+            #         "v18",
+            #         "v19",
+            #         "v20",
+            #         "v21",
+            #         "v50",
+            #         "v51",
+            #         "v52",
+            #         "v53",
+            #         "v54",
+            #         "v55",
+            #         "v56",
+            #         "v57",
+            #         "v58",
+            #         "v59",
+            #         "v60",
+            #         "v61",
+            #     ]
 
             flag = None
             init = True
@@ -204,10 +198,10 @@ if __name__ == "__main__":
                 rDir = ver
                 bDir = "./save/result/selected/"
                 tDir = "./save/result/selected/" + target_name + "_T" + forward_ndx
-                if RUNHEADER.b_select_model_batch:
-                    tDir = (
-                        "./save/result/selected/" + ver + "_T" + forward_ndx
-                    )  # batch test
+                # if RUNHEADER.b_select_model_batch:
+                #     tDir = (
+                #         "./save/result/selected/" + ver + "_T" + forward_ndx
+                #     )  # batch test
 
                 target_list = [bDir, tDir, tDir + "/final"]
                 for target in target_list:
@@ -238,9 +232,9 @@ if __name__ == "__main__":
                     # break
 
                 # print test environments
-                print("\ndataset_version: {}".format(dataset_version))
-                print("source loc: {}".format(ver))
-                print("target loc: {}".format(tDir))
+                print(f"\ndataset_version: {dataset_version}")
+                print(f"source loc: {ver}")
+                print(f"target loc: {tDir}")
 
                 # stack final result
                 base_model = ""
@@ -251,15 +245,11 @@ if __name__ == "__main__":
                         and "csv" not in final_result
                     ):
                         base_model = final_result
-                        print("Base model: {}".format(base_model))
+                        print(f"Base model: {base_model}")
                     if "jpeg" in final_result and "R_" in final_result:
                         final_performance.append(final_result)
                         print(
-                            "name: {} \n{}: {}\n".format(
-                                final_result[:-5],
-                                dataset_version,
-                                float(final_result.split("_")[14]),
-                            )
+                            f"name: {final_result[:-5]} \n{dataset_version}: {float(final_result.split('_')[14])}\n"
                         )
 
             # if flag == 1:
@@ -268,5 +258,5 @@ if __name__ == "__main__":
     except TrainMoreError:
         exit(2)
     except Exception as e:
-        print("\n{}".format(e))
+        print(f"\n{e}")
         exit(1)

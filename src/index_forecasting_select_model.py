@@ -1,6 +1,4 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # -*- coding: utf-8 -*-
 """
@@ -9,21 +7,22 @@ Created on Mon Apr 16 14:21:21 2018
 @author: kim KyungMin
 """
 
+import os
+import pickle
+
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy.stats import entropy
+
 import header.index_forecasting.RUNHEADER as RUNHEADER
 import util
 
-from scipy.stats import entropy
-import numpy as np
-import pandas as pd
-import os
-import pickle
-import matplotlib
-import matplotlib.pyplot as plt
-
 matplotlib.use("agg")
-import shutil
 import argparse
 import re
+import shutil
 import sys
 
 
@@ -373,16 +372,16 @@ class Script:
         gathered_results = list()
         column_name = None
         models = self.rDir
-        if b_batch_test:
-            models = os.listdir("./save/result/" + self.rDir)
+        # if b_batch_test:
+        #     models = os.listdir("./save/result/" + self.rDir)
         models = self._sort(models)
         self.pool_best = None  # no proper model but it is a pool best model
 
         # for dir_name in models:
         for dir_name in models:
             tmp_dir = "./save/result/" + dir_name
-            if b_batch_test:
-                tmp_dir = "./save/result/" + self.rDir + "/" + dir_name
+            # if b_batch_test:
+            #     tmp_dir = "./save/result/" + self.rDir + "/" + dir_name
             val_dir_return = tmp_dir + "/validation/return/"
             val_dir_index = tmp_dir + "/validation/index/"
             test_dir_return = tmp_dir + "/return/"
@@ -621,7 +620,7 @@ class Script:
         retry = 0
         soft_cond_retry = 0
         while not b_exit:
-            sys.stdout.write("\r>> Adjusting parameters: {}".format(retry))
+            sys.stdout.write(f"\r>> Adjusting parameters: {retry}")
             sys.stdout.flush()
 
             # copy candidate model to
@@ -657,17 +656,11 @@ class Script:
                     selected_model.append(item.tolist())
                     shutil.copy2(
                         item.test_return_file,
-                        "{}/R_{}".format(
-                            item.tDir, item.test_return_file.split("/")[-1]
-                        ),
-                    )
+                        f"{item.tDir}/R_{item.test_return_file.split('/')[-1]}")
                     if index_result:
                         shutil.copy2(
                             item.test_index_file,
-                            "{}/I_{}".format(
-                                item.tDir, item.test_index_file.split("/")[-1]
-                            ),
-                        )
+                            f"{item.tDir}/I_{item.test_index_file.split('/')[-1]}")
                     m_pass = False
             pd.DataFrame(data=selected_model, columns=self.column_name).to_csv(
                 self.tDir + "/selected_model_results.csv"
@@ -708,16 +701,7 @@ class Script:
                     )
 
                 idx = self.post_decision(selected_model)
-                # Diable
-                # if idx is None:  # pick one no matter what
-                #     criteria = self.dict_col2idx['validate_ev']
-                #     if soft_cond_retry > 2 and \
-                #             np.max(np.array(np.array(selected_model)[:, criteria], dtype=np.float)) >= 0.3:
-                #         idx = np.argmax(np.array(selected_model)[:, criteria])
-                #     else:
-                #         criteria = self.dict_col2idx['validate_r_acc']
-                #         idx = np.argmax(np.array(selected_model)[:, criteria])
-
+                
                 # copy files
                 m_info = selected_model[idx]
                 shutil.copy2(

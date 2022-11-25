@@ -22,21 +22,7 @@ import bottleneck as bn
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from header.index_forecasting import RUNHEADER
 from sklearn.preprocessing import RobustScaler
-from util import (
-    _remove_cond,
-    _replace_cond,
-    current_y_unit,
-    dict2json,
-    find_date,
-    funTime,
-    get_conjunction_dates_data_v3,
-    get_manual_vars_additional,
-    get_working_dates,
-    ordinary_return,
-    trans_val,
-)
 
 from datasets import dataset_utils
 from datasets.convert_if_v1_common import (
@@ -62,6 +48,20 @@ from datasets.windowing import (
     rolling_apply_cross_cov,
 )
 from datasets.x_selection import get_uniqueness, get_uniqueness_without_dates
+from header.index_forecasting import RUNHEADER
+from util import (
+    _remove_cond,
+    _replace_cond,
+    current_y_unit,
+    dict2json,
+    find_date,
+    funTime,
+    get_conjunction_dates_data_v3,
+    get_manual_vars_additional,
+    get_working_dates,
+    ordinary_return,
+    trans_val,
+)
 
 # import tf_slim as slim
 
@@ -714,6 +714,10 @@ def write_patch(
                 )
 
     pk_output_filename = output_filename.split("tfrecord")[0] + "pkl"
+    base_folder = "/".join(pk_output_filename.split("/")[:-1])
+    if not os.path.isdir(base_folder):
+        os.makedirs(base_folder)
+
     with open(pk_output_filename, "wb") as fp:
         pickle.dump(pk_data, fp)
         print(

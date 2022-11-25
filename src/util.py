@@ -110,7 +110,6 @@ def get_domain_on_CDSW_env(domain):
 
 
 def check_training_status(b_activate, count, target_name, forward_ndx):
-    r_dir = "./"
     model_dir = "./save/model/rllearn/"
     _status = None
     cnt = 0
@@ -133,7 +132,7 @@ def check_training_status(b_activate, count, target_name, forward_ndx):
                     cnt = cnt + 1
             except FileNotFoundError:
                 pass
-        _status = True if cnt >= count else False
+        _status = cnt >= count
     else:
         _status = True
     return _status, cnt
@@ -475,7 +474,7 @@ def funTime(func_name):
     yield
     end = time.time()
     interval = end - start
-    print("\n== Time cost for [{0}] : {1}".format(func_name, interval))
+    print(f"\n== Time cost for [{func_name}] : {interval}")
 
 
 # if an object contains one more char type then return False

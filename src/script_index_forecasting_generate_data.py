@@ -138,9 +138,14 @@ if __name__ == "__main__":
             assert (args.m_target_index is not None) and (
                 args.gen_var is not None
             ), "the values of variables, m_target_index and gen_var, are required"
-        else:
+        elif args.dataset_version is None:
             args.domain = get_domain_on_CDSW_env(args.domain)
             args = scp.ScriptParameters(args.domain, args).update_args()
+        else:  # user_defined_dataset version -not automatated tag
+            user_define_dataset_version = args.dataset_version
+            args.domain = get_domain_on_CDSW_env(args.domain)
+            args = scp.ScriptParameters(args.domain, args).update_args()
+            args.dataset_version = user_define_dataset_version
 
         (
             RUNHEADER.__dict__["m_target_index"],
