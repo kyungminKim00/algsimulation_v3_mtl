@@ -635,7 +635,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
-            RUNHEADER.__dict__["c_epoch"] = 80
+            RUNHEADER.__dict__["c_epoch"] = 50
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
@@ -643,7 +643,7 @@ def configure_header(args):
                 "m_offline_learning_rate"
             ] = 2e-4  # a made decision 5e-4 -> 3e-4 -> 5e-6 -> 5e-5 -> 5e-4
             RUNHEADER.__dict__["m_min_learning_rate"] = 2e-4  # 7e-6 ->  1e-5
-            RUNHEADER.__dict__["m_vf_coef"] = 0.01  # [1] 1 -> 0.02
+            RUNHEADER.__dict__["m_vf_coef"] = 0.2  # [1] 1 -> 0.01(너무늦음) -> 0.2
             RUNHEADER.__dict__["m_ent_coef"] = 0
             RUNHEADER.__dict__["m_pi_coef"] = 1  # [1] 0.7 -> 1
             RUNHEADER.__dict__[

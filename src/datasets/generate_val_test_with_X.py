@@ -18,20 +18,12 @@ import sys
 from collections import OrderedDict
 
 import bottleneck as bn
-import header.index_forecasting.RUNHEADER as RUNHEADER
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.preprocessing import RobustScaler
-from util import (
-    _remove_cond,
-    _replace_cond,
-    current_y_unit,
-    get_working_dates,
-    ordinary_return,
-    trans_val,
-)
 
+import header.index_forecasting.RUNHEADER as RUNHEADER
 from datasets import dataset_utils
 from datasets.convert_if_v1_common import (
     ReadData,
@@ -46,6 +38,14 @@ from datasets.convert_if_v1_common import (
 )
 from datasets.decoder import pkexample_type_A, pkexample_type_B
 from datasets.unit_datetype_des_check import write_var_desc
+from util import (
+    _remove_cond,
+    _replace_cond,
+    current_y_unit,
+    get_working_dates,
+    ordinary_return,
+    trans_val,
+)
 
 # import tf_slim as slim
 # slim.variable
@@ -816,7 +816,7 @@ def configure_inference_dates(dates, s_test=None, e_test=None, forward_ndx=None)
 
     if len(dates) < e_test:  # OperationMode section
         s_test = len(dates) - 1
-        dummy_dates_4_inference = list()
+        dummy_dates_4_inference = []
         datetime_obj = datetime.datetime.strptime(dates[s_test], "%Y-%m-%d")
         datetime_obj += datetime.timedelta(days=1)
         while True:
@@ -897,9 +897,22 @@ def run(
     # else:
     #     c_name = None
 
-    # var_names for the target instrument
-    c_name = OrderedDict([(int(k), v) for k, v in x_dict.items()])
+    # # var_names for the target instrument - origunal
+    # c_name = OrderedDict([(int(k), v) for k, v in x_dict.items()])
 
+    c_name = []
+    if RUNHEADER.use_c_name:
+        for market in list(RUNHEADER.mkidx_mkname.values()):
+            file_str = f"{RUNHEADER.file_data_vars}{market}_Indices.csv"
+            c_name.append(file_str)
+            assert os.path.isfile(
+                file_str
+            ), f"not exist selected variables for {market}"
+    else:
+        c_name = None
+
+    c_name = OrderedDict([(int(k), v) for k, v in x_dict.items()])
+    val_test_with_X = True
     # Version 1: using fund raw data (csv)
     (
         dates,
@@ -908,7 +921,12 @@ def run(
         returns,
         ids_to_class_names,
         ids_to_var_names,
-    ) = splite_rawdata_v1(index_price=index_price, y_index=y_index, c_name=c_name)
+    ) = splite_rawdata_v1(
+        index_price=index_price,
+        y_index=y_index,
+        c_name=c_name,
+        val_test_with_X=val_test_with_X,
+    )
 
     (
         dates_new,

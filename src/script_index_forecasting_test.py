@@ -97,6 +97,10 @@ def run(
     RUNHEADER.__dict__["s_test"] = None
     RUNHEADER.__dict__["e_test"] = None
     RUNHEADER.__dict__["use_var_mask"] = True
+    RUNHEADER.__dict__[
+        "use_c_name"
+    ] = True  # use manual assigned variables for generate_val_test_with_X.py
+
     # RUNHEADER.__dict__["m_warm_up_4_inference"] = RUNHEADER.forward_ndx
     # RUNHEADER.__dict__["m_warm_up_4_inference"] = 6
 
@@ -151,7 +155,8 @@ def run(
     # use predefined base model
     dir_name = _model_location
     for file_name in copy_file:
-        shutil.copy2(dir_name + file_name, target_list[-7] + file_name)
+        # shutil.copy2(dir_name + file_name, target_list[-7] + file_name)
+        shutil.copy2(dir_name + file_name, target_list[2] + file_name)
 
     # check _dataset_dir in operation mode
     (
@@ -175,7 +180,7 @@ def run(
     )
     assert RUNHEADER.forward_ndx == forward_ndx, "Forward_ndx should be the same"
 
-    print("\n[{}] Data Set Creation ...".format(m_name))
+    print(f"\n[{m_name}] Data Set Creation ...")
     tf_val, tf_test = generate_val_test_with_X.run(
         x_dict, s_test, e_test, None, "index_forecasting", forward_ndx
     )
@@ -324,7 +329,7 @@ if __name__ == "__main__":
         # parser.add_argument("--domain", type=str, default="TOTAL_20")
 
         # # Debug - experimental
-        # parser.add_argument("--process_id", type=int, default=2)
+        # parser.add_argument("--process_id", type=int, default=3)
         # parser.add_argument("--m_target_index", type=int, default=None)
         # parser.add_argument("--forward_ndx", type=int, default=None)
         # parser.add_argument("--actual_inference", type=int, default=0)
@@ -436,12 +441,12 @@ if __name__ == "__main__":
                         _result,
                     ) = selected_model
 
-                    # final model evaluation with confidence score
-                    if enable_confidence:
-                        f_test_model = None  # Disable to calculate confidence score
-                        _, print_foot_note, _ = run(
-                            args, json_location, time_now, None, selected_model
-                        )  # inference - get performences to calculate confidence score for the final model
+                    # # final model evaluation with confidence score
+                    # if enable_confidence:
+                    #     f_test_model = None  # Disable to calculate confidence score
+                    #     _, print_foot_note, _ = run(
+                    #         args, json_location, time_now, None, selected_model
+                    #     )  # inference - get performences to calculate confidence score for the final model
 
                     # adhoc-process - confidence and align reg and classifier
                     target_name = RUNHEADER.target_id2name(args.m_target_index)
@@ -475,13 +480,13 @@ if __name__ == "__main__":
                     sc.run_adhoc()
                     pd.set_option("mode.chained_assignment", "warn")
 
-                # print test environments
-                if enable_confidence:
-                    print(f"\nEnvs ID: {print_foot_note['_env_name']}")
-                    print(f"Data Set Number: {print_foot_note['_cv_number']}")
-                    print(f"Num Agents: {print_foot_note['_n_cpu']}")
-                    print(f"Num Step: {print_foot_note['_n_step']}")
-                    print(f"Result Directory: {print_foot_note['exp_result']}")
+                # # print test environments
+                # if enable_confidence:
+                #     print(f"\nEnvs ID: {print_foot_note['_env_name']}")
+                #     print(f"Data Set Number: {print_foot_note['_cv_number']}")
+                #     print(f"Num Agents: {print_foot_note['_n_cpu']}")
+                #     print(f"Num Step: {print_foot_note['_n_step']}")
+                #     print(f"Result Directory: {print_foot_note['exp_result']}")
         else:
             """
             Intermediate model inference section to evaluate the model performence for a current best model

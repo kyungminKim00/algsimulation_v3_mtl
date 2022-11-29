@@ -587,6 +587,7 @@ class Script:
                     if item.selected == 99:  # alternative rule - Disabled
                         m_pass = True
 
+                # m_pass = True
                 if m_pass:
                     selected_model.append(item.tolist())
                     for market_name in list(RUNHEADER.mkidx_mkname.values()):

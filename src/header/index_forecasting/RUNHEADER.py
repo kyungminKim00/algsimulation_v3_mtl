@@ -4,7 +4,7 @@ import numpy as np
 
 """ Agent parameter
 """
-_debug_on: bool = False
+_debug_on: bool = True
 full_tensorboard_log: bool = False
 disable_derived_vars: bool = True
 m_on_validation: bool = False

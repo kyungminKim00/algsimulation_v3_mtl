@@ -11,6 +11,9 @@ import numpy as np
 import pandas as pd
 import ray
 import statsmodels.api as sm
+
+from datasets.unit_datetype_des_check import write_var_desc
+from datasets.windowing import fun_cross_cov, rolling_apply_cross_cov
 from header.index_forecasting import RUNHEADER
 from util import (
     current_y_unit,
@@ -18,9 +21,6 @@ from util import (
     get_working_dates,
     ordinary_return,
 )
-
-from datasets.unit_datetype_des_check import write_var_desc
-from datasets.windowing import fun_cross_cov, rolling_apply_cross_cov
 
 _NUM_SHARDS = 5
 
@@ -728,7 +728,9 @@ def get_index_df(index_price=None, ids_to_var_names=None, c_name=None):
     )
 
 
-def splite_rawdata_v1(index_price=None, y_index=None, c_name=None):
+def splite_rawdata_v1(
+    index_price=None, y_index=None, c_name=None, val_test_with_X=False
+):
     index_df = pd.read_csv(index_price)
     index_df = index_df.ffill(axis=0)
     index_df = index_df.bfill(axis=0)
@@ -765,20 +767,36 @@ def splite_rawdata_v1(index_price=None, y_index=None, c_name=None):
         returns[:, y_idx] = rtn[:, y_idx]
 
     rtn_tuple = (None, None, None, None, None, None)
-    if c_name is not None:
-        for c_name_var in c_name:
-            _sd_data, _ids_to_var_names = get_index_df(
-                sd_data, ids_to_var_names, c_name_var
-            )
+    if val_test_with_X:
+        val_test_df = [
+            _get_index_df(v, sd_data, ids_to_var_names) for k, v in c_name.items()
+        ]
+        _sd_data = np.array(val_test_df, dtype=np.float32).T
+        _ids_to_var_names = c_name
+        rtn_tuple = (
+            dates,
+            copy.deepcopy(_sd_data),
+            y_index_data,
+            returns,
+            ids_to_class_names,
+            copy.deepcopy(_ids_to_var_names),
+        )
 
-            if "data_vars_TOTAL_Indices.csv" in c_name_var:
-                rtn_tuple = (
-                    dates,
-                    copy.deepcopy(_sd_data),
-                    y_index_data,
-                    returns,
-                    ids_to_class_names,
-                    copy.deepcopy(_ids_to_var_names),
+    else:
+        if c_name is not None:
+            for c_name_var in c_name:
+                _sd_data, _ids_to_var_names = get_index_df(
+                    sd_data, ids_to_var_names, c_name_var
                 )
+
+                if "data_vars_TOTAL_Indices.csv" in c_name_var:
+                    rtn_tuple = (
+                        dates,
+                        copy.deepcopy(_sd_data),
+                        y_index_data,
+                        returns,
+                        ids_to_class_names,
+                        copy.deepcopy(_ids_to_var_names),
+                    )
 
     return rtn_tuple
