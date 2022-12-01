@@ -283,6 +283,7 @@ class A2C(ActorCriticRLModel):
                             tf.compat.v1.GraphKeys.REGULARIZATION_LOSSES
                         )
                     )
+                    # self.entropy is for the exploration so that disable it on this task
                     loss_1 = self.pg_loss * self.pi_coef - self.entropy * self.ent_coef
                     loss_2 = self.vf_loss * self.vf_coef
                     loss = loss_1 + loss_2 + reg_loss_1
@@ -1440,7 +1441,7 @@ class A2C(ActorCriticRLModel):
                 )  # explained_var
 
                 if RUNHEADER._debug_on:
-                    if epoch >= RUNHEADER.c_epoch:
+                    if (int(epoch) % 5) == 1:
                         self.save(model_name)
                 else:
                     if (epoch >= RUNHEADER.c_epoch) and ((int(epoch) % 2) == 1):

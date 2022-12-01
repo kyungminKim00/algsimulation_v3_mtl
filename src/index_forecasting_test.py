@@ -131,7 +131,9 @@ def meta_info(_model_location, _dataset_dir):
     #     infer_set = ["test", "validation"]  # TRAIN_WITH_VAL_D
     # else:
     #     assert False, "Not defined yet!!!"
-    infer_set = ["test", "validation"]
+
+    # infer_set = ["test", "validation"]
+    infer_set = ["validation", "test"]
 
     return n_step, cv_number, n_cpu, env_name, file_pattern, infer_set
 
@@ -234,7 +236,8 @@ class Script:
 
         # naive filter for a model
         if b_naive:
-            filenames = naive_filter(filenames)
+            # filenames = naive_filter(filenames)
+            pass
         is_graph_def_loaded = False
         for _model in filenames:
             """Inference"""

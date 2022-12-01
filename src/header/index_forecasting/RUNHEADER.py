@@ -81,7 +81,7 @@ blind_set_seq: int = 500
 m_cv_number: int = 0
 m_inference_buffer: int = 6
 m_n_cpu: int = 1
-m_n_step: int = 7  # 20 -> 10 -> 7
+m_n_step: int = 5  # 20 -> 10 -> 7
 m_verbose: int = 1
 m_warm_up_4_inference: int = int(m_inference_buffer)
 m_augmented_sample: int = int(40 / 4)  # (40samples / 4strides) = 10samples(2 months)
@@ -123,8 +123,8 @@ m_cov_factor: int = 0  # it may need extra model
 m_learning_rate: float = 5e-3  # default start convergence from 450 updates
 m_offline_learning_rate: float = 5e-4  # fixed learning rate for offline learning
 m_min_learning_rate: float = 7e-6  # tuning  7e-5 -> 7e-7  -> 7e-6
-m_lstm_hidden: int = 1  # 1 for 256
-m_num_features: int = 1  # 1 for 512
+m_lstm_hidden: int = 0.25  # 1 for 256
+m_num_features: int = 0.5  # 1 for 512
 cyclic_lr_min: float = float(2e-4 * 2.5)
 cyclic_lr_max: float = float(2e-4 * 4)
 

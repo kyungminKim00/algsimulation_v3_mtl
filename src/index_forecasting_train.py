@@ -593,7 +593,7 @@ def configure_header(args):
             RUNHEADER.__dict__["m_vf_coef"] = 1
             RUNHEADER.__dict__["m_vf_coef_2"] = 1
             RUNHEADER.__dict__["m_ent_coef"] = 0
-            RUNHEADER.__dict__["m_pi_coef"] = 0.5
+            RUNHEADER.__dict__["m_pi_coef"] = 0.1
             RUNHEADER.__dict__[
                 "m_max_grad_norm"
             ] = 0.5  # [0.5 | None]  # a made decision
@@ -626,8 +626,8 @@ def configure_header(args):
             RUNHEADER.__dict__["m_offline_learning_epoch"] = 900
             RUNHEADER.__dict__["warm_up_update"] = 1000
             RUNHEADER.__dict__["cosine_lr"] = True
-            RUNHEADER.__dict__["cyclic_lr_min"] = 4e-4  # [1] 2e-4 -> 4e-4
-            RUNHEADER.__dict__["cyclic_lr_max"] = 2e-3  # [1] 6e-4 -> 2e-3
+            RUNHEADER.__dict__["cyclic_lr_min"] = 5e-4  # [1] 5e-4
+            RUNHEADER.__dict__["cyclic_lr_max"] = 9e-4  # [1] 9e-4
 
             RUNHEADER.__dict__["m_on_validation"] = False
             RUNHEADER.__dict__["dynamic_lr"] = True  # made a decision True -> False
@@ -635,7 +635,7 @@ def configure_header(args):
             RUNHEADER.__dict__["grad_norm"] = False
             RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
             RUNHEADER.__dict__["m_validation_interval"] = 600
-            RUNHEADER.__dict__["c_epoch"] = 50
+            RUNHEADER.__dict__["c_epoch"] = 10
             RUNHEADER.__dict__["m_validation_min_epoch"] = 0
             RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
             # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
@@ -643,9 +643,9 @@ def configure_header(args):
                 "m_offline_learning_rate"
             ] = 2e-4  # a made decision 5e-4 -> 3e-4 -> 5e-6 -> 5e-5 -> 5e-4
             RUNHEADER.__dict__["m_min_learning_rate"] = 2e-4  # 7e-6 ->  1e-5
-            RUNHEADER.__dict__["m_vf_coef"] = 0.2  # [1] 1 -> 0.01(너무늦음) -> 0.2
+            RUNHEADER.__dict__["m_vf_coef"] = 1  # [1] 1
             RUNHEADER.__dict__["m_ent_coef"] = 0
-            RUNHEADER.__dict__["m_pi_coef"] = 1  # [1] 0.7 -> 1
+            RUNHEADER.__dict__["m_pi_coef"] = 0.8  # [1] 0.8
             RUNHEADER.__dict__[
                 "m_max_grad_norm"
             ] = 0.5  # [0.5 | None]  # a made decision

@@ -326,7 +326,7 @@ class IndexForecastingEnv(gym.Env):
     def _get_observation_from_sample(self, sample):
         return sample["structure/predefined_observation_total"]
 
-    @lru_cache(maxsize=RUNHEADER.m_n_step)
+    @lru_cache(maxsize=RUNHEADER.m_n_step*10)
     def next_timestamp(self, current_episode_idx=0, current_step=0, init=False) -> None:
         self.sample = None
 

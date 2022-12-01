@@ -244,23 +244,23 @@ def shakenet(scaled_images, is_training=False, **kwargs):
             net = block_residual_layer(net, 64, 5, [1, 1], is_training=is_training)
             # 5 X 20 X 128
             net = block_residual_layer(net, 128, 5, [1, 2], is_training=is_training)
-            # 5 X 10 X 256
-            net = block_residual_layer(net, 256, 5, [2, 2], is_training=is_training)
+            # 5 X 10 X 128
+            net = block_residual_layer(net, 128, 5, [2, 2], is_training=is_training)
 
-            # 3 X 5 X 256
+            # 3 X 5 X 128
             net = tf.nn.relu(net)
 
-            # 3 x 5 x 256
+            # 3 x 5 x 128
             with tf.compat.v1.variable_scope("Feature_out"):
                 kernel_size = net.get_shape()[1:3]
                 if kernel_size.is_fully_defined():
-                    # 3 X 5 X 256
+                    # 3 X 5 X 128
                     net = slim.avg_pool2d(
                         net, kernel_size, padding="VALID", scope="AvgPool_1a_3x3"
                     )
-                # 1 X 1 x 256
+                # 1 X 1 x 128
                 net = slim.flatten(net)
-                # 256
+                # 128
                 net = slim.dropout(
                     net, RUNHEADER.m_drop_out, is_training=is_training, scope="Dropout"
                 )

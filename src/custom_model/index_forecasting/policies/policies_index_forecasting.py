@@ -2,10 +2,12 @@ import warnings
 from abc import ABC
 from itertools import zip_longest
 
-import header.index_forecasting.RUNHEADER as RUNHEADER
 import numpy as np
 import tensorflow as tf
 import tf_slim as slim
+from gym.spaces import Discrete, MultiDiscrete
+
+import header.index_forecasting.RUNHEADER as RUNHEADER
 from custom_model.index_forecasting.common.input import observation_input
 from custom_model.index_forecasting.common.utils import (
     batch_to_seq,
@@ -21,7 +23,6 @@ from custom_model.index_forecasting.policies.distributions_v1 import (
     make_proba_dist_type,
 )
 from custom_model.index_forecasting.policies.net_factory import net_factory
-from gym.spaces import Discrete, MultiDiscrete
 
 default_cnn = net_factory()
 
@@ -368,7 +369,7 @@ class LstmPolicy(ActorCriticPolicy):
         layer_norm=False,
         feature_extraction="cnn",
         is_training=False,
-        **kwargs
+        **kwargs,
     ):
         super(LstmPolicy, self).__init__(
             sess,
@@ -452,47 +453,54 @@ class LstmPolicy(ActorCriticPolicy):
                     )
                 else:
                     # Create non share representations(value and policy) from the shared representation  version 1
-                    rnn_output_value_fn = slim.layer_norm(
-                        linear(
-                            rnn_output,
-                            "vf_latent",
-                            rnn_output.shape[-1],
-                            init_scale=np.sqrt(2),
-                        ),
-                        scale=False,
-                        activation_fn=act_fun,
-                    )
-                    rnn_output_policy = slim.layer_norm(
-                        linear(
-                            rnn_output,
-                            "pi_latent",
-                            rnn_output.shape[-1],
-                            init_scale=np.sqrt(2),
-                        ),
-                        scale=False,
-                        activation_fn=act_fun,
-                    )
+                    latent_layer = None
+                    for k in list(RUNHEADER.mkname_mkidx.keys()):
+                        if k != "TOTAL":
+                            latent_layer = slim.layer_norm(
+                                linear(
+                                    rnn_output,
+                                    f"{k}_latent",
+                                    rnn_output.shape[-1],
+                                    init_scale=np.sqrt(2),
+                                ),
+                                scale=False,
+                                activation_fn=act_fun,
+                            )
+                        if len(latent_layer) == 0:
+                            concat_layer = latent_layer
+                        else:
+                            concat_layer = tf.concat(
+                                values=[concat_layer, latent_layer], axis=0
+                            )
 
-                    rnn_output_value_fn = rnn_output + rnn_output_value_fn
-                    rnn_output_policy = rnn_output + rnn_output_policy
+                    # Todo: later on fix - tf.masking 응용 고려
+                    # target market to learn
+                    latent_layer_dim = latent_layer.shape[-1]
+                    learn_target = tf.zeros([concat_layer.shape[-1]])
 
-                    value_fn = linear(rnn_output_value_fn, "vf", RUNHEADER.mtl_target)
+                    # Todo: later on fix - tf.masking 응용 고려
+                    self.learn_target_ph = None
 
-                    # not yet performed
-                    # # Create non share representations(value and policy) from the shared representation  version 2
-                    # rnn_output_value_fn = slim.layer_norm(
-                    #     linear(rnn_output, 'vf_latent', rnn_output.shape[-1], init_scale=np.sqrt(2)), activation_fn=act_fun)
-                    # rnn_output_policy = slim.layer_norm(
-                    #     linear(rnn_output, 'pi_latent', rnn_output.shape[-1], init_scale=np.sqrt(2)), activation_fn=act_fun)
-                    #
-                    # value_fn = linear(rnn_output_value_fn, 'vf', RUNHEADER.mtl_target)
+                    if self.learn_target_ph == 0:
+                        learn_target[:latent_layer_dim] = 1
+                    else:
+                        learn_target[
+                            latent_layer_dim
+                            * self.learn_target_ph : latent_layer_dim
+                            * (self.learn_target_ph + 1)
+                        ] = 1
+
+                    concat_layer = tf.multiply(concat_layer, learn_target)
+
+                    # function
+                    value_fn = linear(concat_layer, "vf", RUNHEADER.mtl_target)
 
                     (
                         self.proba_distribution,
                         self.policy,
                         self.q_value,
                     ) = self.pdtype.proba_distribution_from_latent(
-                        rnn_output_policy, rnn_output_value_fn
+                        concat_layer, concat_layer
                     )
 
             self.value_fn = value_fn
@@ -704,7 +712,7 @@ class FeedForwardPolicy(ActorCriticPolicy):
         act_fun=tf.tanh,
         cnn_extractor=default_cnn,
         feature_extraction="cnn",
-        **kwargs
+        **kwargs,
     ):
         super(FeedForwardPolicy, self).__init__(
             sess,
@@ -802,7 +810,7 @@ class CnnPolicy(FeedForwardPolicy):
             n_batch,
             reuse,
             feature_extraction="cnn",
-            **_kwargs
+            **_kwargs,
         )
 
 
@@ -832,7 +840,7 @@ class CnnLstmPolicy(LstmPolicy):
         n_batch,
         n_lstm=256,
         reuse=False,
-        **_kwargs
+        **_kwargs,
     ):
         super(CnnLstmPolicy, self).__init__(
             sess,
@@ -845,7 +853,7 @@ class CnnLstmPolicy(LstmPolicy):
             reuse,
             layer_norm=False,
             feature_extraction="cnn",
-            **_kwargs
+            **_kwargs,
         )
 
 
@@ -874,7 +882,7 @@ class CnnLnLstmPolicy(LstmPolicy):
         n_batch,
         n_lstm=256,
         reuse=False,
-        **_kwargs
+        **_kwargs,
     ):
         super(CnnLnLstmPolicy, self).__init__(
             sess,
@@ -887,7 +895,7 @@ class CnnLnLstmPolicy(LstmPolicy):
             reuse,
             layer_norm=True,
             feature_extraction="cnn",
-            **_kwargs
+            **_kwargs,
         )
 
 
@@ -917,7 +925,7 @@ class MlpPolicy(FeedForwardPolicy):
             n_batch,
             reuse,
             feature_extraction="mlp",
-            **_kwargs
+            **_kwargs,
         )
 
 
@@ -946,7 +954,7 @@ class MlpLstmPolicy(LstmPolicy):
         n_batch,
         n_lstm=256,
         reuse=False,
-        **_kwargs
+        **_kwargs,
     ):
         super(MlpLstmPolicy, self).__init__(
             sess,
@@ -959,7 +967,7 @@ class MlpLstmPolicy(LstmPolicy):
             reuse,
             layer_norm=False,
             feature_extraction="mlp",
-            **_kwargs
+            **_kwargs,
         )
 
 
@@ -988,7 +996,7 @@ class MlpLnLstmPolicy(LstmPolicy):
         n_batch,
         n_lstm=256,
         reuse=False,
-        **_kwargs
+        **_kwargs,
     ):
         super(MlpLnLstmPolicy, self).__init__(
             sess,
@@ -1001,7 +1009,7 @@ class MlpLnLstmPolicy(LstmPolicy):
             reuse,
             layer_norm=True,
             feature_extraction="mlp",
-            **_kwargs
+            **_kwargs,
         )
 
 
