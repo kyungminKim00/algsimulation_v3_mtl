@@ -13,6 +13,7 @@ import bottleneck as bn
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import ray
 
 # import matplotlib
 # matplotlib.use('agg')
@@ -566,7 +567,244 @@ def get_res_by_market(data, market_idx):
     return np.array(res, dtype=np.object)
 
 
+@ray.remote
+def ray_performence(
+    tmp_info,
+    save_dir,
+    model_name,
+    split_name,
+    market_idx,
+    predefined_std_index,
+    predefined_std_return,
+    current_model,
+):
+    """File out information"""
+    # res_info = np.array(res_info, dtype=np.object)
+    res_info = get_res_by_market(tmp_info, market_idx)
+    market_name = RUNHEADER.mkidx_mkname[market_idx]
+
+    df = pd.DataFrame(
+        data=res_info,
+        columns=[
+            "P_Date",
+            "P_index",
+            "Index",
+            "P_return",
+            "Return",
+            "P_20days",
+            "20days",
+            "today_index",
+        ],
+    )
+
+    if split_name == "test":
+        rtn = list(df["Return"])
+        p_rtn = list(df["P_return"])
+    else:
+        rtn = list(df["Return"][-10:])
+        p_rtn = list(df["P_return"][-10:])
+
+    # up/down performance
+    total = len(res_info)
+    correct_percent = 1 - (
+        np.sum(
+            np.abs(
+                np.array(res_info[:, 6].tolist()) - np.array(res_info[:, 5].tolist())
+            )
+        )
+        / total
+    )
+    try:
+        aa = res_info[:, 6].tolist()
+        bb = res_info[:, 5].tolist()
+        if np.allclose(aa, bb):
+            if len(np.unique(aa)) == 1:
+                aa = aa + [1]
+                bb = bb + [1]
+        summary_detail = classification_report(aa, bb, target_names=["Down", "Up"])
+    except ValueError:
+        summary_detail = None
+
+    summary = f1_score(
+        np.array(res_info[:, 6], dtype=np.int).tolist(),
+        np.array(res_info[:, 5], dtype=np.int).tolist(),
+        average="weighted",
+    )
+
+    consistency = 1 - (
+        np.sum(
+            np.abs(
+                np.where(np.array(res_info[:, 3].tolist()) > 0, 1, 0)
+                - np.array(res_info[:, 5].tolist())
+            )
+        )
+        / total
+    )
+
+    # up/down from index forecasting
+    direction_from_regression = np.where(res_info[:, 3] > 0, 1, 0).tolist()
+    direction_real = np.diff(res_info[:, 4])
+    direction_prediction = np.diff(res_info[:, 3])
+    direction_real = np.append([direction_real[0]], direction_real)
+    direction_prediction = np.append([np.zeros(1)], direction_prediction)
+    direction_real_label = np.where(direction_real > 0, 1, 0)
+    direction_prediction_label = np.where(direction_prediction > 0, 1, 0)
+    direction_f1 = f1_score(
+        np.array(direction_real_label, dtype=np.int).tolist(),
+        np.array(direction_prediction_label, dtype=np.int).tolist(),
+        average="weighted",
+    )
+
+    # returns error
+    mse = mean_squared_error(res_info[:, 4].tolist(), res_info[:, 3].tolist())
+
+    # ev
+    ev = 1 - np.var(res_info[:, 4] - res_info[:, 3]) / np.var(res_info[:, 4])
+
+    # ev for unseen validation only
+    if split_name != "test":  # validation
+        mse = mean_squared_error(res_info[-20:, 4].tolist(), res_info[-20:, 3].tolist())
+        ev = 1 - np.var(res_info[-20:, 4] - res_info[-20:, 3]) / np.var(
+            res_info[-20:, 4]
+        )
+        consistency = 1 - (
+            np.sum(
+                np.abs(
+                    np.where(np.array(res_info[-20:, 3].tolist()) > 0, 1, 0)
+                    - np.array(res_info[-20:, 5].tolist())
+                )
+            )
+            / total
+        )
+        # regression up/down
+        direction_real = np.diff(res_info[-20:, 4])
+        direction_prediction = np.diff(res_info[-20:, 3])
+        direction_real = np.append([direction_real[0]], direction_real)
+        direction_prediction = np.append([np.zeros(1)], direction_prediction)
+        direction_real_label = np.where(direction_real > 0, 1, 0)
+        direction_prediction_label = np.where(direction_prediction > 0, 1, 0)
+        direction_f1 = f1_score(
+            np.array(direction_real_label, dtype=np.int).tolist(),
+            np.array(direction_prediction_label, dtype=np.int).tolist(),
+            average="weighted",
+        )
+
+    """File out
+    """
+    # save csv (total performance)
+    prefix = f"{save_dir}/{market_name}"
+    if not os.path.isdir(prefix):
+        os.makedirs(prefix)
+    prefix = f"{prefix}/{current_model}"
+
+    df.to_csv(
+        f"{prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{summary:3.2}___{mse:3.2}_{direction_f1:3.2}__{ev:3.2}.csv"
+    )
+
+    """Plot
+    """
+    if not RUNHEADER.m_bound_estimation:  # band with y prediction
+        plot_prediction_band(
+            res_info,
+            prefix,
+            current_model,
+            consistency,
+            correct_percent,
+            summary,
+            mse,
+            direction_f1,
+            ev,
+            direction_from_regression,
+            total,
+            predefined_std_return,
+            predefined_std_index,
+            market_name,
+        )
+
+    # band with y prediction
+    else:  # plot bound type 1 (this method takes tremendous time so not in use for now)
+        assert False, "not defined yet, RUNHEADER.m_bound_estimation should be False"
+
+    # text out for classification result
+    with open(
+        f"{prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{summary:3.2}___{mse:3.2}_{direction_f1:3.2}.txt",
+        "w",
+    ) as txt_fp:
+        print(summary_detail, file=txt_fp)
+        txt_fp.close()
+
+    return {
+        "consistency": consistency,
+        "correct_percent": correct_percent,
+        "summary": summary,
+        "mse": mse,
+        "ev": ev,
+        "direction_f1": direction_f1,
+        "rtn": rtn,
+        "p_rtn": p_rtn,
+    }
+
+
 def plot_save_validation_performence(tmp_info, save_dir, model_name, split_name="test"):
+
+    predefined_std_index = pd.read_csv(
+        f"{RUNHEADER.predefined_std}{RUNHEADER.forward_ndx}_index.csv"
+    )
+    predefined_std_return = pd.read_csv(
+        f"{RUNHEADER.predefined_std}{RUNHEADER.forward_ndx}_return.csv"
+    )
+
+    # current_model name
+    current_model = model_name.split("/")[-1]
+    current_model = current_model.split(".pkl")[0]
+    current_model = current_model.split("_")
+    current_model.remove(current_model[5])
+    current_model = "_".join(current_model)
+
+    res = [
+        ray_performence.remote(
+            tmp_info,
+            save_dir,
+            model_name,
+            split_name,
+            market_idx,
+            predefined_std_index,
+            predefined_std_return,
+            current_model,
+        )
+        for market_idx in range(RUNHEADER.mtl_target)
+    ]
+    res = ray.get(res)
+
+    total = {}
+    for item_dict in res:
+        for k, v in item_dict.items():
+            try:
+                total[k] = total[k] + [v]
+            except KeyError:
+                total[k] = [v]
+
+    # file out total summary
+    total_prefix = f"{save_dir}/{current_model}"
+    consistency = np.mean(np.array(total["consistency"]))
+    correct_percent = np.mean(np.array(total["correct_percent"]))
+    f1 = np.mean(np.array(total["summary"]))
+    mse = np.mean(np.array(total["mse"]))
+    ev = np.mean(np.array(total["ev"]))
+    direction_f1 = np.mean(np.array(total["direction_f1"]))
+    total_rtn = np.array(total["rtn"]).reshape(-1)
+    total_p_rtn = np.array(total["p_rtn"]).reshape(-1)
+
+    pd.DataFrame(
+        data=np.array([total_rtn, total_p_rtn]).T, columns=["Return", "P_return"]
+    ).to_csv(
+        f"{total_prefix}_C_{consistency:3.2}___{correct_percent:3.2}_{f1:3.2}___{mse:3.2}_{direction_f1:3.2}__{ev:3.2}.csv"
+    )
+
+
+def Original_RAY_적용전_plot_save_validation_performence(
+    tmp_info, save_dir, model_name, split_name="test"
+):
     # toal performence
     (
         total_consistency,

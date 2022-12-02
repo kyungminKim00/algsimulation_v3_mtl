@@ -300,16 +300,11 @@ if _debug_on:
     img_jpeg: Dict[str, int] = {
         "width": 1860,
         "height": 980,
-        "dpi": 600,
+        "dpi": int(600 * 0.1),
     }  # full_jpeg = {'width': 1860, 'height': 980]
 else:
-    img_jpeg: Dict[str, int] = {
-        "width": 1860,
-        "height": 980,
-        "dpi": 600,
+    img_jpeg = {
+        "width": 18,
+        "height": 10,
+        "dpi": 10,
     }  # full_jpeg = {'width': 1860, 'height': 980]
-    # img_jpeg = {
-    #     "width": 18,
-    #     "height": 10,
-    #     "dpi": 10,
-    # }  # full_jpeg = {'width': 1860, 'height': 980]

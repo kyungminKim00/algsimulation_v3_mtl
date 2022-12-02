@@ -4,6 +4,7 @@ import datetime
 import os
 import sys
 import time
+from collections import OrderedDict
 
 import gym
 import numpy as np
@@ -310,7 +311,7 @@ class A2C(ActorCriticRLModel):
                         tf.compat.v1.summary.scalar("loss_2", loss_2)
                         tf.compat.v1.summary.scalar("reg_loss_1", reg_loss_1)
 
-                #  Make sure update_ops are computed before total_loss.
+                #  Make sure                                                                                                                                                                                                                                                                                                                                                                                                     are computed before total_loss.
                 update_ops = ops.get_collection(ops.GraphKeys.UPDATE_OPS, "train_model")
                 if update_ops:
                     with ops.control_dependencies(update_ops):
@@ -500,10 +501,18 @@ class A2C(ActorCriticRLModel):
 
     @funTime("weight_load_ph")
     def weight_load_ph(self, weights):
-        for load_op, load_placeholder, weight in zip(
+        # for load_op, load_placeholder, weight in zip(
+        #     self.weights_load_op, self.weights_load_placeholder, weights
+        # ):
+        #     self.sess.run(load_op, {load_placeholder: weight})
+
+        load_op, load_placeholder = [], OrderedDict()
+        for _load_op, _load_placeholder, _weight in zip(
             self.weights_load_op, self.weights_load_placeholder, weights
         ):
-            self.sess.run(load_op, {load_placeholder: weight})
+            load_op.append(_load_op)
+            load_placeholder[_load_placeholder] = _weight
+        self.sess.run(load_op, load_placeholder)
 
     def _train_step(
         self,
@@ -543,6 +552,7 @@ class A2C(ActorCriticRLModel):
         advs = rewards - values
         explained_var = explained_variance(values, rewards)
         loss_bias = None
+
         if RUNHEADER.m_online_buffer:
             self.cur_lr = None
             for _ in range(len(obs)):

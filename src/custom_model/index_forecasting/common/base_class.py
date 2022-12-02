@@ -1,21 +1,22 @@
-from abc import ABC, abstractmethod
-import os
 import glob
+import os
 import warnings
+from abc import ABC, abstractmethod
 
+import _pickle as pickle
 import cloudpickle
-import numpy as np
 import gym
+import numpy as np
 import tensorflow as tf
 
-from rllearn.common.policies import LstmPolicy, get_policy_from_name, ActorCriticPolicy
+import logger
 from custom_model.index_forecasting.common import set_global_seeds
 from custom_model.index_forecasting.common.vec_env import (
-    VecEnvWrapper,
-    VecEnv,
     DummyVecEnv,
+    VecEnv,
+    VecEnvWrapper,
 )
-import logger
+from rllearn.common.policies import ActorCriticPolicy, LstmPolicy, get_policy_from_name
 
 
 class BaseRLModel(ABC):
@@ -280,10 +281,12 @@ class BaseRLModel(ABC):
                 save_path += ".pkl"
 
             with open(save_path, "wb") as file_:
-                cloudpickle.dump((data, params), file_)
+                # cloudpickle.dump((data, params), file_)
+                pickle.dump((data, params), file_)
         else:
             # Here save_path is a file-like object, not a path
-            cloudpickle.dump((data, params), save_path)
+            # cloudpickle.dump((data, params), save_path)
+            pickle.dump((data, params), save_path)
 
     @staticmethod
     def _load_from_file(load_path):
@@ -297,10 +300,12 @@ class BaseRLModel(ABC):
                     )
 
             with open(load_path, "rb") as file:
-                data, params = cloudpickle.load(file)
+                # data, params = cloudpickle.load(file)
+                data, params = pickle.load(file)
         else:
             # Here load_path is a file-like object, not a path
-            data, params = cloudpickle.load(load_path)
+            # data, params = cloudpickle.load(load_path)
+            data, params = pickle.load(load_path)
 
         return data, params
 

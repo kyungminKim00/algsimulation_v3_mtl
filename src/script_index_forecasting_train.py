@@ -32,20 +32,20 @@ if __name__ == "__main__":
 
         parser = argparse.ArgumentParser("")
 
-        # # init args
-        # parser.add_argument("--m_online_buffer", type=int, default=0)
-        # parser.add_argument("--search_variables", type=int, default=0)
-        # parser.add_argument("--search_parameter", type=int, default=None)
-        # parser.add_argument("--process_id", type=int, required=True)
-        # parser.add_argument(
-        #     "--on_cloud", type=int, default=1
-        # )  # for debug test, load chunks of samples or all samples
-        # parser.add_argument("--dataset_version", type=str, default=None)
-        # parser.add_argument("--n_cpu", type=int, default=0)
-        # parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2]
-        # parser.add_argument("--forward_ndx", type=int, default=None)  # [30 | 60 | 120]
-        # parser.add_argument("--ref_pid", type=int, default=None)
-        # parser.add_argument("--domain", type=str, required=True)
+        # init args
+        parser.add_argument("--m_online_buffer", type=int, default=0)
+        parser.add_argument("--search_variables", type=int, default=0)
+        parser.add_argument("--search_parameter", type=int, default=None)
+        parser.add_argument("--process_id", type=int, required=True)
+        parser.add_argument(
+            "--on_cloud", type=int, default=1
+        )  # for debug test, load chunks of samples or all samples
+        parser.add_argument("--dataset_version", type=str, default=None)
+        parser.add_argument("--n_cpu", type=int, default=0)
+        parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2]
+        parser.add_argument("--forward_ndx", type=int, default=None)  # [30 | 60 | 120]
+        parser.add_argument("--ref_pid", type=int, default=None)
+        parser.add_argument("--domain", type=str, required=True)
 
         # # # Debug - generate buffer
         # parser.add_argument("--m_online_buffer", type=int, default=1)

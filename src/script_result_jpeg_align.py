@@ -3,8 +3,8 @@ import shutil
 
 from header.index_forecasting import RUNHEADER
 
-search_dir = "./save/result/"
-for model_name in os.listdir(search_dir):
+
+def extract(model_name):
     if len(model_name.split("_")) > 8:  # is model directoties
         for mode in ["", "validation"]:
             model_dir = (
@@ -38,3 +38,12 @@ for model_name in os.listdir(search_dir):
                                             f"{result}/{fn}",
                                             f"{target}{market_name}_{mode}_{fn}",
                                         )
+
+
+search_dir = "./save/result/"
+model_name = "IF_TOTAL_T20_20221130_1159_m7_1_v26_20221130_1225_2616/"
+if model_name == "":
+    for model_name in os.listdir(search_dir):
+        extract(model_name)
+else:
+    extract(model_name)
