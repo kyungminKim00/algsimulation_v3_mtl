@@ -261,10 +261,10 @@ def shakenet(scaled_images, is_training=False, **kwargs):
                     )
                 # 1 X 1 x 256
                 net = slim.flatten(net)
-                # 256
-                net = slim.dropout(
-                    net, RUNHEADER.m_drop_out, is_training=is_training, scope="Dropout"
-                )
+                # # 256 instead of dropout, use shake regulazaion
+                # net = slim.dropout(
+                #     net, RUNHEADER.m_drop_out, is_training=is_training, scope="Dropout"
+                # )
                 net = slim.fully_connected(
                     net,
                     int(512 * RUNHEADER.m_num_features),
