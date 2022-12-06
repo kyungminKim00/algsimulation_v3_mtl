@@ -24,7 +24,7 @@ RUN pip3 install --no-cache-dir -r /dev_env/requirements.txt
 RUN pip3 install --no-cache-dir -r /dev_env/ci_requirements.txt
 RUN /etc/init.d/ssh start
 RUN passwd -d root
-CMD ["/usr/sbin/sshd", "-D"]
 EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D"]
 
 
