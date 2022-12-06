@@ -19,4 +19,6 @@ RUN pip3 install --upgrade tf_slim
 RUN pip3 install gym==0.11.0
 RUN pip3 install --no-cache-dir -r /dev_env/requirements.txt
 RUN pip3 install --no-cache-dir -r /dev_env/ci_requirements.txt
+RUN service ssh start
 EXPOSE 22
+CMD ["/usr/sbin/sshd","-D"]
