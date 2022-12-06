@@ -1447,10 +1447,9 @@ class A2C(ActorCriticRLModel):
                 else:
                     prefix = "FT"
 
-                model_name = "{}/{}_{}_sub_epo_{}_pe{:3.3}_pl{:3.3}_vl{:3.3}_ev{:3.3}.pkl".format(
+                model_name = "{}/{}_sub_epo_{}_pe{:3.3}_pl{:3.3}_vl{:3.3}_ev{:3.3}.pkl".format(
                     model_location,
                     d_time,
-                    prefix,
                     epoch,
                     np.mean(np.array(print_out_csv)[:, 2]),
                     # policy_entropy

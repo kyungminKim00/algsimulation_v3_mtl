@@ -452,56 +452,70 @@ class LstmPolicy(ActorCriticPolicy):
                         rnn_output, rnn_output
                     )
                 else:
-                    # Create non share representations(value and policy) from the shared representation  version 1
-                    latent_layer = None
-                    for k in list(RUNHEADER.mkname_mkidx.keys()):
-                        if k != "TOTAL":
-                            latent_layer = slim.layer_norm(
-                                linear(
-                                    rnn_output,
-                                    f"{k}_latent",
-                                    rnn_output.shape[-1],
-                                    init_scale=np.sqrt(2),
-                                ),
-                                scale=False,
-                                activation_fn=act_fun,
-                            )
-                        if len(latent_layer) == 0:
-                            concat_layer = latent_layer
-                        else:
-                            concat_layer = tf.concat(
-                                values=[concat_layer, latent_layer], axis=0
-                            )
+                    value_latent = linear(rnn_output, "vf_latent", 256)
+                    policy_latent = linear(rnn_output, "pi_latent", 256)
 
-                    # Todo: later on fix - tf.masking 응용 고려
-                    # target market to learn
-                    latent_layer_dim = latent_layer.shape[-1]
-                    learn_target = tf.zeros([concat_layer.shape[-1]])
-
-                    # Todo: later on fix - tf.masking 응용 고려
-                    self.learn_target_ph = None
-
-                    if self.learn_target_ph == 0:
-                        learn_target[:latent_layer_dim] = 1
-                    else:
-                        learn_target[
-                            latent_layer_dim
-                            * self.learn_target_ph : latent_layer_dim
-                            * (self.learn_target_ph + 1)
-                        ] = 1
-
-                    concat_layer = tf.multiply(concat_layer, learn_target)
-
-                    # function
-                    value_fn = linear(concat_layer, "vf", RUNHEADER.mtl_target)
+                    value_fn = linear(value_latent, "vf", RUNHEADER.mtl_target)
 
                     (
                         self.proba_distribution,
                         self.policy,
                         self.q_value,
                     ) = self.pdtype.proba_distribution_from_latent(
-                        concat_layer, concat_layer
+                        policy_latent, policy_latent
                     )
+
+                    # alternative version - not implemented
+                    # # Create non share representations(value and policy) from the shared representation  version 1
+                    # latent_layer = None
+                    # for k in list(RUNHEADER.mkname_mkidx.keys()):
+                    #     if k != "TOTAL":
+                    #         latent_layer = slim.layer_norm(
+                    #             linear(
+                    #                 rnn_output,
+                    #                 f"{k}_latent",
+                    #                 rnn_output.shape[-1],
+                    #                 init_scale=np.sqrt(2),
+                    #             ),
+                    #             scale=False,
+                    #             activation_fn=act_fun,
+                    #         )
+                    #     if len(latent_layer) == 0:
+                    #         concat_layer = latent_layer
+                    #     else:
+                    #         concat_layer = tf.concat(
+                    #             values=[concat_layer, latent_layer], axis=0
+                    #         )
+
+                    # # Todo: later on fix - tf.masking 응용 고려
+                    # # target market to learn
+                    # latent_layer_dim = latent_layer.shape[-1]
+                    # learn_target = tf.zeros([concat_layer.shape[-1]])
+
+                    # # Todo: later on fix - tf.masking 응용 고려
+                    # self.learn_target_ph = None
+
+                    # if self.learn_target_ph == 0:
+                    #     learn_target[:latent_layer_dim] = 1
+                    # else:
+                    #     learn_target[
+                    #         latent_layer_dim
+                    #         * self.learn_target_ph : latent_layer_dim
+                    #         * (self.learn_target_ph + 1)
+                    #     ] = 1
+
+                    # concat_layer = tf.multiply(concat_layer, learn_target)
+
+                    # # function
+                    # value_fn = linear(concat_layer, "vf", RUNHEADER.mtl_target)
+
+                    # (
+                    #     self.proba_distribution,
+                    #     self.policy,
+                    #     self.q_value,
+                    # ) = self.pdtype.proba_distribution_from_latent(
+                    #     concat_layer, concat_layer
+                    # )
 
             self.value_fn = value_fn
 

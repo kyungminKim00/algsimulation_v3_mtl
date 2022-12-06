@@ -421,7 +421,7 @@ class DDPG(object):
         target_tf = tf.clip_by_value(
             batch_tf["r"] + self.gamma * target_q_pi_tf, *clip_range
         )
-
+3
         self.q_loss_tf = tf.reduce_mean(
             input_tensor=tf.square(tf.stop_gradient(target_tf) - self.main.q_tf)
         )
@@ -429,7 +429,7 @@ class DDPG(object):
         self.pi_loss_tf += self.action_l2 * tf.reduce_mean(
             input_tensor=tf.square(self.main.pi_tf / self.max_u)
         )
-
+ 
         q_grads_tf = tf.gradients(ys=self.q_loss_tf, xs=self._vars("main/Q"))
         pi_grads_tf = tf.gradients(ys=self.pi_loss_tf, xs=self._vars("main/pi"))
 
