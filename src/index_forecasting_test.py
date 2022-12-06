@@ -379,23 +379,23 @@ class Script:
         # # # adhoc-process
         # plot_util.adhoc_process(filenames, result)
 
-    def load_from_file(self, load_path):
-        if isinstance(load_path, str):
-            if not os.path.exists(load_path):
-                if os.path.exists(load_path + ".pkl"):
-                    load_path += ".pkl"
-                else:
-                    raise ValueError(f"Error: the file {load_path} could not be found")
-            with open(load_path, "rb") as file:
-                data, params = cloudpickle.load(file)
-        else:
-            # Here load_path is a file-like object, not a path
-            data, params = cloudpickle.load(load_path)
+    # def load_from_file(self, load_path):
+    #     if isinstance(load_path, str):
+    #         if not os.path.exists(load_path):
+    #             if os.path.exists(load_path + ".pkl"):
+    #                 load_path += ".pkl"
+    #             else:
+    #                 raise ValueError(f"Error: the file {load_path} could not be found")
+    #         with open(load_path, "rb") as file:
+    #             data, params = cloudpickle.load(file)
+    #     else:
+    #         # Here load_path is a file-like object, not a path
+    #         data, params = cloudpickle.load(load_path)
 
-        return data, params
+    #     return data, params
 
     def params_load(self, load_path):
-        _, params = self.load_from_file(load_path)
+        _, params = util.load_from_file(load_path)
         self.base_model.weight_load_ph(params)
 
     def learning_parameter(self, result):

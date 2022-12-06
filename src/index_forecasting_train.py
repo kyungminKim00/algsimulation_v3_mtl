@@ -83,7 +83,16 @@ class Script:
             )
         else:  # use pre-trained model
             print("\nloading model ")
-            model: A2C = A2C.load(RUNHEADER.m_pre_train_model, env)
+            model: A2C = A2C.inf_init(
+                RUNHEADER.m_pre_train_model,
+                env=env,
+                policy_kwargs={
+                    "n_lstm": int(256 * RUNHEADER.m_lstm_hidden),
+                    "is_training": True,
+                },
+            )
+            _, params = util.load_from_file(RUNHEADER.m_pre_train_model)
+            model.weight_load_ph(params)
 
         # seed=0 fix seed
         model.learn(
@@ -216,7 +225,9 @@ def configure_header(args):
         RUNHEADER.__dict__["search_parameter"] = args.search_parameter
         RUNHEADER.__dict__["m_n_cpu"] = args.n_cpu  # agent number
         # RUNHEADER.__dict__['n_off_batch'] = args.n_off_batch  # agent number
-        RUNHEADER.__dict__["m_train_mode"] = 0
+        RUNHEADER.__dict__["m_train_mode"] = args.m_train_mode
+        RUNHEADER.__dict__["m_pre_train_model"] = args.m_pre_train_model
+
         # sub1, 140 -> sub2, 70 -> sub2, 140 -> sub1, 200
         RUNHEADER.__dict__[
             "m_offline_learning_epoch"
@@ -623,11 +634,15 @@ def configure_header(args):
             # [1]: 조정이유: validatoin 데이터에서도 분류기 성능이 너무 떨어 짐
             RUNHEADER.__dict__["default_net"] = "shake_regulization_v6"
             RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
-            RUNHEADER.__dict__["m_offline_learning_epoch"] = 900
+            RUNHEADER.__dict__["m_offline_learning_epoch"] = 1500
             RUNHEADER.__dict__["warm_up_update"] = 1000
             RUNHEADER.__dict__["cosine_lr"] = True
-            RUNHEADER.__dict__["cyclic_lr_min"] = 4e-4  # [1] 5e-4
-            RUNHEADER.__dict__["cyclic_lr_max"] = 6e-4  # [1] 9e-4
+            if args.m_train_mode == 0:
+                RUNHEADER.__dict__["cyclic_lr_min"] = 6e-4  # [1] 5e-4
+                RUNHEADER.__dict__["cyclic_lr_max"] = 6e-3  # [1] 9e-4
+            else:
+                RUNHEADER.__dict__["cyclic_lr_min"] = 6e-4  # [1] 5e-4
+                RUNHEADER.__dict__["cyclic_lr_max"] = 6e-3  # [1] 9e-4
 
             RUNHEADER.__dict__["m_on_validation"] = False
             RUNHEADER.__dict__["dynamic_lr"] = True  # made a decision True -> False

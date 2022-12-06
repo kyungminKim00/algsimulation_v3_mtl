@@ -228,39 +228,40 @@ def shakenet(scaled_images, is_training=False, **kwargs):
             # Stem
             # scaled_images: (5, 20, 292, 15)
             layer_stem = [
-                block_stem(scaled_images[:, :, :, :, idx], 128, 64, f"Stem{idx}")
+                block_stem(scaled_images[:, :, :, :, idx], 512, 32, f"Stem{idx}")
                 for idx in range(scaled_images.shape[-1])
             ]
 
-            # 5 X 20 X 64, 15
+            # 5 X 20 X 32, 15
             net = tf.concat(layer_stem, 3)
+            net = block_stem(net, 480, 64, "concat_layer_1_1")
+            net = block_stem(net, 128, 64, "concat_layer_1_2")
+            net = block_stem(net, 128, 64, "concat_layer_1_3")
 
-            # 5 X 20 X 64*15
-            net = channel_wise_attn_layer(net, "concat_layer_1_1")
-            net = block_stem(net, 480, 240, "concat_layer_1_2")
-            net = block_stem(net, 120, 64, "concat_layer_1_3")
+            # 5 X 20 X 64
+            net = channel_wise_attn_layer(net, "concat_layer_2_1")
 
             # 5 X 20 X 64
             net = block_residual_layer(net, 64, 5, [1, 1], is_training=is_training)
             # 5 X 20 X 128
             net = block_residual_layer(net, 128, 5, [1, 2], is_training=is_training)
-            # 5 X 10 X 128
-            net = block_residual_layer(net, 128, 5, [2, 2], is_training=is_training)
+            # 5 X 10 X 256
+            net = block_residual_layer(net, 256, 5, [2, 2], is_training=is_training)
 
-            # 3 X 5 X 128
+            # 3 X 5 X 256
             net = tf.nn.relu(net)
 
-            # 3 x 5 x 128
+            # 3 x 5 x 256
             with tf.compat.v1.variable_scope("Feature_out"):
                 kernel_size = net.get_shape()[1:3]
                 if kernel_size.is_fully_defined():
-                    # 3 X 5 X 128
+                    # 3 X 5 X 256
                     net = slim.avg_pool2d(
                         net, kernel_size, padding="VALID", scope="AvgPool_1a_3x3"
                     )
-                # 1 X 1 x 128
+                # 1 X 1 x 256
                 net = slim.flatten(net)
-                # 128
+                # 256
                 net = slim.dropout(
                     net, RUNHEADER.m_drop_out, is_training=is_training, scope="Dropout"
                 )

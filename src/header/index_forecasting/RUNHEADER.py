@@ -84,7 +84,7 @@ m_n_cpu: int = 1
 m_n_step: int = 5  # 20 -> 10 -> 7
 m_verbose: int = 1
 m_warm_up_4_inference: int = int(m_inference_buffer)
-m_augmented_sample: int = int(40 / 4)  # (40samples / 4strides) = 10samples(2 months)
+m_augmented_sample: int = int(80 / 2)  # (40samples / 2strides) = 40samples(2 months)
 m_augmented_sample_iter: int = 5  # 3 times
 m_tensorboard_log_update: int = 200
 m_tabular_log_interval: int = 1
@@ -121,12 +121,12 @@ m_factor: float = 0.05
 m_h_factor: float = 0.15  # it may need extra model
 m_cov_factor: int = 0  # it may need extra model
 m_learning_rate: float = 5e-3  # default start convergence from 450 updates
-m_offline_learning_rate: float = 5e-4  # fixed learning rate for offline learning
+m_offline_learning_rate: float = 2e-4  # fixed learning rate for offline learning
 m_min_learning_rate: float = 7e-6  # tuning  7e-5 -> 7e-7  -> 7e-6
-m_lstm_hidden: int = 0.25  # 1 for 256
-m_num_features: int = 0.5  # 1 for 512
-cyclic_lr_min: float = float(2e-4 * 2.5)
-cyclic_lr_max: float = float(2e-4 * 4)
+m_lstm_hidden: int = 1  # 0.25 -> 1 for 256 (low validation performence)
+m_num_features: int = 1  # 0.5 -> 1 for  512 (low validation performence)
+cyclic_lr_min: float = float(2e-4)
+cyclic_lr_max: float = float(5e-4)
 
 
 """ Memory and simulation
@@ -200,8 +200,6 @@ m_pool_sample_end: int = -1
 
 m_train_mode: int = 0  # [0 | 1] 0: init train, 1: Transfer
 m_pre_train_model: str = "./save/model/rllearn/IF_Gra05_FOb3_MultiR_LR10E4_ICD_Gold_Buffer/20200205_1856_fs_epoch_4_0_pe1.53_pl1.43_vl1.15_ev0.775.pkl"
-if m_train_mode == 1:
-    m_name = m_name + "_continued"
 
 
 """Declare functions

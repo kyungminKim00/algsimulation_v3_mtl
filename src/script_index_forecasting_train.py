@@ -46,6 +46,8 @@ if __name__ == "__main__":
         parser.add_argument("--forward_ndx", type=int, default=None)  # [30 | 60 | 120]
         parser.add_argument("--ref_pid", type=int, default=None)
         parser.add_argument("--domain", type=str, required=True)
+        parser.add_argument("--m_train_mode", type=int, default=0)
+        parser.add_argument("--m_pre_train_model", type=str, default="")
 
         # # # Debug - generate buffer
         # parser.add_argument("--m_online_buffer", type=int, default=1)
@@ -61,6 +63,8 @@ if __name__ == "__main__":
         # parser.add_argument("--forward_ndx", type=int, default=None)
         # parser.add_argument("--ref_pid", type=int, default=None)
         # parser.add_argument("--domain", type=str, default="TOTAL_20")
+        # parser.add_argument("--m_train_mode", type=int, default=0)
+        # parser.add_argument("--m_pre_train_model", type=str, default="")
 
         # # # Debug - train
         # parser.add_argument("--m_online_buffer", type=int, default=0)
@@ -76,6 +80,8 @@ if __name__ == "__main__":
         # parser.add_argument("--forward_ndx", type=int, default=None)
         # parser.add_argument("--ref_pid", type=int, default=None)
         # parser.add_argument("--domain", type=str, default="TOTAL_20")
+        # parser.add_argument("--m_train_mode", type=int, default=0)
+        # parser.add_argument("--m_pre_train_model", type=str, default="")
 
         args = parser.parse_args()
 

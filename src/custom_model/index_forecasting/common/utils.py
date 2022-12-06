@@ -619,7 +619,7 @@ class Scheduler(object):
             globals()["cosine_annealing"] == self.schedule
             or globals()["sine_annealing"] == self.schedule
         ):
-            nvalues = int(self.cyclic_step * 0.1)
+            nvalues = int(self.cyclic_step * 0.01)
             process = (self.step / nvalues) - round(self.step / nvalues)
             if process == 0:
                 process = 1

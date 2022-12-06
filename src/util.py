@@ -41,6 +41,22 @@ from header.index_forecasting import RUNHEADER
 # from sklearn.externals import joblib
 
 
+def load_from_file(load_path):
+    if isinstance(load_path, str):
+        if not os.path.exists(load_path):
+            if os.path.exists(load_path + ".pkl"):
+                load_path += ".pkl"
+            else:
+                raise ValueError(f"Error: the file {load_path} could not be found")
+        with open(load_path, "rb") as file:
+            data, params = cloudpickle.load(file)
+    else:
+        # Here load_path is a file-like object, not a path
+        data, params = cloudpickle.load(load_path)
+
+    return data, params
+
+
 def check_nan(data, keys):
     check = np.argwhere(np.sum(np.isnan(data), axis=0) == 1)
     if len(check) > 0:

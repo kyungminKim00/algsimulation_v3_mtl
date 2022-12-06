@@ -563,8 +563,9 @@ class A2C(ActorCriticRLModel):
         else:  # learning rate for offline learning
             if RUNHEADER.dynamic_lr:
                 self.cur_lr = None
-                for _ in range(len(obs)):
-                    self.cur_lr = self.learning_rate_schedule.value()
+                # for _ in range(len(obs)):
+                #     self.cur_lr = self.learning_rate_schedule.value()
+                self.cur_lr = self.learning_rate_schedule.value()
                 if self.cur_lr <= RUNHEADER.m_min_learning_rate:
                     self.cur_lr = RUNHEADER.m_min_learning_rate
             else:
@@ -668,7 +669,10 @@ class A2C(ActorCriticRLModel):
                 td_map,
             )
         # previous loss
-        self.stack_loss_bias = self.stack_loss_bias + loss_bias.tolist()
+        if loss_bias is None:
+            pass
+        else:
+            self.stack_loss_bias = self.stack_loss_bias + loss_bias.tolist()
         max_queue_size = 5
         if len(self.stack_loss_bias) > max_queue_size:
             self.stack_loss_bias.pop(0)
@@ -1437,9 +1441,16 @@ class A2C(ActorCriticRLModel):
                     .replace("-", "")
                     .replace(" ", "_")
                 )
-                model_name = "{}/{}_sub_epo_{}_pe{:3.3}_pl{:3.3}_vl{:3.3}_ev{:3.3}.pkl".format(
+
+                if RUNHEADER.m_train_mode == 0:
+                    prefix = ""
+                else:
+                    prefix = "FT"
+
+                model_name = "{}/{}_{}_sub_epo_{}_pe{:3.3}_pl{:3.3}_vl{:3.3}_ev{:3.3}.pkl".format(
                     model_location,
                     d_time,
+                    prefix,
                     epoch,
                     np.mean(np.array(print_out_csv)[:, 2]),
                     # policy_entropy
