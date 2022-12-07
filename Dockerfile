@@ -22,9 +22,8 @@ RUN pip3 install --upgrade tf_slim
 RUN pip3 install gym==0.11.0
 RUN pip3 install --no-cache-dir -r /dev_env/requirements.txt
 RUN pip3 install --no-cache-dir -r /dev_env/ci_requirements.txt
-RUN /etc/init.d/ssh start
 RUN passwd -d root
+RUN echo "service ssh start" >> /root/.bashrc
 EXPOSE 22
-CMD ["/usr/sbin/sshd", "-D"]
 
 
