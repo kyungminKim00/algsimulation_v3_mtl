@@ -191,6 +191,10 @@ def net_factory():
         from custom_model.index_forecasting.nets.shake_regulization_v6 import shakenet
 
         default_cnn = shakenet
+    elif RUNHEADER.default_net == "shake_regulization_v7":  # Total markets
+        from custom_model.index_forecasting.nets.shake_regulization_v7 import shakenet
+
+        default_cnn = shakenet
     else:
         ValueError("None Defined feature extractor")
 
