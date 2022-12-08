@@ -43,12 +43,13 @@ def block_stem(inputs, w_1, w_2, scope=None, reuse=None):
     with tf.compat.v1.variable_scope(scope, "Stem", [inputs], reuse=reuse):
         # 5 X 20 X 292
         net = channel_wise_attn_layer(inputs, scope)
-        # net = slim.conv2d(inputs, w_1, [1, 1], scope='Conv2d_0b_1x1')
-        # net = slim.conv2d(net, w_2, [3, 3], scope='Conv2d_0c_1x1')
+        skip = slim.conv2d(net, w_2, [1, 1], scope="Conv2d_0a_1x1")
+
         net = slim.conv2d(net, w_1, [1, 1], scope="Conv2d_0b_1x1")
         net = slim.conv2d(
             net, w_2, [3, 3], activation_fn=tf.nn.relu, scope="Conv2d_0c_1x1"
         )
+        net = net + skip
         net = slim.max_pool2d(net, kernel_size=3, stride=1, padding="SAME")
 
     return net  # 5 x 20 x 21
