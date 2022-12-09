@@ -758,7 +758,7 @@ def plot_save_validation_performence(tmp_info, save_dir, model_name, split_name=
     current_model = model_name.split("/")[-1]
     current_model = current_model.split(".pkl")[0]
     current_model = current_model.split("_")
-    current_model.remove(current_model[5])
+    # current_model.remove(current_model[5])
     current_model = "_".join(current_model)
 
     res = [
@@ -1025,7 +1025,7 @@ def Original_RAY_적용전_plot_save_validation_performence(
         current_model = model_name.split("/")[-1]
         current_model = current_model.split(".pkl")[0]
         current_model = current_model.split("_")
-        current_model.remove(current_model[5])
+        # current_model.remove(current_model[5])
         current_model = "_".join(current_model)
         prefix = f"{save_dir}/{market_name}"
         if not os.path.isdir(prefix):
