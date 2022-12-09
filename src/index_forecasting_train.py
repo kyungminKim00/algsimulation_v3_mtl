@@ -246,9 +246,62 @@ def configure_header(args):
             pass
         elif args.search_parameter == 2:
             pass
-        elif args.search_parameter == 3:
-            pass
-        elif args.search_parameter == 4:  # new model test fix block_step
+        elif args.search_parameter == 3:  # new model test block_step
+            RUNHEADER.__dict__["default_net"] = "shake_regulization_v7"
+            RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
+            RUNHEADER.__dict__["m_offline_learning_epoch"] = 1500
+            RUNHEADER.__dict__["warm_up_update"] = 1000
+            RUNHEADER.__dict__["cosine_lr"] = True
+            if args.m_train_mode == 0:
+                RUNHEADER.__dict__["cyclic_lr_min"] = 6e-4
+                RUNHEADER.__dict__["cyclic_lr_max"] = 1e-2
+            else:
+                RUNHEADER.__dict__["cyclic_lr_min"] = 6e-4  # [1] 5e-4
+                RUNHEADER.__dict__["cyclic_lr_max"] = 6e-3  # [1] 9e-4
+
+            RUNHEADER.__dict__["m_on_validation"] = False
+            RUNHEADER.__dict__["dynamic_lr"] = True  # made a decision True -> False
+            RUNHEADER.__dict__["dynamic_coe"] = False  # made a decision True -> False
+            RUNHEADER.__dict__["grad_norm"] = False
+            RUNHEADER.__dict__["predefined_fixed_lr"] = [2e-4 * 3, 2e-4 * 3, 2e-4 * 3]
+            RUNHEADER.__dict__["m_validation_interval"] = 600
+            RUNHEADER.__dict__["c_epoch"] = 10
+            RUNHEADER.__dict__["m_validation_min_epoch"] = 0
+            RUNHEADER.__dict__["m_learning_rate"] = 4e-4  # a made decision
+            # 5e-5 -> 5e-4 -> 5e-5 -> 5e-4
+            RUNHEADER.__dict__[
+                "m_offline_learning_rate"
+            ] = 2e-4  # a made decision 5e-4 -> 3e-4 -> 5e-6 -> 5e-5 -> 5e-4
+            RUNHEADER.__dict__["m_min_learning_rate"] = 2e-4  # 7e-6 ->  1e-5
+            RUNHEADER.__dict__["m_vf_coef"] = 1  # [1] 1
+            RUNHEADER.__dict__["m_ent_coef"] = 0
+            RUNHEADER.__dict__["m_pi_coef"] = 1  # [1] 0.8
+            RUNHEADER.__dict__[
+                "m_max_grad_norm"
+            ] = 0.5  # [0.5 | None]  # a made decision
+            RUNHEADER.__dict__[
+                "m_l2_norm"
+            ] = 1e-7  # 0.1 -> 4e-5 -> 4e-6 -> 1e-7(id3) -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__["m_l1_norm"] = 1e-05
+            RUNHEADER.__dict__[
+                "m_drop_out"
+            ] = 0.8  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__[
+                "m_batch_decay"
+            ] = 0.9997  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__[
+                "m_batch_epsilon"
+            ] = 0.001  # -> inception_utils.inception_arg_scope()
+            RUNHEADER.__dict__["m_name"] = (
+                dict_RUNHEADER["m_name"]
+                + "_m7_3_"
+                + str(RUNHEADER.__dict__["dataset_version"])
+                + "_"
+                + time_now
+                + "_"
+                + str(args.process_id)
+            )
+        elif args.search_parameter == 4:  # new model test block_step
             RUNHEADER.__dict__["default_net"] = "shake_regulization_v7"
             RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
             RUNHEADER.__dict__["m_offline_learning_epoch"] = 1500
@@ -303,7 +356,7 @@ def configure_header(args):
                 + "_"
                 + str(args.process_id)
             )
-        elif args.search_parameter == 5:  # new model test fix block_step
+        elif args.search_parameter == 5:  # new model test block_step
             RUNHEADER.__dict__["default_net"] = "shake_regulization_v7"
             RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
             RUNHEADER.__dict__["m_offline_learning_epoch"] = 1500
@@ -358,7 +411,7 @@ def configure_header(args):
                 + "_"
                 + str(args.process_id)
             )
-        elif args.search_parameter == 6:  # Total market candidate 2
+        elif args.search_parameter == 6:  # Total market candidate 2 - Drop
             RUNHEADER.__dict__["default_net"] = "shake_regulization_v6"
             RUNHEADER.__dict__["m_n_cpu"] = 32  # a fixed n_cpu for nature_cnn_D
             RUNHEADER.__dict__["m_offline_learning_epoch"] = 1500
