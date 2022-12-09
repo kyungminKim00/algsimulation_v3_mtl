@@ -4,7 +4,7 @@ RUN mkdir /dev_env
 WORKDIR /dev_env
 COPY . .
 
-RUN apt-get update && apt-get upgrade -y \
+RUN apt-get -q update && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends apt-utils \
     && apt-get install -y cmake libopenmpi-dev zlib1g-dev libcairo2-dev \
     git vim-nox tree openssh-server tzdata \
