@@ -49,11 +49,11 @@ r_model_cnt: int = (
     7  # at least 10 models are required to run the model selection script
 )
 pkexample_type: Dict[str, Any] = {
-    "decoder": "pkexample_type_B",
+    "decoder": "pkexample_type_D",
     "num_features_1": 5,
     "num_features_2": 17,
     "num_market": 15,
-}  # {pkexample_type_A: 'Original', pkexample_type_B: 'Use var mask', pkexample_type_C: 'Enable WR'}
+}  # {pkexample_type_A: 'Original', pkexample_type_B: 'Use var mask', pkexample_type_C: 'Enable WR', pkexample_type_D: 'cumulative sum feature + Use var mask'}
 raw_x: str
 raw_x2: str
 raw_y = "./datasets/rawdata/index_data/gold_index.csv"

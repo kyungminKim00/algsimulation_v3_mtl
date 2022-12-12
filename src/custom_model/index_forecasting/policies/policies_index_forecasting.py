@@ -251,6 +251,7 @@ class ActorCriticPolicy(BasePolicy):
         self.policy = None
         self.proba_distribution = None
         self.value_fn = None
+        self.latent_weight = None
         self.deterministic_action = None
         self.initial_state = None
         self.sample_th_ph = tf.compat.v1.placeholder(
@@ -441,6 +442,7 @@ class LstmPolicy(ActorCriticPolicy):
                     self.snew = tf.zeros([self.n_env, n_lstm * 2], tf.float32)
                     rnn_output = extracted_features
 
+                self.latent_weight = rnn_output
                 if not RUNHEADER.enable_non_shared_part:
                     value_fn = linear(rnn_output, "vf", RUNHEADER.mtl_target)
 

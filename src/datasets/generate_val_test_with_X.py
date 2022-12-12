@@ -36,7 +36,7 @@ from datasets.convert_if_v1_common import (
     normalized_spread,
     splite_rawdata_v1,
 )
-from datasets.decoder import pkexample_type_A, pkexample_type_B
+from datasets.decoder import pkexample_type_A, pkexample_type_B, pkexample_type_D
 from datasets.unit_datetype_des_check import write_var_desc
 from util import (
     _remove_cond,

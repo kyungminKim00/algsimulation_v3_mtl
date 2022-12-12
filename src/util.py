@@ -633,22 +633,22 @@ def trans_val(
 
 # Serialization with DataFrame
 def pdToFile(file_name, df):
-    file_name = "{0}.csv".format(file_name)
+    file_name = f"{file_name}.csv"
     df.to_csv(file_name, index=False)
-    print("\nExporting files {0}.... Done!!!".format(file_name))
+    print(f"\nExporting files {file_name}.... Done!!!")
 
 
 # Deserialization with DataFrame
 def fileToPd(file_name):
     # Load file
-    file_name = "{0}.csv".format(file_name)
+    file_name = f"{file_name}.csv"
     data = pd.read_csv(file_name, index_col=False)
-    print("\nLoading files {0}.... Done!!!".format(file_name))
+    print(f"\nLoading files {file_name}.... Done!!!")
     return data
 
 
 def npToFile(file_name, X, format="%s"):
-    file_name = "{0}.csv".format(file_name)
+    file_name = f"{file_name}.csv"
     np.savetxt(file_name, X, fmt=format, delimiter=",")
 
 

@@ -125,6 +125,12 @@ class A2C(ActorCriticRLModel):
         self.advs_ph = None
         self.rewards_ph = None
         self.pg_loss = None
+        self.latent_weight = None
+        self.latent_weight_numpy = None
+        self.latent_weight_pi = None
+        self.latent_weight_pi_numpy = None
+        self.latent_weight_vn = None
+        self.latent_weight_vn_numpy = None
         self.vf_loss = None
         self.pi_coef = None
         self.vf_coef = None
@@ -257,7 +263,6 @@ class A2C(ActorCriticRLModel):
                     self.loss_bias_ph = tf.compat.v1.placeholder(
                         tf.float32, [None, 2], name="loss_bias_ph"
                     )
-
                     neglogpac = train_model.proba_distribution.neglogp(self.actions_ph)
                     self.entropy = tf.reduce_mean(
                         input_tensor=train_model.proba_distribution.entropy()
@@ -273,6 +278,13 @@ class A2C(ActorCriticRLModel):
                     self.vf_coef = tf.convert_to_tensor(
                         value=RUNHEADER.m_vf_coef, dtype=tf.float32
                     )
+
+                    self.latent_weight = train_model.latent_weight[-1]
+                    self.latent_weight_pi = neglogpac[-1]
+                    self.latent_weight_vn = tf.reduce_mean(
+                        tf.square(tf.squeeze(train_model.value_fn) - self.rewards_ph),
+                        axis=1,
+                    )[-1]
 
                     with ops.control_dependencies([self.pi_coef, self.vf_coef]):
                         barrier_coef = control_flow_ops.no_op(
@@ -589,6 +601,9 @@ class A2C(ActorCriticRLModel):
             self.vf_coef,
             self.apply_backprop_gradnorm,
             self.loss_bias,
+            self.latent_weight,
+            self.latent_weight_pi,
+            self.latent_weight_vn,
         ]
         td_map = {
             self.train_model.obs_ph: obs,
@@ -625,6 +640,9 @@ class A2C(ActorCriticRLModel):
                     vf_coef,
                     _,
                     loss_bias,
+                    latent_weight,
+                    latent_weight_pi,
+                    latent_weight_vn,
                 ) = self.sess.run(
                     run_params, td_map, options=run_options, run_metadata=run_metadata
                 )
@@ -644,6 +662,9 @@ class A2C(ActorCriticRLModel):
                     vf_coef,
                     _,
                     loss_bias,
+                    latent_weight,
+                    latent_weight_pi,
+                    latent_weight_vn,
                 ) = self.sess.run(run_params, td_map)
             if not replay:
                 writer.add_summary(summary, update * (self.n_batch + 1))
@@ -656,6 +677,9 @@ class A2C(ActorCriticRLModel):
                 _,
                 pi_coef,
                 vf_coef,
+                latent_weight,
+                latent_weight_pi,
+                latent_weight_vn,
             ) = self.sess.run(
                 [
                     self.pg_loss,
@@ -664,10 +688,15 @@ class A2C(ActorCriticRLModel):
                     self.apply_backprop,
                     self.pi_coef,
                     self.vf_coef,
-                    # self.apply_backprop_gradnorm,
+                    self.latent_weight,
+                    self.latent_weight_pi,
+                    self.latent_weight_vn,
                 ],
                 td_map,
             )
+        self.latent_weight_numpy = latent_weight
+        self.latent_weight_pi_numpy = latent_weight_pi
+        self.latent_weight_vn_numpy = latent_weight_vn
         # previous loss
         if loss_bias is None:
             pass
@@ -1774,7 +1803,15 @@ class A2C(ActorCriticRLModel):
                     logger.dump_tabular()
                 pd.DataFrame(
                     data=np.array(self.record_tabular), columns=tabular_column_name
-                ).to_csv("{}/record_tabular_buffer.csv".format(model_location))
+                ).to_csv(f"{model_location}/record_tabular_buffer.csv")
+
+                # Todo: fix code session run on save
+                if np.random.randint(1, 200) == 1:
+                    with open(f"{model_location}/latent_weight_pi_vn_{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.npy", "wb") as fp:
+                        np.save(fp, self.latent_weight_numpy)
+                        np.save(fp, self.latent_weight_pi_numpy)
+                        np.save(fp, self.latent_weight_vn_numpy)
+                        fp.close()
 
         return explained_var
 

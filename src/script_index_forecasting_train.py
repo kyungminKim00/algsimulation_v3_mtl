@@ -70,7 +70,7 @@ if __name__ == "__main__":
         # parser.add_argument("--m_online_buffer", type=int, default=0)
         # parser.add_argument("--search_variables", type=int, default=0)
         # parser.add_argument("--search_parameter", type=int, default=None)
-        # parser.add_argument("--process_id", type=int, default=6)
+        # parser.add_argument("--process_id", type=int, default=1)
         # parser.add_argument(
         #     "--on_cloud", type=int, default=1
         # )  # for debug test, load chunks of samples or all samples

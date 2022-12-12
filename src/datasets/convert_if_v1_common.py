@@ -125,6 +125,8 @@ class ReadData(object):
             # Apply standardization
             self.normal_data = self._get_normal(self.data)
 
+            self.cumulative_sum_data = np.cumsum(self.data, axis=0)
+
             # Apply status_data for 5 days (returns)
             previous_data = (
                 self.source_data[x_start_ndx - 5 : x_end_ndx - 5]
@@ -254,6 +256,7 @@ class ReadData(object):
         self.height = None
         self.width = None
         self.normal_data = None
+        self.cumulative_sum_data = None
         self.status_data5 = None
         self.status_data5_Y = None
         self.diff_data = None
