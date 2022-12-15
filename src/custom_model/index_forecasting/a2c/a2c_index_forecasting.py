@@ -1072,15 +1072,6 @@ class A2C(ActorCriticRLModel):
                         value_loss,
                     )
 
-                    """ Trace actions
-                    """
-                    tmp = np.reshape(
-                        actions, [self.n_envs, self.n_steps, actions.shape[-1]]
-                    )[0].T
-                    # Disable
-                    # plt.imsave('./save/images/{}_{}_{}.jpeg'.format(str(g_date), update,
-                    #                                                 int(np.mean(np.sum(tmp, axis=0)))), tmp * 255)
-
                     """Blows describe post-processes during the training
                     """
                     # model save according to the time stamps
@@ -1807,7 +1798,10 @@ class A2C(ActorCriticRLModel):
 
                 # Todo: fix code session run on save
                 if np.random.randint(1, 200) == 1:
-                    with open(f"{model_location}/latent_weight_pi_vn_{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.npy", "wb") as fp:
+                    with open(
+                        f"{model_location}/latent_weight_pi_vn_{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.npy",
+                        "wb",
+                    ) as fp:
                         np.save(fp, self.latent_weight_numpy)
                         np.save(fp, self.latent_weight_pi_numpy)
                         np.save(fp, self.latent_weight_vn_numpy)
