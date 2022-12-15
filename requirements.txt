@@ -2,7 +2,6 @@ DateTime==4.3
 numpy
 cloudpickle==1.3.0
 joblib
-sklearn
 scikit-learn
 scipy
 tqdm
