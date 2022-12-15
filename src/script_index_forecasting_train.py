@@ -39,7 +39,10 @@ if __name__ == "__main__":
         # parser.add_argument("--process_id", type=int, required=True)
         # parser.add_argument(
         #     "--on_cloud", type=int, default=1
-        # )  # for debug test, load chunks of samples or all samples
+        # )  # for debug test, load chunks of samples or all samples - it may not effect on code
+        # parser.add_argument(
+        #     "--as_chunk", type=int, default=1
+        # )
         # parser.add_argument("--dataset_version", type=str, default=None)
         # parser.add_argument("--n_cpu", type=int, default=0)
         # parser.add_argument("--m_target_index", type=int, default=None)  # [0 | 1 | 2]
@@ -55,7 +58,7 @@ if __name__ == "__main__":
         parser.add_argument("--search_parameter", type=int, default=0)
         parser.add_argument("--process_id", type=int, default=1)
         parser.add_argument(
-            "--as_chunk", type=int, default=0
+            "--as_chunk", type=int, default=1
         )  # for debug test, generate chunks of samples or a set of samples
         parser.add_argument("--dataset_version", type=str, default=None)
         parser.add_argument("--n_cpu", type=int, default=1)
