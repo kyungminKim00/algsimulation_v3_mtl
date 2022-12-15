@@ -1079,32 +1079,40 @@ class A2C(ActorCriticRLModel):
                     # drop a model with every 0.5% of examples and buffers
                     # basically sample generation section or online learning + sample generation section
                     # if update % int(self.total_example // 200) == 0:
-                    if update % int(self.total_example * 0.5) == 0:
-                        model_name = f"{model_location}/fs_{current_timesteps}_ev{np.mean(explained_var):3.3}_pe{policy_entropy:3.3}_pl{policy_loss:3.3}_vl{value_loss:3.3}.pkl"
-                        self.save(model_name)
-
-                    # buffer save condition as chunk
-                    if bool(RUNHEADER.as_chunk):
-                        chunk_idxs = list(
-                            np.percentile(
-                                np.arange(buffer.size),
-                                list(range(10, 100, 10)),
-                                interpolation="nearest",
-                            )
-                        )
-                    else:
-                        chunk_idxs = []
+                    # if update % int(self.total_example * 0.5) == 0:
+                    #     model_name = f"{model_location}/fs_{current_timesteps}_ev{np.mean(explained_var):3.3}_pe{policy_entropy:3.3}_pl{policy_loss:3.3}_vl{value_loss:3.3}.pkl"
+                    #     self.save(model_name)
 
                     # buffer save
-                    if (
-                        (buffer.num_in_buffer >= buffer.size)
-                        or (update == self.total_example - 1)
-                        or (buffer.num_in_buffer in chunk_idxs)
+                    if (buffer.num_in_buffer >= buffer.size) or (
+                        update == self.total_example - 1
                     ):
-                        writeFile(
-                            f"{RUNHEADER.m_offline_buffer_file}/buffer_E{self.n_envs}_S{self.n_steps}_U{update}",
-                            buffer,
-                        )
+                        if bool(RUNHEADER.as_chunk):
+                            chunk_idxs = list(
+                                np.percentile(
+                                    np.arange(buffer.size),
+                                    list(range(0, 100, 5)),  # 20% of total
+                                    interpolation="nearest",
+                                )
+                            )
+                            for idx in chunk_idxs:
+                                if idx == 0:
+                                    p_idx = 0
+                                else:
+                                    chunk = buffer[p_idx:idx]
+                                    print(
+                                        f"save chunk: [{p_idx}:{idx}] ({buffer.size})"
+                                    )
+                                    writeFile(
+                                        f"{RUNHEADER.m_offline_buffer_file}/buffer_E{self.n_envs}_S{self.n_steps}_U{update}",
+                                        chunk,
+                                    )
+                                    p_idx = idx
+                        else:  # save as one file
+                            writeFile(
+                                f"{RUNHEADER.m_offline_buffer_file}/buffer_E{self.n_envs}_S{self.n_steps}_U{update}",
+                                buffer,
+                            )
                         buffer = None
                         buffer = Buffer(
                             env=self.env, n_steps=self.n_steps, size=self.buffer_size
