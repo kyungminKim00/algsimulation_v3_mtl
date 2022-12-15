@@ -16,8 +16,6 @@ import sc_parameters as scp
 from datasets import convert_if_v0  # Index_forecasting
 from datasets import convert_if_v1  # Index_forecasting - Add mask (opt)
 from datasets.if_data_header import configure_header
-
-# import header.index_forecasting.RUNHEADER as RUNHEADER
 from header.index_forecasting import RUNHEADER
 from util import get_domain_on_CDSW_env
 
