@@ -38,6 +38,7 @@ m_total_timesteps: int = (
 m_final_model: str = None  # [None | 'fs_epoch_47_500'], only for the test stage
 predefined_fixed_lr: float = None
 on_cloud: int = None
+as_chunk: int = None
 m_max_grad_norm: float = None
 m_buffer_size: int = None
 m_main_replay_start: int = None

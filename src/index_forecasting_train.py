@@ -150,10 +150,6 @@ def configure_header(args):
     RUNHEADER.__dict__["search_parameter"] = args.search_parameter
 
     if RUNHEADER.m_online_buffer:  # Generate Buffer
-        assert (
-            bool(args.on_cloud) is False
-        ), "on_cloud should be false for generate Buffer"
-
         RUNHEADER.__dict__["forward_ndx"] = args.forward_ndx
         RUNHEADER.__dict__[
             "m_dataset_dir"

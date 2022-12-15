@@ -1083,9 +1083,23 @@ class A2C(ActorCriticRLModel):
                         model_name = f"{model_location}/fs_{current_timesteps}_ev{np.mean(explained_var):3.3}_pe{policy_entropy:3.3}_pl{policy_loss:3.3}_vl{value_loss:3.3}.pkl"
                         self.save(model_name)
 
+                    # buffer save condition as chunk
+                    if bool(RUNHEADER.as_chunk):
+                        chunk_idxs = list(
+                            np.percentile(
+                                np.arange(buffer.size),
+                                list(range(10, 100, 10)),
+                                interpolation="nearest",
+                            )
+                        )
+                    else:
+                        chunk_idxs = []
+
                     # buffer save
-                    if (buffer.num_in_buffer >= buffer.size) or (
-                        update == self.total_example - 1
+                    if (
+                        (buffer.num_in_buffer >= buffer.size)
+                        or (update == self.total_example - 1)
+                        or (buffer.num_in_buffer in chunk_idxs)
                     ):
                         writeFile(
                             f"{RUNHEADER.m_offline_buffer_file}/buffer_E{self.n_envs}_S{self.n_steps}_U{update}",
