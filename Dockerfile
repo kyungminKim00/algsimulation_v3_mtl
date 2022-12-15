@@ -4,6 +4,7 @@ RUN mkdir /dev_env
 WORKDIR /dev_env
 COPY . .
 
+RUN echo root:admin | chpasswd
 RUN apt-get -q update && apt-get upgrade -y \
 && apt-get install -y --no-install-recommends apt-utils \
 && apt-get install -y cmake libopenmpi-dev zlib1g-dev libcairo2-dev \
@@ -19,10 +20,9 @@ RUN python3 -m pip install --upgrade pip \
 RUN sed -ri 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config \
 && sed -ri 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
 && sed -ri 's/^UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
+RUN mkdir -p /var/run/sshd && chmod 755 /var/run/sshd && chmod 755 -R /etc/ssh
 
-RUN echo "service ssh start" >> /root/.bashrc
-RUN passwd -d root
-
+RUN echo service ssh start >> /root/.bashrc
 EXPOSE 22
 
 
