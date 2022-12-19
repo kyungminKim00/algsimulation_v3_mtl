@@ -141,14 +141,14 @@ class A2C(ActorCriticRLModel):
         self.vf_loss = None
         self.pi_coef = None
         self.vf_coef = None
-        # self.pg_loss_bias = None
-        # self.vf_loss_bias = None
-        # self.loss_bias = None  # current loss
-        # self.stack_loss_bias = [[1, 1]]
-        # self.apply_backprop_gradnorm = None
+        self.pg_loss_bias = None
+        self.vf_loss_bias = None
+        self.loss_bias = None  # current loss
+        self.stack_loss_bias = [[1, 1]]
         self.entropy = None
         self.params = None
         self.apply_backprop = None
+        self.apply_backprop_gradnorm = None
         self.train_model = None
         self.step_model = None
         self.step = None
@@ -162,11 +162,14 @@ class A2C(ActorCriticRLModel):
 
         # custom_variables
         self.day_return = None
-        self.cur_lr = None
-        self.record_tabular = []
+        self.sussesor_ph = None
+        self.selected_action_ph = None
+        self.diff_action_ph = None
         # self.returns_info_ph = None
         # self.hit_ph = None
-        # self.loss_bias_ph = None
+        self.cur_lr = None
+        self.loss_bias_ph = None
+        self.record_tabular = []
 
         # self.buffer_size = RUNHEADER.m_buffer_size
         # self.replay_ratio = RUNHEADER.m_replay_ratio
@@ -207,9 +210,14 @@ class A2C(ActorCriticRLModel):
             )
             self.graph = tf.Graph()
             with self.graph.as_default():
-                # self.apply_backprop_gradnorm = tf.constant([0])  # dummy for run
+                self.apply_backprop_gradnorm = tf.constant([0])  # dummy for run
+                if self.verbose == 2:
+                    self.sess = tf_util.debug_session(
+                        graph=self.graph, port="localhost:7000", mode=0
+                    )
+                else:
+                    self.sess = tf_util.make_session(graph=self.graph)
 
-                self.sess = tf_util.make_session(graph=self.graph)
                 self.n_batch = self.n_envs * self.n_steps
 
                 n_batch_step = None
@@ -259,9 +267,9 @@ class A2C(ActorCriticRLModel):
                     self.learning_rate_ph = tf.compat.v1.placeholder(
                         tf.float32, [], name="learning_rate_ph"
                     )
-                    # self.loss_bias_ph = tf.compat.v1.placeholder(
-                    #     tf.float32, [None, 2], name="loss_bias_ph"
-                    # )
+                    self.loss_bias_ph = tf.compat.v1.placeholder(
+                        tf.float32, [None, 2], name="loss_bias_ph"
+                    )
                     neglogpac = train_model.proba_distribution.neglogp(self.actions_ph)
                     self.entropy = tf.reduce_mean(
                         input_tensor=train_model.proba_distribution.entropy()
@@ -299,7 +307,7 @@ class A2C(ActorCriticRLModel):
                     loss_1 = self.pg_loss * self.pi_coef - self.entropy * self.ent_coef
                     loss_2 = self.vf_loss * self.vf_coef
                     loss = loss_1 + loss_2 + reg_loss_1
-                    # self.loss_bias = tf.stack([[loss_1, loss_2]])
+                    self.loss_bias = tf.stack([[loss_1, loss_2]])
 
                     if self.full_tensorboard_log:
                         tf.compat.v1.summary.scalar("entropy_loss", self.entropy)
@@ -364,6 +372,42 @@ class A2C(ActorCriticRLModel):
                                     "partial_dev_" + param.name, partial_deviation
                                 )
                                 tf.compat.v1.summary.histogram(param.name, param)
+
+                with tf.compat.v1.variable_scope("step_info", reuse=False):
+                    self.sussesor_ph = tf.compat.v1.placeholder(
+                        tf.int32, [None], name="sussesor_ph"
+                    )
+                    self.selected_action_ph = tf.compat.v1.placeholder(
+                        tf.int32, [None], name="selected_action_ph"
+                    )
+                    self.diff_action_ph = tf.compat.v1.placeholder(
+                        tf.int32, [None], name="diff_action_ph"
+                    )
+                    # self.returns_info_ph = tf.compat.v1.placeholder(
+                    #     tf.float32, [None, 15], name="returns_info_ph"
+                    # )
+                    # self.hit_ph = tf.compat.v1.placeholder(
+                    #     tf.float32, [None, 15], name="hit_ph"
+                    # )
+
+                    # could not disable by "if self.full_tensorboard_log:", it updates from placeholders be careful
+                    tf.compat.v1.summary.scalar(
+                        "sussesor", tf.reduce_mean(input_tensor=self.sussesor_ph)
+                    )
+                    tf.compat.v1.summary.scalar(
+                        "num_action",
+                        tf.reduce_mean(input_tensor=self.selected_action_ph),
+                    )
+                    tf.compat.v1.summary.scalar(
+                        "diff_action", tf.reduce_mean(input_tensor=self.diff_action_ph)
+                    )
+                    # tf.compat.v1.summary.scalar(
+                    #     "10day_return",
+                    #     tf.reduce_mean(input_tensor=self.returns_info_ph),
+                    # )
+                    # tf.compat.v1.summary.scalar(
+                    #     "hit", tf.reduce_mean(input_tensor=self.hit_ph)
+                    # )
 
                 with tf.compat.v1.variable_scope("input_info", reuse=False):
                     tf.compat.v1.summary.scalar(
@@ -484,43 +528,6 @@ class A2C(ActorCriticRLModel):
             load_placeholder[_load_placeholder] = _weight
         self.sess.run(load_op, load_placeholder)
 
-    # sess run
-    def query_network(self, td_map, identifier="", run_options=None, run_metadata=None):
-        if identifier == "full_tensorboard_log":
-            run_params = [
-                self.summary,
-                self.pg_loss,
-                self.vf_loss,
-                self.entropy,
-                self.pi_coef,
-                self.vf_coef,
-                self.apply_backprop,
-            ]
-        elif identifier == "q_latent_weight":
-            run_params = [
-                self.pg_loss,
-                self.vf_loss,
-                self.entropy,
-                self.pi_coef,
-                self.vf_coef,
-                self.latent_weight,
-                self.latent_weight_pi,
-                self.latent_weight_vn,
-                self.apply_backprop,
-            ]
-        else:
-            run_params = [
-                self.pg_loss,
-                self.vf_loss,
-                self.entropy,
-                self.pi_coef,
-                self.vf_coef,
-                self.apply_backprop,
-            ]
-        return self.sess.run(
-            run_params, td_map, options=run_options, run_metadata=run_metadata
-        )
-
     def _train_step(
         self,
         obs,
@@ -531,6 +538,9 @@ class A2C(ActorCriticRLModel):
         values,
         update,
         writer=None,
+        suessor=None,
+        selected_action=None,
+        diff_selected_action=None,
         replay=False,
     ):
         """
@@ -555,6 +565,8 @@ class A2C(ActorCriticRLModel):
 
         advs = rewards - values
         # explained_var = explained_variance(values, rewards)
+        loss_bias = None
+
         if RUNHEADER.m_online_buffer:
             self.cur_lr = None
             for _ in range(len(obs)):
@@ -569,46 +581,69 @@ class A2C(ActorCriticRLModel):
                     self.cur_lr = RUNHEADER.m_min_learning_rate
             else:
                 if RUNHEADER.dynamic_coe:
-                    assert False, "Op are disabled!!!"
+                    init_lr = 2e-3
+                else:
+                    init_lr = 1e-5
 
                 if RUNHEADER.predefined_fixed_lr is None:
                     self.cur_lr = RUNHEADER.m_offline_learning_rate
                 else:
                     self.cur_lr = RUNHEADER.predefined_fixed_lr[0]
 
-        # define td_map
+        run_params = [
+            self.summary,
+            self.pg_loss,
+            self.vf_loss,
+            self.entropy,
+            self.apply_backprop,
+            self.pi_coef,
+            self.vf_coef,
+            self.apply_backprop_gradnorm,
+            self.loss_bias,
+            self.latent_weight,
+            self.latent_weight_pi,
+            self.latent_weight_vn,
+        ]
         td_map = {
             self.train_model.obs_ph: obs,
             self.actions_ph: actions,
             self.advs_ph: advs,
             self.rewards_ph: rewards,
             self.learning_rate_ph: self.cur_lr,
+            self.sussesor_ph: suessor,
+            self.selected_action_ph: selected_action,
+            self.diff_action_ph: diff_selected_action,
+            self.loss_bias_ph: np.expand_dims(
+                np.mean(self.stack_loss_bias, axis=0), axis=0
+            ),
         }
 
-        # update td_map
         if states is not None:
             td_map[self.train_model.states_ph] = states
             td_map[self.train_model.masks_ph] = masks
 
-        if writer is not None:  # used in generate buffer
+        if writer is not None:
             if (
                 self.full_tensorboard_log
                 and (1 + update) % self.tensorboard_log_update == 0
             ):
+                run_options = tf.compat.v1.RunOptions()
                 run_metadata = tf.compat.v1.RunMetadata()
                 (
                     summary,
                     policy_loss,
                     value_loss,
                     policy_entropy,
+                    _,
                     pi_coef,
                     vf_coef,
                     _,
-                ) = self.query_network(
-                    td_map,
-                    identifier="full_tensorboard_log",
-                    run_options=tf.compat.v1.RunOptions(),
-                    run_metadata=run_metadata,
+                    loss_bias,
+                    latent_weight,
+                    latent_weight_pi,
+                    latent_weight_vn,
+                ) = self.sess.run(
+                    run_params, td_map, options=run_options, run_metadata=run_metadata
                 )
                 #  Add for replay memory
                 if not replay:
@@ -621,43 +656,54 @@ class A2C(ActorCriticRLModel):
                     policy_loss,
                     value_loss,
                     policy_entropy,
+                    _,
                     pi_coef,
                     vf_coef,
                     _,
-                ) = self.query_network(
-                    td_map,
-                    identifier="full_tensorboard_log",
-                )
-            if not replay:
-                writer.add_summary(summary, update * (self.n_batch + 1))
-        else:  # offline learning
-            if RUNHEADER._debug_on and (np.random.randint(1, 200) == 1):
-                (
-                    policy_loss,
-                    value_loss,
-                    policy_entropy,
-                    pi_coef,
-                    vf_coef,
+                    loss_bias,
                     latent_weight,
                     latent_weight_pi,
                     latent_weight_vn,
-                    _,
-                ) = self.query_network(td_map, identifier="q_latent_weight")
-                self.latent_weight_numpy = latent_weight
-                self.latent_weight_pi_numpy = latent_weight_pi
-                self.latent_weight_vn_numpy = latent_weight_vn
-            else:
-                (
-                    policy_loss,
-                    value_loss,
-                    policy_entropy,
-                    pi_coef,
-                    vf_coef,
-                    _,
-                ) = self.query_network(td_map, identifier="general")
-                self.latent_weight_numpy = None
-                self.latent_weight_pi_numpy = None
-                self.latent_weight_vn_numpy = None
+                ) = self.sess.run(run_params, td_map)
+            if not replay:
+                writer.add_summary(summary, update * (self.n_batch + 1))
+
+        else:
+            (
+                policy_loss,
+                value_loss,
+                policy_entropy,
+                _,
+                pi_coef,
+                vf_coef,
+                latent_weight,
+                latent_weight_pi,
+                latent_weight_vn,
+            ) = self.sess.run(
+                [
+                    self.pg_loss,
+                    self.vf_loss,
+                    self.entropy,
+                    self.apply_backprop,
+                    self.pi_coef,
+                    self.vf_coef,
+                    self.latent_weight,
+                    self.latent_weight_pi,
+                    self.latent_weight_vn,
+                ],
+                td_map,
+            )
+        self.latent_weight_numpy = latent_weight
+        self.latent_weight_pi_numpy = latent_weight_pi
+        self.latent_weight_vn_numpy = latent_weight_vn
+        # previous loss
+        if loss_bias is None:
+            pass
+        else:
+            self.stack_loss_bias = self.stack_loss_bias + loss_bias.tolist()
+        max_queue_size = 5
+        if len(self.stack_loss_bias) > max_queue_size:
+            self.stack_loss_bias.pop(0)
 
         return (
             policy_loss,
@@ -667,9 +713,85 @@ class A2C(ActorCriticRLModel):
             vf_coef,
         )
 
+    # def offline_learning_with_buffer(self, runner, writer, model_location):
+
+    #     buffer = None
+    #     print_out_csv = None
+    #     print_out_csv_colname = None
+    #     epoch_print_out_csv = list()
+    #     file_names = os.listdir(RUNHEADER.m_offline_buffer_file)
+
+    #     # Merge all the chunks of buffers
+    #     buffer_names = [
+    #         buffer_name
+    #         for buffer_name in file_names
+    #         if ".pkl" and "buffer_" in buffer_name
+    #     ]
+    #     if RUNHEADER.on_cloud:
+    #         print("On cloud setting")
+    #         buffer_dict = {
+    #             buffer_names[idx]: loadFile(
+    #                 RUNHEADER.m_offline_buffer_file + "/" + buffer_names[idx][:-4]
+    #             )
+    #             for idx in range(len(buffer_names))
+    #         }
+
+    #         # Learning
+    #         for epoch in range(RUNHEADER.m_offline_learning_epoch):
+    #             for key in buffer_dict.keys():
+    #                 print_out_csv_tmp, print_out_csv_colname = self.offline_learn(
+    #                     writer, runner, buffer_dict[key], model_location, epoch
+    #                 )
+    #                 if print_out_csv is None:
+    #                     print_out_csv = np.array(print_out_csv_tmp)
+    #                 else:
+    #                     print_out_csv = np.append(
+    #                         print_out_csv, np.array(print_out_csv_tmp), axis=0
+    #                     )
+
+    #             aa = np.mean(np.array(print_out_csv), axis=0).tolist()
+    #             aa = aa[:7] + [np.mean(aa[7])]
+    #             epoch_print_out_csv.append(aa)
+    #         pd.DataFrame(epoch_print_out_csv, columns=print_out_csv_colname).to_csv(
+    #             f"{model_location}/record_tabular_epoch_summary.csv"
+    #         )
+    #         # re-init tabular summary for simulation mode
+    #         self.record_tabular = list()
+    #     else:
+    #         for epoch in range(RUNHEADER.m_offline_learning_epoch):
+    #             print_out_csv = None
+    #             print_out_csv_colname = None
+    #             for buffer_name in buffer_names:
+    #                 buffer = loadFile(
+    #                     RUNHEADER.m_offline_buffer_file + "/" + buffer_name[:-4]
+    #                 )
+    #                 print_out_csv_tmp, print_out_csv_colname = self.offline_learn(
+    #                     writer, runner, buffer, model_location, epoch
+    #                 )
+    #                 if print_out_csv is None:
+    #                     print_out_csv = np.array(print_out_csv_tmp)
+    #                 else:
+    #                     if print_out_csv is None:
+    #                         print_out_csv = np.array(print_out_csv_tmp)
+    #                     else:
+    #                         print_out_csv = np.append(
+    #                             print_out_csv, np.array(print_out_csv_tmp), axis=0
+    #                         )
+    #             aa = np.mean(np.array(print_out_csv), axis=0).tolist()
+    #             aa = aa[:7] + [np.mean(aa[7])]
+    #             epoch_print_out_csv.append(aa)
+    #         pd.DataFrame(epoch_print_out_csv, columns=print_out_csv_colname).to_csv(
+    #             f"{model_location}/record_tabular_epoch_summary.csv"
+    #         )
+    #         # re-init tabular summary for simulation mode
+    #         self.record_tabular = list()
+
+    #     #  break after offline learning
+    #     os._exit(0)
+
     def offline_learning_with_buffer(self, runner, writer, model_location):
 
-        print_out_csv, print_out_csv_colname = None, None
+        buffer, print_out_csv, print_out_csv_colname = None, None, None
         epoch_print_out_csv = []
 
         file_names = os.listdir(RUNHEADER.m_offline_buffer_file)
@@ -682,20 +804,17 @@ class A2C(ActorCriticRLModel):
         ]
 
         buffer_dict = {
-            buffer_names[idx]: RUNHEADER.m_offline_buffer_file
-            + "/"
-            + buffer_names[idx][:-4]
+            buffer_names[idx]: loadFile(
+                RUNHEADER.m_offline_buffer_file + "/" + buffer_names[idx][:-4]
+            )
             for idx in range(len(buffer_names))
         }
 
         # Learning
         for epoch in range(RUNHEADER.m_offline_learning_epoch):
             for key in buffer_dict.keys():
-                learn_data = loadFile(
-                    buffer_dict[key]
-                )  # learning with chunk by default - dont change it.
                 print_out_csv_tmp, print_out_csv_colname = self.offline_learn(
-                    writer, runner, learn_data, model_location, epoch
+                    writer, runner, buffer_dict[key], model_location, epoch
                 )
                 if print_out_csv is None:
                     print_out_csv = np.array(print_out_csv_tmp)
@@ -759,7 +878,6 @@ class A2C(ActorCriticRLModel):
                 self.episode_reward = np.zeros((self.n_envs,))
 
                 # load offline-buffer and learning and exit after learning
-                writer = None  # force to write is None
                 self.offline_learning_with_buffer(runner, writer, model_location)
 
             else:  # generate buffer
@@ -824,6 +942,12 @@ class A2C(ActorCriticRLModel):
                             masks,
                             actions,
                             values,
+                            true_reward,
+                            info,
+                            get_progress_info,
+                            suessor,
+                            selected_action,
+                            diff_selected_action,
                         ) = runner.run()
 
                         # short-term memory
@@ -851,6 +975,9 @@ class A2C(ActorCriticRLModel):
                             actions,
                             values,
                             states,
+                            suessor,
+                            selected_action,
+                            diff_selected_action,
                             current_iter_cnt,
                         )
                         sys.stdout.write(
@@ -875,6 +1002,9 @@ class A2C(ActorCriticRLModel):
                             values,
                             states,
                             masks,
+                            suessor,
+                            selected_action,
+                            diff_selected_action,
                         ) = short_term_buffer.get()
                     current_episode_idx = current_episode_idx + 1
 
@@ -888,6 +1018,9 @@ class A2C(ActorCriticRLModel):
                             values,
                             states,
                             masks,
+                            suessor,
+                            selected_action,
+                            diff_selected_action,
                         )
 
                     # 4. re-call experiences [sub-process of replay]
@@ -904,6 +1037,9 @@ class A2C(ActorCriticRLModel):
                                 values,
                                 states,
                                 masks,
+                                suessor,
+                                selected_action,
+                                diff_selected_action,
                                 learned_experiences_ep,
                                 non_pass_episode,
                             ) = self.re_call_buff(
@@ -926,11 +1062,14 @@ class A2C(ActorCriticRLModel):
                         values,
                         self.num_timesteps // (self.n_batch + 1),
                         writer,
+                        suessor,
+                        selected_action,
+                        diff_selected_action,
                     )
-                    # self.pg_loss_bias, self.vf_loss_bias = (
-                    #     policy_loss,
-                    #     value_loss,
-                    # )
+                    self.pg_loss_bias, self.vf_loss_bias = (
+                        policy_loss,
+                        value_loss,
+                    )
 
                     """Blows describe post-processes during the training
                     """
@@ -958,16 +1097,16 @@ class A2C(ActorCriticRLModel):
                             self.env, self.n_steps, self.buffer_size, RUNHEADER.as_chunk
                         )  # re-init
 
-                    # if writer is not None:
-                    #     self.episode_reward = total_episode_reward_logger(
-                    #         self.episode_reward,
-                    #         true_reward.reshape(
-                    #             (self.n_envs, self.n_steps * true_reward.shape[-1])
-                    #         ),
-                    #         masks.reshape((self.n_envs, self.n_steps)),
-                    #         writer,
-                    #         self.num_timesteps,
-                    #     )
+                    if writer is not None:
+                        self.episode_reward = total_episode_reward_logger(
+                            self.episode_reward,
+                            true_reward.reshape(
+                                (self.n_envs, self.n_steps * true_reward.shape[-1])
+                            ),
+                            masks.reshape((self.n_envs, self.n_steps)),
+                            writer,
+                            self.num_timesteps,
+                        )
                     self.num_timesteps += self.n_batch + 1
 
                     """Write printout and save csv
@@ -979,6 +1118,9 @@ class A2C(ActorCriticRLModel):
                         policy_entropy=policy_entropy,
                         policy_loss=policy_loss,
                         value_loss=value_loss,
+                        diff_selected_action=diff_selected_action,
+                        suessor=suessor,
+                        selected_action=selected_action,
                         model_location=model_location,
                         entry_th=entry_th,
                         mask_th=mask_th,
@@ -989,6 +1131,36 @@ class A2C(ActorCriticRLModel):
                         log_interval=log_interval,
                         pi_coef=pi_coef,
                         vf_coef=vf_coef,
+                    )
+                    """Restore extra information
+                    """
+                    print_rewards.append(
+                        [
+                            float(
+                                np.mean(
+                                    np.reshape(
+                                        rewards,
+                                        [
+                                            self.n_envs,
+                                            self.n_steps,
+                                            rewards.shape[-1],
+                                        ],
+                                    )
+                                )
+                            ),
+                            float(
+                                np.mean(
+                                    np.reshape(
+                                        true_reward,
+                                        [
+                                            self.n_envs,
+                                            self.n_steps,
+                                            true_reward.shape[-1],
+                                        ],
+                                    )
+                                )
+                            ),
+                        ]
                     )
 
                     """ Replay [main-process of replay]
@@ -1008,6 +1180,12 @@ class A2C(ActorCriticRLModel):
                                 masks,
                                 actions,
                                 values,
+                                true_reward,
+                                info,
+                                get_progress_info,
+                                suessor,
+                                selected_action,
+                                diff_selected_action,
                             ) = self.retrive_experiences(buffer, runner)
 
                             self._train_step(
@@ -1019,26 +1197,119 @@ class A2C(ActorCriticRLModel):
                                 values,
                                 self.num_timesteps // (self.n_batch + 1),
                                 writer,
+                                suessor,
+                                selected_action,
+                                diff_selected_action,
                                 replay=True,
                             )
                         learned_experiences_ep = learned_experiences_ep + samples_number
 
+                pd.DataFrame(
+                    data=np.array(print_rewards), columns=["rewards", "true_rewards"]
+                ).to_csv("{}/train_rewards_records.csv".format(model_location))
+
         return self
 
+    # # not in use mightbe
+    # @util.funTime("validation_test")
+    # def validation_test(self, runner, initial_state, epoch, model_name):
+    #     if (self.on_validation is True) and (epoch >= RUNHEADER.m_validation_min_epoch):
+    #         print("validation_test perform")
+    #         # dummy values for plotting
+    #         softmax_actions = np.zeros((1, RUNHEADER.mtl_target, 2))
+    #         index_bound = [0, 0, 0, 0, 0]
+    #         index_bound_return = [0, 0, 0, 0, 0]
+
+    #         tmp_info, selected_fund, img_action, act_selection = (
+    #             list(),
+    #             list(),
+    #             list(),
+    #             list(),
+    #         )
+    #         p_states, action, info = initial_state, None, None
+    #         mask = [False for _ in range(self.n_envs)]
+    #         with util.restore_agents_status(self):
+    #             current_step = 0
+    #             self.env.set_attr("mode", "validation")
+    #             self.env.set_attr("current_step", current_step)
+    #             self.env.set_attr("eof", False)
+    #             self.env.set_attr("steps_beyond_done", None)
+    #             obs = self.env.reset()
+
+    #             while np.sum(np.array(self.env.get_attr("eof"))) == 0:
+    #                 # # memory growing
+    #                 # action, states, values, neglogp, values2 = self.predict(obs, state=p_states,
+    #                 #                                                         mask=None, deterministic=True)
+
+    #                 # # memory growing
+    #                 # action, values, states, neglogp, values2 = self.step(obs, state=p_states, mask=mask, deterministic=False)
+
+    #                 # memory growing
+    #                 action, values, states, neglogp = runner.step_validation(
+    #                     obs,
+    #                     initial_state,
+    #                     state=p_states,
+    #                     mask=None,
+    #                     deterministic=False,
+    #                 )
+    #                 p_states = states
+    #                 _, rewards, _, info = self.env.step(action)
+
+    #                 current_step = current_step + 1
+    #                 self.env.set_attr("current_step", current_step)
+    #                 obs, _, _, _ = self.env.step(action)
+
+    #                 # dummy for bound estimation
+    #                 b_info = list()
+    #                 b_info_return = list()
+    #                 _info = None
+
+    #                 # gather performence
+    #                 tmp_info = plot_util.gather_validation_performence(
+    #                     info,
+    #                     tmp_info,
+    #                     values,
+    #                     softmax_actions,
+    #                     index_bound,
+    #                     index_bound_return,
+    #                     b_info,
+    #                     b_info_return,
+    #                 )
+    #             # plot and save performance
+    #             plot_util.plot_save_validation_performence(
+    #                 tmp_info,
+    #                 model_name[: -len(model_name.split("/")[-1]) - 1] + "/validation",
+    #                 model_name,
+    #             )
+
     def retrive_experiences(self, buffer, runner, wrs=None):
-        if wrs is None:
+        # get obs, actions, rewards, mus, dones from buffer.
+        # obs_buffer, action_buffer, rewards_buffer, _, _, dones_buffer, _, _, \
+        # _, return_info_buffer, _ = buffer.get()
+
+        if wrs is None:  # original version
             (
                 obs_buffer,
                 action_buffer,
                 rewards_buffer,
+                _,
+                _,
                 dones_buffer,
-            ) = buffer.get_rx()
+                _,
+                _,
+                _,
+            ) = buffer.get()
         else:
             (
                 obs_buffer,
                 action_buffer,
                 rewards_buffer,
+                _,
+                _,
                 dones_buffer,
+                _,
+                _,
+                _,
             ) = buffer.get_non_replacement(wrs)
 
         return runner.run(
@@ -1055,10 +1326,18 @@ class A2C(ActorCriticRLModel):
             self.n_envs
         )  # rewrite - the numbers of generate and train agent might be changed
         samples_number = int(buffer.num_in_buffer / buffer.n_env)
-        print_out_csv = []
+        # (
+        #     values_summary,
+        #     rewards_summary,
+        #     policy_entropy_summary,
+        #     policy_loss_summary,
+        #     value_loss_summary,
+        # ) = ([], [], [], [], [])
+        explained_var_summary, print_out_csv = [], []
         rewards, values = None, None
         print_out_csv_colname = None
 
+        # without_replacement_sampling = np.arange(samples_number)
         without_replacement_sampling = np.arange(buffer.num_in_buffer)
         for print_epoch_result in range(RUNHEADER.m_sub_epoch):
             np.random.shuffle(without_replacement_sampling)
@@ -1080,6 +1359,12 @@ class A2C(ActorCriticRLModel):
                     masks,
                     actions,
                     values,
+                    true_reward,
+                    info,
+                    get_progress_info,
+                    suessor,
+                    selected_action,
+                    diff_selected_action,
                 ) = self.retrive_experiences(buffer, runner, wrs)
 
                 self.offline_timestamps = self.offline_timestamps + 1
@@ -1099,12 +1384,15 @@ class A2C(ActorCriticRLModel):
                     self.offline_timestamps,
                     # self.num_timesteps // (self.n_batch + 1),
                     writer,
+                    suessor,
+                    selected_action,
+                    diff_selected_action,
                     replay=False,
                 )
-                # self.pg_loss_bias, self.vf_loss_bias = (
-                #     policy_loss,
-                #     value_loss,
-                # )
+                self.pg_loss_bias, self.vf_loss_bias = (
+                    policy_loss,
+                    value_loss,
+                )
                 explained_var = self.print_out_tabular(
                     policy_entropy=policy_entropy,
                     policy_loss=policy_loss,
@@ -1231,6 +1519,12 @@ class A2C(ActorCriticRLModel):
             masks,
             actions,
             values,
+            true_reward,
+            info,
+            get_progress_info,
+            suessor,
+            selected_action,
+            diff_selected_action,
         ) = self.retrive_experiences(buffer, runner)
 
         learned_experiences_ep = learned_experiences_ep + 1
@@ -1243,6 +1537,9 @@ class A2C(ActorCriticRLModel):
             values,
             states,
             masks,
+            suessor,
+            selected_action,
+            diff_selected_action,
             learned_experiences_ep,
             non_pass_episode,
         )
@@ -1307,6 +1604,9 @@ class A2C(ActorCriticRLModel):
         actions,
         values,
         states,
+        suessor,
+        selected_action,
+        diff_selected_action,
         current_iter_cnt,
     ):
 
@@ -1319,6 +1619,9 @@ class A2C(ActorCriticRLModel):
             values,
             states,
             masks,
+            suessor,
+            selected_action,
+            diff_selected_action,
             env_idx,
         )
         max_iter = max_iter + 1
@@ -1351,6 +1654,9 @@ class A2C(ActorCriticRLModel):
         policy_entropy=None,
         policy_loss=None,
         value_loss=None,
+        diff_selected_action=None,
+        suessor=None,
+        selected_action=None,
         model_location=None,
         opt=0,
         entry_th=None,
@@ -1375,6 +1681,7 @@ class A2C(ActorCriticRLModel):
                     "policy_loss",
                     "value_loss",
                     "explained_variance",
+                    "Episode_Dones",
                     "Episode_Rewards",
                     "values",
                     "current_buff_size",
@@ -1392,6 +1699,7 @@ class A2C(ActorCriticRLModel):
                         float(policy_loss),
                         float(value_loss),
                         float(explained_var),
+                        float(np.mean(suessor)),
                         float(
                             np.mean(
                                 np.reshape(
@@ -1439,6 +1747,7 @@ class A2C(ActorCriticRLModel):
                     "values",
                     "rewards",
                     "advs",
+                    "convergence",
                     "policy_loss_with_coef",
                     "value_loss_with_coef",
                 ]
@@ -1471,6 +1780,7 @@ class A2C(ActorCriticRLModel):
                         float(values),
                         float(rewards),
                         float(rewards - values),
+                        np.abs(float(policy_loss - values)),
                         float(policy_loss * pi_coef),
                         float(value_loss * vf_coef),
                     ]
@@ -1478,15 +1788,17 @@ class A2C(ActorCriticRLModel):
                 if self.verbose >= 1:
                     print("\n")
                     print_out_tabular = self.record_tabular[-1]
-                    for idx, it in enumerate(tabular_column_name):
-                        logger.record_tabular(it, print_out_tabular[idx])
+                    for idx in range(len(tabular_column_name)):
+                        logger.record_tabular(
+                            tabular_column_name[idx], print_out_tabular[idx]
+                        )
                     logger.dump_tabular()
                 pd.DataFrame(
                     data=np.array(self.record_tabular), columns=tabular_column_name
                 ).to_csv(f"{model_location}/record_tabular_buffer.csv")
 
-                # when weights has been updated, save as a npy file
-                if self.latent_weight_numpy is not None:
+                # Todo: fix code session run on save
+                if np.random.randint(1, 200) == 1:
                     with open(
                         f"{model_location}/latent_weight_pi_vn_{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.npy",
                         "wb",
@@ -1538,10 +1850,15 @@ class A2CRunner(AbstractEnvRunner):
         print("\n")
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [], [], [], [], []
 
+        tmp_info = []
         # Todo: assume that each episodes are independent (it depends on your perspective to given problem)
         self.states = self.init_state
         mb_states = self.states
         self.dones = [False for _ in range(self.n_env)]
+        selected_action = []
+        diff_selected_action = []
+        # returns_info = []
+        # hit = []
 
         # step simulation
         for n_steps_idx in range(self.n_steps):
@@ -1566,13 +1883,25 @@ class A2CRunner(AbstractEnvRunner):
             assert not np.sum(dones), "True condition detected!!!"
 
             mb_obs.append(np.copy(self.obs))
+            # mb_states.append(np.copy(self.states))
             mb_actions.append(actions)
             mb_values.append(values)
             mb_dones.append(self.dones)
             self.states = states
             self.dones = dones
+            # self.obs = obs
             mb_rewards.append(rewards)
 
+            # if online_buffer:
+            #     tmp_info.append(info)
+            #     tmp_log = [tmp["10day_return"] for tmp in info]
+            #     # returns_info.append(np.array(tmp_log).squeeze().tolist())
+            #     # returns_info.append(np.array(tmp_log).tolist())
+            #     # hit.append(np.where(np.array(tmp_log) > 0, 1, 0))
+            # else:
+            #     # returns_info.append(tmp_log.tolist())
+            #     # returns_info.append(np.array(tmp_log).squeeze().tolist())
+            #     # hit.append(np.where(tmp_log > 0, 1, 0))
         # stack step experiences
         mb_dones.append(self.dones)
         # batch of steps to batch of rollouts
@@ -1587,14 +1916,21 @@ class A2CRunner(AbstractEnvRunner):
         mb_dones = np.asarray(mb_dones, dtype=np.bool).swapaxes(0, 1)
         mb_masks = mb_dones[:, :-1]
         mb_dones = mb_dones[:, 1:]
+        true_rewards = np.copy(mb_rewards)
         last_values = self.model.value(self.obs, self.states, self.dones).tolist()
 
         if online_buffer:
             # discount/bootstrap off value fn.. backward continuous reward sum
-            for n, (rewards, dones, _) in enumerate(
+            for n, (rewards, dones, value) in enumerate(
                 zip(mb_rewards, mb_dones, last_values)
             ):
                 rewards = rewards.tolist()
+                # dones = dones.tolist()
+                # if dones[-1] == 0:
+                #     # rewards = discount_reward(rewards + [value], dones + [0], RUNHEADER.m_discount_factor)[:-1]
+                #     rewards = discount_reward(rewards, dones, RUNHEADER.m_discount_factor)
+                # else:
+                #     rewards = discount_reward(rewards, dones, RUNHEADER.m_discount_factor)
                 mb_rewards[n] = rewards
 
         # convert from [n_env, n_steps, ...] to [n_env * n_steps, ...], 2D to 1D
@@ -1602,6 +1938,9 @@ class A2CRunner(AbstractEnvRunner):
         mb_actions = mb_actions.reshape(-1, *mb_actions.shape[2:])
         mb_values = mb_values.reshape(-1, *mb_values.shape[2:])
         mb_masks = mb_masks.reshape(-1, *mb_masks.shape[2:])
+        true_rewards = true_rewards.reshape(-1, *true_rewards.shape[2:])
+
+        get_progress_info = self.env.env_method("get_progress_info")
 
         return (
             mb_obs,
@@ -1610,6 +1949,12 @@ class A2CRunner(AbstractEnvRunner):
             mb_masks,
             mb_actions,
             mb_values,
+            true_rewards,
+            tmp_info,
+            get_progress_info,
+            suessor,
+            np.reshape(np.array(selected_action).T, [self.n_env * self.n_steps]),
+            np.reshape(np.array(diff_selected_action).T, [self.n_env * self.n_steps]),
         )
 
     def step_simulation(self, clipped_actions=0, n_steps_idx=None):
@@ -1739,6 +2084,9 @@ class A2CRunner(AbstractEnvRunner):
         if mask is None:
             mask = [False for _ in range(self.n_env)]
         observation = np.array(observation)
+
+        # actions, values, states, neglogp, _ = self.model.step(self.obs, self.states, self.dones,
+        #                                                       sample_th=sample_th)
 
         return self.model.step(observation, state, mask, deterministic=deterministic)
 

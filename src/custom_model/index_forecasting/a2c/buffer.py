@@ -42,11 +42,6 @@ class Buffer(object):
         self.values = None
         self.states = None
         self.masks = None
-
-        self.suessor = None
-        self.selected_action = None
-        self.diff_selected_action = None
-        # self.returns_info = None
         self.hit = None
         self.bin_rewards = None
 
@@ -54,7 +49,7 @@ class Buffer(object):
         self.next_idx = 0
         self.num_in_buffer = 0
 
-    # @profile
+    # @profile - employeed in merge
     def append(self, obj):
         self.size = self.size + obj.size
         self.next_idx = self.next_idx + obj.next_idx
@@ -67,18 +62,6 @@ class Buffer(object):
         self.states = np.concatenate((self.states, obj.states), axis=0)
         self.masks = np.concatenate((self.masks, obj.masks), axis=0)
 
-        # Blow are dummy variables for session run.. Not in use, even tensorboard
-        self.suessor = np.concatenate((self.suessor, obj.suessor), axis=0)
-        self.selected_action = np.concatenate(
-            (self.selected_action, obj.selected_action), axis=0
-        )
-        self.diff_selected_action = np.concatenate(
-            (self.diff_selected_action, obj.diff_selected_action), axis=0
-        )
-        # self.returns_info = np.concatenate(
-        #     (self.returns_info, obj.returns_info), axis=0
-        # )
-        # self.hit = np.concatenate((self.hit, obj.hit), axis=0)
         self.bin_rewards = np.concatenate((self.bin_rewards, obj.bin_rewards), axis=0)
 
     def has_atleast(self, frames):
@@ -135,9 +118,6 @@ class Buffer(object):
         values,
         states,
         masks,
-        suessor,
-        selected_action,
-        diff_selected_action,
     ):
         """
         Adds a frame to the buffer
@@ -145,11 +125,8 @@ class Buffer(object):
         :param buffer_th:
         :param hit: ([float])
         :param returns_info: ([float])
-        :param diff_selected_action: ([int])
-        :param suessor: (int)
         :param states: ([float])
         :param values: ([float])
-        :param selected_action:  ([int])
         :param enc_obs: ([float]) the encoded observation
         :param actions: ([int]) the actions
         :param rewards: ([float]) the rewards
@@ -196,24 +173,10 @@ class Buffer(object):
                     )
                     self.masks = np.empty([self.size, self.n_steps], dtype=np.bool)
 
-                    # Blow are dummy variables for session run.. Not in use, even tensorboard
-                    self.suessor = np.empty([self.size], dtype=np.int8)
-                    self.selected_action = np.empty(
-                        [self.size, self.n_steps], dtype=np.int8
-                    )
-                    self.diff_selected_action = np.empty(
-                        [self.size, self.n_steps], dtype=np.int8
-                    )
-                    
                     self.bin_rewards = np.empty(
                         [self.size] + [rewards.shape[-1]], dtype=np.float32
                     )
-                    # self.suessor = np.empty([self.size] + list(np.array(suessor).shape), dtype=np.int32)
-                    # self.selected_action = np.empty([self.size] + list(np.array(selected_action).shape), dtype=np.int32)
-                    # self.diff_selected_action = np.empty([self.size] + list(np.array(diff_selected_action).shape),
-                    #                                      dtype=np.int32)
-                    # self.returns_info = np.empty([self.size] + list(np.array(returns_info).shape), dtype=np.float32)
-                    # self.hit = np.empty([self.size] + list(np.array(hit).shape), dtype=np.float32)
+                    
 
                 for idx in env_idx:
                     self.enc_obs[self.next_idx] = np.reshape(
@@ -233,25 +196,6 @@ class Buffer(object):
                     )[idx]
                     self.states[self.next_idx] = states[idx]
 
-                    self.suessor[self.next_idx] = suessor[idx]
-
-                    self.selected_action[self.next_idx] = np.reshape(
-                        selected_action, [self.n_env, self.n_steps]
-                    )[idx]
-
-                    self.diff_selected_action[self.next_idx] = np.reshape(
-                        diff_selected_action, [self.n_env, self.n_steps]
-                    )[idx]
-
-                    # self.returns_info[self.next_idx] = np.reshape(
-                    #     returns_info,
-                    #     [self.n_env, self.n_steps] + list(returns_info.shape[1:]),
-                    # )[idx]
-
-                    # self.hit[self.next_idx] = np.reshape(
-                    #     hit, [self.n_env, self.n_steps] + list(hit.shape[1:])
-                    # )[idx]
-                    
                     self.bin_rewards[self.next_idx] = np.sum(
                         np.reshape(
                             rewards,
@@ -305,41 +249,20 @@ class Buffer(object):
         idx = np.random.randint(0, self.num_in_buffer, self.n_env)
         envx = np.arange(self.n_env)
 
-        # Todo: Sampling method for major-minor class problem,
-        #  bin_rewards is the sum of returns of 20days forecasting on the bin (Default: 20 observation)
-        # group_1 = np.argwhere((self.bin_rewards[:self.num_in_buffer] > 2) &
-        #                       (self.bin_rewards[:self.num_in_buffer] < 8)).flatten().tolist()
-        # group_2 = np.argwhere((self.bin_rewards[:self.num_in_buffer] > 2) &
-        #                       (self.bin_rewards[:self.num_in_buffer] < 8)).flatten().tolist()
-        # envx = list(set(group_1 + group_2))
-
         if b_env_by_steps:  # pop n_env by n_step
-            selected_action = self.take(self.selected_action, idx, envx, dummy=True)
-            diff_selected_action = self.take(
-                self.diff_selected_action, idx, envx, dummy=True
-            )
             actions = self.take(self.actions, idx, envx)
             rewards = self.take(self.rewards, idx, envx)
             values = self.take(self.values, idx, envx)
             masks = self.take(self.masks, idx, envx)
             obs = self.take(self.enc_obs, idx, envx)
         else:  # pop and transpose from (n_env by n_step) to (n_step by n_env)
-            selected_action = self.take(
-                self.selected_action, idx, envx, dummy=True
-            ).transpose([1, 0])
-            diff_selected_action = self.take(
-                self.diff_selected_action, idx, envx, dummy=True
-            ).transpose([1, 0])
+            
             actions = self.take(self.actions, idx, envx).transpose([1, 0, 2])
             rewards = self.take(self.rewards, idx, envx).transpose([1, 0, 2])
             values = self.take(self.values, idx, envx).transpose([1, 0, 2])
             masks = self.take(self.masks, idx, envx).transpose([1, 0])
             obs = self.take(self.enc_obs, idx, envx).transpose([1, 0, 2, 3, 4, 5])
 
-        
-
-        # it is a summarized values, so does not need transformation
-        suessor = self.take(self.suessor, idx, envx, dummy=True)
         # actually first steps are always zero, and then snew generated by model
         states = self.take(self.states, idx, envx)
 
@@ -350,12 +273,37 @@ class Buffer(object):
             values,
             states,
             masks,
-            suessor,
-            selected_action,
-            diff_selected_action,
         )
 
-        # episode experience pop - sequential
+    def get_rx(self, b_env_by_steps=False):
+        """
+        randomly read a frame from the buffer
+
+        :return: ([float], [float], [float], [float], [bool], [float])
+                 observations, actions, rewards, mus, dones, maskes
+        """
+        assert self.can_sample()
+
+        idx = np.random.randint(0, self.num_in_buffer, self.n_env)
+        envx = np.arange(self.n_env)
+
+        if b_env_by_steps:  # pop n_env by n_step
+            actions = self.take(self.actions, idx, envx)
+            rewards = self.take(self.rewards, idx, envx)
+            masks = self.take(self.masks, idx, envx)
+            obs = self.take(self.enc_obs, idx, envx)
+        else:  # pop and transpose from (n_env by n_step) to (n_step by n_env)
+            actions = self.take(self.actions, idx, envx).transpose([1, 0, 2])
+            rewards = self.take(self.rewards, idx, envx).transpose([1, 0, 2])
+            masks = self.take(self.masks, idx, envx).transpose([1, 0])
+            obs = self.take(self.enc_obs, idx, envx).transpose([1, 0, 2, 3, 4, 5])
+
+        return (
+            obs,
+            actions,
+            rewards,
+            masks,
+        )
 
     def get_non_replacement(self, wrs, b_env_by_steps=False):
         """
@@ -366,54 +314,23 @@ class Buffer(object):
         """
         envx = np.arange(self.n_env)
 
-        # Todo: Sampling method for major-minor class problem,
-        #  bin_rewards is the sum of returns of 20days forecasting on the bin (Default: 20 observation)
-        # group_1 = np.argwhere((self.bin_rewards[:self.num_in_buffer] > 2) &
-        #                       (self.bin_rewards[:self.num_in_buffer] < 8)).flatten().tolist()
-        # group_2 = np.argwhere((self.bin_rewards[:self.num_in_buffer] > 2) &
-        #                       (self.bin_rewards[:self.num_in_buffer] < 8)).flatten().tolist()
-        # envx = list(set(group_1 + group_2))
+        # pop (n_env by n_step)
+        actions = self.take(self.actions, wrs, envx)
+        rewards = self.take(self.rewards, wrs, envx)
+        masks = self.take(self.masks, wrs, envx)
+        obs = self.take(self.enc_obs, wrs, envx)
 
-        if b_env_by_steps:  # pop n_env by n_step
-            selected_action = self.take(self.selected_action, wrs, envx, dummy=True)
-            diff_selected_action = self.take(
-                self.diff_selected_action, wrs, envx, dummy=True
-            )
-            actions = self.take(self.actions, wrs, envx)
-            rewards = self.take(self.rewards, wrs, envx)
-            values = self.take(self.values, wrs, envx)
-            masks = self.take(self.masks, wrs, envx)
-            obs = self.take(self.enc_obs, wrs, envx)
-        else:  # pop and transpose from (n_env by n_step) to (n_step by n_env)
-            selected_action = self.take(
-                self.selected_action, wrs, envx, dummy=True
-            ).transpose([1, 0])
-            diff_selected_action = self.take(
-                self.diff_selected_action, wrs, envx, dummy=True
-            ).transpose([1, 0])
-            actions = self.take(self.actions, wrs, envx).transpose([1, 0, 2])
-            rewards = self.take(self.rewards, wrs, envx).transpose([1, 0, 2])
-            values = self.take(self.values, wrs, envx).transpose([1, 0, 2])
-            masks = self.take(self.masks, wrs, envx).transpose([1, 0])
-            obs = self.take(self.enc_obs, wrs, envx).transpose([1, 0, 2, 3, 4, 5])
-
-        
-
-        # it is a summarized values, so does not need transformation
-        suessor = self.take(self.suessor, wrs, envx, dummy=True)
-        # actually first steps are always zero, and then snew generated by model
-        states = self.take(self.states, wrs, envx)
+        if not b_env_by_steps:  # transpose from (n_env by n_step) to (n_step by n_env)
+            actions = actions.transpose([1, 0, 2])
+            rewards = rewards.transpose([1, 0, 2])
+            masks = masks.transpose([1, 0])
+            obs = obs.transpose([1, 0, 2, 3, 4, 5])
 
         return (
             obs,
             actions,
             rewards,
-            values,
-            states,
             masks,
-            suessor,
-            selected_action,
-            diff_selected_action,
         )
 
     # individual experience pop
@@ -428,12 +345,7 @@ class Buffer(object):
         masks = self.take(self.masks, idx, envx)
         obs = self.take(self.enc_obs, idx, envx)
         # obs = self.decode(enc_obs)
-        selected_action = self.take(self.selected_action, idx, envx, dummy=True)
-        diff_selected_action = self.take(
-            self.diff_selected_action, idx, envx, dummy=True
-        )
-        suessor = self.take(self.suessor, idx, envx, dummy=True)
-
+        
         return (
             obs,
             actions,
@@ -441,9 +353,6 @@ class Buffer(object):
             values,
             states,
             masks,
-            selected_action,
-            diff_selected_action,
-            suessor,
         )
 
     # merge experiences
@@ -455,9 +364,6 @@ class Buffer(object):
         values,
         states,
         masks,
-        selected_action,
-        diff_selected_action,
-        suessor,
         e_obs,
         e_actions,
         e_rewards,
@@ -465,11 +371,8 @@ class Buffer(object):
         e_states,
         e_masks,
         env_idx,
-        e_selected_action,
-        e_diff_selected_action,
         e_returns_info,
         e_hit,
-        e_suessor,
     ):
 
         obs_list = list()
@@ -478,10 +381,7 @@ class Buffer(object):
         values_list = list()
         states_list = list()
         masks_list = list()
-        selected_action_list = list()
-        diff_selected_action_list = list()
-        suessor_list = list()
-
+        
         # merge
         for idx in env_idx:
             obs_list.append(
@@ -496,13 +396,7 @@ class Buffer(object):
             values_list.append(np.reshape(values, [self.n_env, self.n_steps])[idx])
             states_list.append(states[idx])
             masks_list.append(np.reshape(masks, [self.n_env, self.n_steps])[idx])
-            selected_action_list.append(
-                np.reshape(selected_action, [self.n_env, self.n_steps])[idx]
-            )
-            diff_selected_action_list.append(
-                np.reshape(diff_selected_action, [self.n_env, self.n_steps])[idx]
-            )
-            suessor_list.append(np.reshape(suessor, [self.n_env])[idx])
+            
 
         for idx in range(len(e_rewards)):
             obs_list.append(e_obs[idx])
@@ -511,9 +405,7 @@ class Buffer(object):
             values_list.append(e_values[idx])
             states_list.append(e_states[idx])
             masks_list.append(e_masks[idx])
-            selected_action_list.append(e_selected_action[idx])
-            diff_selected_action_list.append(e_diff_selected_action[idx])
-            suessor_list.append(e_suessor[idx])
+            
 
         # reshape
         (
@@ -523,9 +415,7 @@ class Buffer(object):
             values,
             states,
             masks,
-            selected_action,
-            diff_selected_action,
-            suessor,
+            
         ) = self.reshape(
             np.array(obs_list, dtype=self.obs_dtype),
             np.array(actions_list, dtype=np.int32),
@@ -533,9 +423,7 @@ class Buffer(object):
             np.array(values_list, dtype=np.float32),
             np.array(states_list, dtype=np.float32),
             np.array(masks_list, dtype=np.bool),
-            np.array(selected_action_list, dtype=np.int32),
-            np.array(diff_selected_action_list, dtype=np.int32),
-            np.array(suessor_list, dtype=np.int32),
+            
         )
 
         return (
@@ -545,9 +433,7 @@ class Buffer(object):
             values,
             states,
             masks,
-            selected_action,
-            diff_selected_action,
-            suessor,
+            
         )
 
     def reshape(
@@ -558,9 +444,7 @@ class Buffer(object):
         values,
         states,
         masks,
-        selected_action,
-        diff_selected_action,
-        suessor,
+        
     ):
         obs = np.reshape(obs, [self.n_env * self.n_steps] + list(obs.shape[2:]))
         actions = np.reshape(
@@ -570,11 +454,7 @@ class Buffer(object):
         values = np.reshape(values, [self.n_env * self.n_steps])
         states = np.reshape(states, states.shape)
         masks = np.reshape(masks, [self.n_env * self.n_steps])
-        selected_action = np.reshape(selected_action, [self.n_env * self.n_steps])
-        diff_selected_action = np.reshape(
-            diff_selected_action, [self.n_env * self.n_steps]
-        )
-        suessor = np.reshape(suessor, [self.n_env])
+        
 
         return (
             obs,
@@ -583,7 +463,25 @@ class Buffer(object):
             values,
             states,
             masks,
-            selected_action,
-            diff_selected_action,
-            suessor,
+            
         )
+
+    # this function could be called when saving buffer file, otherwise it cause serious logical error
+    def remove_unfilled(self):
+        # assume it contain empty values which is not to be saved
+
+        if self.num_in_buffer < self.size:
+            self.enc_obs = self.enc_obs[: self.num_in_buffer]
+            self.actions = self.actions[: self.num_in_buffer]
+            self.rewards = self.rewards[: self.num_in_buffer]
+            self.values = self.values[: self.num_in_buffer]
+            self.states = self.states[: self.num_in_buffer]
+            self.masks = self.masks[: self.num_in_buffer]
+
+            
+            self.bin_rewards = self.bin_rewards[: self.num_in_buffer]
+
+            # this function could be called when saving buffer file, otherwise it cause serious logical error
+            self.size = self.num_in_buffer
+        else:
+            pass

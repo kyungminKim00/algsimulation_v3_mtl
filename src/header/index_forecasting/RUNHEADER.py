@@ -12,7 +12,7 @@ m_on_validation: bool = False
 """ Declare static variables
 """
 var_select_factor = (
-    0.4  # 0 < vsf < 1, select similar assets against the target as close as 0
+    0.4  # 0 < vsf < 1, select assets similar with the target as close as 0
 )
 m_pool_samples = 70
 release: bool = False

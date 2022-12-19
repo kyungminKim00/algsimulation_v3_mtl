@@ -570,7 +570,7 @@ def loadFile(file_name, pickle_type=0):
     data = None
 
     # Load file
-    file_name = "{0}.pkl".format(file_name)
+    file_name = f"{file_name}.pkl"
     if pickle_type == 1:
         data = joblib.load(file_name)
     else:
@@ -580,7 +580,7 @@ def loadFile(file_name, pickle_type=0):
             elif pickle_type == 2:
                 data = cloudpickle.load(fp)
             fp.close()
-    print("\nLoading files {0}.... Done!!!".format(file_name))
+    print(f"\nLoading files {file_name}.... Done!!!")
 
     return data
 
