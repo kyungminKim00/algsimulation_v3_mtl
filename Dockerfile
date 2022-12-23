@@ -1,5 +1,6 @@
 FROM tensorflow/tensorflow:2.10.0-gpu
 ENV DEBIAN_FRONTEND noninteractive
+ENV TZ=Asia/Seoul
 RUN mkdir /dev_env
 WORKDIR /dev_env
 COPY . .
