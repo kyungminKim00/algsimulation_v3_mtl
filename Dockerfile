@@ -1,4 +1,5 @@
 FROM tensorflow/tensorflow:2.10.0-gpu
+ENV USER=kmkim
 ENV DEBIAN_FRONTEND noninteractive
 RUN mkdir /dev_env
 WORKDIR /dev_env
@@ -11,6 +12,10 @@ RUN apt-get -q update && apt-get upgrade -y \
 git vim-nox tree openssh-server tzdata \
 && apt-get autoremove -y
 
+RUN groupadd -r kmkim \
+    && useradd -r -u 1000 -g kmkim $USER \
+    && chown -R kmkim:kmkim /home/$USER
+    
 RUN python3 -m pip install --upgrade pip \
 && pip3 install --upgrade tf_slim \
 && pip3 install gym==0.11.0 \
@@ -23,6 +28,6 @@ RUN sed -ri 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_
 RUN mkdir -p /var/run/sshd && chmod 755 /var/run/sshd && chmod 600 -R /etc/ssh
 
 RUN echo service ssh start >> /root/.bashrc
-EXPOSE 22
+EXPOSE 22 6006
 
 
