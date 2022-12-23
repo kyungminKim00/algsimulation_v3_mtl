@@ -12,12 +12,6 @@
 	"runArgs": [
 		"--gpus",
 		"all",
-		"-u",
-		"1000:1000",
-		"-v",
-		"/etc/passwd:/etc/passwd:ro",
-		"-v",
-		"/etc/group:/etc/group:ro",
 		"-v",
 		"${localEnv:DATAHOME}/algsimulation_v3_mtl/save:/workspaces/algsimulation_v3_mtl/src/save",
 		"-v",
@@ -29,7 +23,7 @@
 	
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [8888, 8787, 8786],
-	"forwardPorts": [22],
+	"forwardPorts": [22, 6006],
 
 	// Uncomment when using a ptrace-based debugger like C++, Go, and Rust
 	// "runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
@@ -41,7 +35,7 @@
 	// "postCreateCommand": ,
 		
 	// Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
-	"remoteUser": "kmkim",
+	"remoteUser": "root",
 	
 	//which black, pymy, pylint
 	"settings": { 
