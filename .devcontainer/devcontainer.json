@@ -92,7 +92,9 @@
 		"magicstack.MagicPython",
 		"msrvida.vscode-sanddance",
 		"ms-toolsai.jupyter",
-		"GrapeCity.gc-excelviewer"
+		"GrapeCity.gc-excelviewer",
+		"tabnine.tabnine-vscode",
+		"formulahendry.code-runner"
 		]
 	
 }
