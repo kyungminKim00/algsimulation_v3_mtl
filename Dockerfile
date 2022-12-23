@@ -1,9 +1,12 @@
 FROM tensorflow/tensorflow:2.10.0-gpu
 ENV USER=kmkim
+ENV HOME=/home/$USER
 ENV DEBIAN_FRONTEND noninteractive
 RUN mkdir /dev_env
+RUN mkdir -p $HOME/.local/bin
 WORKDIR /dev_env
 COPY . .
+RUN cp .bashrc /root/ && cp .bashrc /home/$USER
 
 RUN echo root:admin | chpasswd
 RUN apt-get -q update && apt-get upgrade -y \
