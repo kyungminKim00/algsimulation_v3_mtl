@@ -12,6 +12,8 @@
 	"runArgs": [
 		"--gpus",
 		"all",
+		"-u",
+		"1000:1000",
 		"-v",
 		"${localEnv:DATAHOME}/algsimulation_v3_mtl/save:/workspaces/algsimulation_v3_mtl/src/save",
 		"-v",
@@ -35,7 +37,7 @@
 	// "postCreateCommand": ,
 		
 	// Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
-	// "remoteUser": "vscode"
+	"remoteUser": "kmkim",
 	
 	//which black, pymy, pylint
 	"settings": { 
