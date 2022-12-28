@@ -1,14 +1,16 @@
-import re
-import os
-from PIL import Image
-import glob
-import platform
-import numpy as np
-import header.index_forecasting.RUNHEADER as RUNHEADER
 import argparse
 import datetime
-import util
+import glob
+import os
 import pickle
+import platform
+import re
+
+import numpy as np
+from PIL import Image
+
+import header.index_forecasting.RUNHEADER as RUNHEADER
+import util
 
 dataset_version_dict = {
     0: "v11",
@@ -31,18 +33,11 @@ mkidx_mkname = {
     0: "INX",
     1: "KS",
     2: "Gold",
-    3: "US10YT",
-    4: "FTSE",
-    5: "GDAXI",
-    6: "SSEC",
-    7: "BVSP",
-    8: "N225",
-    9: "GB10YT",
-    10: "DE10YT",
-    11: "KR10YT",
-    12: "CN10YT",
-    13: "JP10YT",
-    14: "BR10YT",
+    3: "FTSE",
+    4: "GDAXI",
+    5: "SSEC",
+    6: "BVSP",
+    7: "N225",
 }
 mkname_mkidx = {v: k for k, v in mkidx_mkname.items()}
 

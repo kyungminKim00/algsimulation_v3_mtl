@@ -264,36 +264,19 @@ def _remove_cond(f_cond, matrix, target_col=None, axis=0, det=True):
 
 
 def current_y_unit(target_name):
-    if target_name in [
-        "US10YT",
-        "GB10YT",
-        "DE10YT",
-        "KR10YT",
-        "CN10YT",
-        "JP10YT",
-        "BR10YT",
-    ]:
-        return "percent"
-    elif target_name in ["TOTAL"]:
+    if target_name in ["TOTAL"]:
         return [
             "prc",
             "prc",
             "prc",
-            "percent",
             "prc",
             "prc",
             "prc",
             "prc",
             "prc",
-            "percent",
-            "percent",
-            "percent",
-            "percent",
-            "percent",
-            "percent",
+            "prc",
         ]
-    else:
-        return "prc"
+    return "prc"
 
 
 def current_x_unit(d_f_summary, target_name):

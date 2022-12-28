@@ -245,13 +245,6 @@ def run(
 
 
 target_type = {
-    "US10YT": "yield",
-    "GB10YT": "yield",
-    "DE10YT": "yield",
-    "KR10YT": "yield",
-    "CN10YT": "yield",
-    "JP10YT": "yield",
-    "BR10YT": "yield",
     "INX": "prc",
     "KS200": "prc",
     "XAU": "prc",
