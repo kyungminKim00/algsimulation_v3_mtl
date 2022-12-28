@@ -251,10 +251,10 @@ class A2C(ActorCriticRLModel):
                         name="action_ph",
                     )
                     self.advs_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None, 15], name="advs_ph"
+                        tf.float32, [None, RUNHEADER.num_y], name="advs_ph"
                     )
                     self.rewards_ph = tf.compat.v1.placeholder(
-                        tf.float32, [None, 15], name="rewards_ph"
+                        tf.float32, [None, RUNHEADER.num_y], name="rewards_ph"
                     )
                     self.learning_rate_ph = tf.compat.v1.placeholder(
                         tf.float32, [], name="learning_rate_ph"

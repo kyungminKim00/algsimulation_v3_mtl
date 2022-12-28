@@ -1,7 +1,8 @@
 import pickle
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
 
 filename = "./save/tf_record/index_forecasting/if_x0_20_y20_v0/if_v0_cv00_train.pkl"
 save_img_dir = "./save/tf_record/index_forecasting/if_x0_20_y20_v0"
@@ -34,10 +35,10 @@ def plot_typeA():
             plt.subplot(4, 1, 4)
             plt.imshow(img[15:20])
             plt.pause(0.1)
-            target = "{}/Plot_OBS/Type_A/index_{}".format(save_img_dir, index_idx)
+            target = f"{save_img_dir}/Plot_OBS/Type_A/index_{index_idx}"
             path = Path(target)
             path.mkdir(parents=True, exist_ok=True)
-            plt.savefig("{}/{}.jpeg".format(target, idx), format="jpeg", dpi=600)
+            plt.savefig(f"{target}/{idx}.jpeg", format="jpeg", dpi=600)
             plt.close()
 
 

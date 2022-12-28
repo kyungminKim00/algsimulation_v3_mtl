@@ -227,7 +227,7 @@ def shakenet(scaled_images, is_training=False, **kwargs):
         with slim.arg_scope([slim.batch_norm, slim.dropout], is_training=is_training):
 
             # Stem
-            # scaled_images: (5, 20, 292, 15)
+            # scaled_images: (5, 20, 292, 8)
             layer_stem = [
                 block_stem(scaled_images[:, :, :, :, idx], 512, 32, f"Stem{idx}")
                 for idx in range(scaled_images.shape[-1])
