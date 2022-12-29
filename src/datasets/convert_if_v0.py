@@ -209,7 +209,7 @@ def pool_ordering_refine(
                 [
                     [key, np.abs(val[0])]
                     for key, val in lr_dict.items()
-                    if ((val[1] > mean_rs) and (val[0] > mean_coef))
+                    if ((val[1] < mean_rs) and (val[0] > mean_coef))
                     and ((val[2] > val[3]) or (val[2] < val[4]))
                 ]
             )

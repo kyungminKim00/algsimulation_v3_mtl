@@ -39,6 +39,7 @@
 	
 	//which black, pymy, pylint
 	"settings": { 
+		"zenMode.hideLineNumbers": false,
 		"python.linting.enabled": true,
 		"python.linting.pylintEnabled": true,
 		"python.formatting.blackPath": "/usr/local/bin/black",

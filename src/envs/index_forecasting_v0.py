@@ -230,7 +230,7 @@ class IndexForecastingEnv(gym.Env):
             # (expectation < 0) or : All the step sample should satisfy this condition
             # (done_cond < 0) or (done_cond2 < 0) or : Give advantage to the sample when meet this condition
             #
-            # # Give advantage to the sample when meet this condition
+            # Give advantage to the sample when meet this condition
             # (np.sum(y_return) > np.sum(y_return_ref1 - y_return)) : cool-down phase
             # """
             # option_cond = [done_cond < 0, done_cond2 < 0, done_cond3]  # done_cond3: cool-down phase
@@ -326,7 +326,7 @@ class IndexForecastingEnv(gym.Env):
     def _get_observation_from_sample(self, sample):
         return sample["structure/predefined_observation_total"]
 
-    @lru_cache(maxsize=RUNHEADER.m_n_step*10)
+    @lru_cache(maxsize=RUNHEADER.m_n_step * 10)
     def next_timestamp(self, current_episode_idx=0, current_step=0, init=False) -> None:
         self.sample = None
 

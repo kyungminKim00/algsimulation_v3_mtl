@@ -66,4 +66,5 @@ def configure_header(args) -> None:
     RUNHEADER.__dict__["target_name"] = RUNHEADER.target_id2name(
         RUNHEADER.__dict__["m_target_index"]
     )
+
     _print()
