@@ -11,9 +11,9 @@ m_on_validation: bool = False
 
 """ Declare static variables
 """
-var_select_factor = (
-    0.0  # 0 < vsf < 1, select assets similar with the target as close as 0
-)
+# 0 < vsf < 1, select assets similar with the target as close as 0
+var_select_factor = 0.1
+
 m_pool_samples = 70
 release: bool = False
 use_historical_model: bool = True  # the historical best or the best model at the moment
