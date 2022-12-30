@@ -50,41 +50,41 @@ def main(_):
 
 if __name__ == "__main__":
     parser: argparse.ArgumentParser = argparse.ArgumentParser("")
-    # # init args - 운영서버
-    # parser.add_argument("--s_test", type=str, default=None)
-    # parser.add_argument("--e_test", type=str, default=None)
-    # parser.add_argument("--dataset_version", type=str, default=None)  # save as v7 'v7'
-    # parser.add_argument("--verbose", type=int, default=None)
-    # parser.add_argument(
-    #     "--m_target_index", type=int, default=None
-    # )  # [0 | 1 | 2 | etc.]
-    # parser.add_argument("--gen_var", type=int, default=None)  # [True | False]
-    # parser.add_argument("--forward_ndx", type=int, default=None)
-    # parser.add_argument("--operation_mode", type=int, default=None)
-    # parser.add_argument("--domain", type=str, required=True)
-    # parser.add_argument(
-    #     "--performed_date",
-    #     type=str,
-    #     default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    # )
-
-    # Debug parameter v0 - Select Variable
+    # init args - 운영서버
     parser.add_argument("--s_test", type=str, default=None)
-    # parser.add_argument("--e_test", type=str, default=None)
-    parser.add_argument("--e_test", type=str, default="2010-01-01")
-    parser.add_argument("--dataset_version", type=str, default="v0")
-    # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
+    parser.add_argument("--e_test", type=str, default=None)
+    parser.add_argument("--dataset_version", type=str, default=None)  # save as v7 'v7'
     parser.add_argument("--verbose", type=int, default=None)
-    parser.add_argument("--m_target_index", type=int, default=8)  # [0 | 1 | 2 | ~ | 14]
-    parser.add_argument("--gen_var", type=int, default=0)  # 0 is only possblie value
+    parser.add_argument(
+        "--m_target_index", type=int, default=None
+    )  # [0 | 1 | 2 | etc.]
+    parser.add_argument("--gen_var", type=int, default=None)  # [True | False]
     parser.add_argument("--forward_ndx", type=int, default=None)
     parser.add_argument("--operation_mode", type=int, default=None)
-    parser.add_argument("--domain", type=str, default=None)
+    parser.add_argument("--domain", type=str, required=True)
     parser.add_argument(
         "--performed_date",
         type=str,
         default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
+
+    # # Debug parameter v0 - Select Variable
+    # parser.add_argument("--s_test", type=str, default=None)
+    # # parser.add_argument("--e_test", type=str, default=None)
+    # parser.add_argument("--e_test", type=str, default="2010-01-01")
+    # parser.add_argument("--dataset_version", type=str, default="v0")
+    # # [0: train/validation independent | 1: test | 2: train only | 3: train/validation Duplicate]
+    # parser.add_argument("--verbose", type=int, default=None)
+    # parser.add_argument("--m_target_index", type=int, default=8)  # [0 | 1 | 2 | ~ | 14]
+    # parser.add_argument("--gen_var", type=int, default=0)  # 0 is only possblie value
+    # parser.add_argument("--forward_ndx", type=int, default=None)
+    # parser.add_argument("--operation_mode", type=int, default=0)
+    # parser.add_argument("--domain", type=str, default=None)
+    # parser.add_argument(
+    #     "--performed_date",
+    #     type=str,
+    #     default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    # )
 
     # # Debug parameter v1 - generate traing/test data (operation)
     # parser.add_argument("--s_test", type=str, default=None)

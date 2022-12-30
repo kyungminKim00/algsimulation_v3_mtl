@@ -37,6 +37,8 @@ python script_index_forecasting_test.py --domain=INX_120 --actual_inference=1
 # Auto Clean
 python script_auto_clean_envs.py --m_target_index=$m_t --forward_ndx=$f_ndx
 END
+
+:<<END
 python script_index_forecasting_generate_data.py --domain=INX_120 --verbose=3 --operation_mode=1
 python script_index_forecasting_train.py --domain=INX_120 --m_online_buffer=1 --search_parameter=0 --process_id=1 --on_cloud=0 --n_cpu=1
 python script_index_forecasting_train.py --domain=INX_120 --process_id=1
@@ -45,6 +47,10 @@ python script_index_forecasting_select_model.py --domain=INX_120
 python script_index_forecasting_adhoc.py  --domain=INX_120
 python script_index_forecasting_test.py --domain=INX_120 --actual_inference=1
 python script_plot_gif.py
-
 exit 0
+END
+
+
+
+
 
