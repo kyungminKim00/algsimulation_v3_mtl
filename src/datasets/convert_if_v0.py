@@ -12,7 +12,7 @@ from collections import OrderedDict
 import bottleneck as bn
 import numpy as np
 import pandas as pd
-import plotly
+import plotly as pl
 import plotly.express as px
 import ray
 import statsmodels.api as sm
@@ -148,15 +148,15 @@ def pool_ordering_refine(
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         for y_idx in range(num_y_var):
-            data = np.hstack([data, np.expand_dims(target_data[:, y_idx], axis=1)])
+            data_tmp = np.hstack([data, np.expand_dims(target_data[:, y_idx], axis=1)])
 
             # data = np.concatenate([data, target_data[:, idx]], axis=1)
 
             # latest_3y_samples = num_sample_obs[1] - (20 * 12 * 3)
 
             ma_data = bn.move_mean(
-                data[num_sample_obs[0] : num_sample_obs[1], :],
-                window=base_first_momentum,
+                data_tmp[num_sample_obs[0] : num_sample_obs[1], :],
+                window=base_first_momentum * 3,
                 min_count=1,
                 axis=0,
             )
@@ -171,12 +171,12 @@ def pool_ordering_refine(
             ]
             new_cov = np.array(ray.get(res)).T
 
-            if RUNHEADER._debug_on:
-                target_index_name = RUNHEADER.target_id2name(y_idx)
-                df = pd.DataFrame(new_cov, columns=list(ids_to_var_names.values()))
-                df.to_csv(
-                    f"./datasets/rawdata/{target_index_name}_cov.csv", index=False
-                )
+            mask = np.isnan(new_cov).all(axis=1)
+            new_cov = new_cov[~mask]
+
+            #  data frame to validate varialbes
+            target_index_name = RUNHEADER.target_id2name(y_idx)
+            df = pd.DataFrame(new_cov, columns=list(ids_to_var_names.values()))
 
             mean_cor_pivot, std_cor_pivot = np.nanmean(new_cov, axis=0), np.nanstd(
                 new_cov, axis=0
@@ -185,26 +185,27 @@ def pool_ordering_refine(
             upper = mean_cor_pivot + std_cor_pivot * RUNHEADER.var_select_factor
             lower = mean_cor_pivot - std_cor_pivot * RUNHEADER.var_select_factor
 
-            # # use a half of samples
-            # # the variable selection with cross corealation - part 2 to calculate mean_cor
+            # use a half of samples
+            # the variable selection with cross corealation - part 2 to calculate mean_cor
             new_cov = new_cov[-RUNHEADER.m_pool_samples :, :]
+
             mean_cor = np.nanmean(new_cov, axis=0)
 
-            # liner regression
-            tmp_cov = np.where(np.isnan(new_cov), 0, new_cov)
-            res = [
-                ray_wrap_lr.remote(
-                    np.arange(tmp_cov.shape[0]),
-                    tmp_cov[:, var_idx],
-                )
-                for var_idx in range(tmp_cov.shape[1])
-            ]
-            lr_res = np.array(ray.get(res))
-            mean_coef, mean_rs = np.nanmean(lr_res, axis=0)  # basket coef and rs
+            # # liner regression
+            # tmp_cov = np.where(np.isnan(new_cov), 0, new_cov)
+            # res = [
+            #     ray_wrap_lr.remote(
+            #         np.arange(tmp_cov.shape[0]),
+            #         tmp_cov[:, var_idx],
+            #     )
+            #     for var_idx in range(tmp_cov.shape[1])
+            # ]
+            # lr_res = np.array(ray.get(res))
+            # mean_coef, mean_rs = np.nanmean(lr_res, axis=0)  # basket coef and rs
 
             lr_res = np.concatenate(
                 [
-                    lr_res,
+                    # lr_res,
                     mean_cor.reshape([-1, 1]),
                     upper.reshape([-1, 1]),
                     lower.reshape([-1, 1]),
@@ -220,8 +221,7 @@ def pool_ordering_refine(
                     # if (val[0] > mean_coef) and ((val[2] > val[3]) or (val[2] < val[4]))
                     # if ((val[1] < mean_rs) and (val[0] > mean_coef))
                     # and ((val[2] > val[3]) or (val[2] < val[4])) - dont enable this
-                    if (val[0] > mean_coef)
-                    and (np.abs(val[2]) > max(np.abs(val[3]), np.abs(val[4])))
+                    if (np.abs(val[0]) > max(np.abs(val[1]), np.abs(val[2])))
                 ]
             )
 
@@ -239,27 +239,37 @@ def pool_ordering_refine(
             print(
                 f"the num of selected variables {len(ordered_ids)} from {num_variables} for {RUNHEADER.target_id2name(y_idx)}"
             )
-            ordered_ids_list = ordered_ids_list + ordered_ids
 
             # for Monitoring Service
             save_name = f"{RUNHEADER.file_data_vars}{RUNHEADER.target_id2name(y_idx)}"
             mon_df = pd.DataFrame(
                 data=[ids_to_var_names[ids] for ids in ordered_ids], columns=["VarName"]
             )
-            mon_df.to_csv(save_name + "_Indices.csv", index=None, header=None)
-            # rewrite
+            mon_df = df[list(mon_df["VarName"])]
+            mon_df = mon_df.dropna(axis=1)
+
+            # save variables and rewrite
+            refined_var = list(mon_df.columns)
+            pd.DataFrame(refined_var).to_csv(
+                save_name + "_Indices.csv", index=None, header=None
+            )
+            ordered_ids = [var_names_to_ids[name] for name in refined_var]
+            ordered_ids_list = ordered_ids_list + ordered_ids
             unit_datetype.script_run(save_name + "_Indices.csv")
 
-            if RUNHEADER._debug_on:
-                for var_name in list(mon_df["VarName"]):
-                    fig = px.line(df[var_name])
-                    plotly.io.write_image(
+            if RUNHEADER.variable_analysis:
+                t_dir = f"{RUNHEADER.res_variable_analysis}/{target_index_name}/{RUNHEADER.var_select_factor}"
+                if not os.path.isdir(t_dir):
+                    os.makedirs(t_dir, exist_ok=True)
+
+                for var_name in list(mon_df.columns):
+                    fig = px.line(mon_df[var_name])
+                    pl.io.write_image(
                         fig=fig,
-                        file=f"./datasets/rawdata/{target_index_name}_{var_name}_{RUNHEADER.var_select_factor}.jpeg",
+                        file=f"{t_dir}/{var_name}.jpeg",
                         format="jpeg",
                         scale=0.5,
                     )
-
     ordered_ids = list(set(ordered_ids_list))
     # 2-3-2. re-assign
     ids_to_var_names = OrderedDict(

@@ -8,11 +8,12 @@ _debug_on: bool = True
 full_tensorboard_log: bool = False
 disable_derived_vars: bool = True
 m_on_validation: bool = False
-
+variable_analysis: bool = True
+res_variable_analysis = "./save/result/variable_analisys"
 """ Declare static variables
 """
 # 0 < vsf < 1, select assets similar with the target as close as 0
-var_select_factor = 0.4
+var_select_factor = 0.2  # 0 < vsf < 1, select [0.2, 0.4, 0.6]
 
 m_pool_samples = 70
 release: bool = False

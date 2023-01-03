@@ -544,7 +544,7 @@ def _getcorr(
 ):
     _data = np.hstack([data, np.expand_dims(target_data, axis=1)])
     ma_data = bn.move_mean(
-        _data, window=base_first_momentum, min_count=1, axis=0
+        _data, window=base_first_momentum * 3, min_count=1, axis=0
     )  # use whole train samples
 
     # the variable selection with cross corealation
@@ -574,7 +574,8 @@ def _getcorr(
     )
 
     daily_cov_raw = mean_cor
-    tmp_cov = np.where((mean_cor > upper) | (mean_cor < lower), 1, 0)
+    # tmp_cov = np.where((mean_cor > upper) | (mean_cor < lower), 1, 0)
+    tmp_cov = np.where((np.abs(mean_cor) > max(upper, lower)), 1, 0)
     tmp_cov[: RUNHEADER.m_pool_samples * 2, :] = 0
 
     print(f"the avg. numbers of employed variables: {np.mean(np.sum(tmp_cov, axis=1))}")
