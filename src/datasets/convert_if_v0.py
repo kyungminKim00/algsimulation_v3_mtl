@@ -12,6 +12,7 @@ from collections import OrderedDict
 import bottleneck as bn
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import ray
 import statsmodels.api as sm
 import tensorflow as tf
@@ -168,10 +169,17 @@ def pool_ordering_refine(
                 for x_idx in range(ma_data.shape[1] - 1)
             ]
             new_cov = np.array(ray.get(res)).T
+
+            if RUNHEADER._debug_on:
+                target_index_name = RUNHEADER.target_id2name(y_idx)
+                df = pd.DataFrame(new_cov, columns=list(ids_to_var_names.values()))
+                df.to_csv(
+                    f"./datasets/rawdata/{target_index_name}_cov.csv", index=False
+                )
+
             mean_cor_pivot, std_cor_pivot = np.nanmean(new_cov, axis=0), np.nanstd(
                 new_cov, axis=0
             )
-
             # determin marginal area
             upper = mean_cor_pivot + std_cor_pivot * RUNHEADER.var_select_factor
             lower = mean_cor_pivot - std_cor_pivot * RUNHEADER.var_select_factor
@@ -209,10 +217,13 @@ def pool_ordering_refine(
                     [key, np.abs(val[0])]
                     for key, val in lr_dict.items()
                     # if (val[0] > mean_coef) and ((val[2] > val[3]) or (val[2] < val[4]))
-                    if ((val[1] < mean_rs) and (val[0] > mean_coef))
-                    and ((val[2] > val[3]) or (val[2] < val[4]))
+                    # if ((val[1] < mean_rs) and (val[0] > mean_coef))
+                    # and ((val[2] > val[3]) or (val[2] < val[4])) - dont enable this
+                    if (val[0] > mean_coef)
+                    and (np.abs(val[2]) > max(np.abs(val[3]), np.abs(val[4])))
                 ]
             )
+
             lr_dict = OrderedDict(
                 sorted(lr_dict.items(), key=lambda x: x[1], reverse=True)
             )
@@ -231,11 +242,16 @@ def pool_ordering_refine(
 
             # for Monitoring Service
             save_name = f"{RUNHEADER.file_data_vars}{RUNHEADER.target_id2name(y_idx)}"
-            pd.DataFrame(
+            mon_df = pd.DataFrame(
                 data=[ids_to_var_names[ids] for ids in ordered_ids], columns=["VarName"]
-            ).to_csv(save_name + "_Indices.csv", index=None, header=None)
+            )
+            mon_df.to_csv(save_name + "_Indices.csv", index=None, header=None)
             # rewrite
             unit_datetype.script_run(save_name + "_Indices.csv")
+
+            if RUNHEADER._debug_on:
+                for var_name in list(mon_df["VarName"]):
+                    px.line(df[var_name])
 
     ordered_ids = list(set(ordered_ids_list))
     # 2-3-2. re-assign

@@ -30,8 +30,7 @@ def rolling_apply_cov(fun, X, window_size, b_scaler=True):
                 # cov_matrix.append((fun(X[(i - window_size + 1):i + 1])).tolist())
                 cov_matrix.append(fun(X[(i - window_size + 1) : i + 1], b_scaler))
                 sys.stdout.write(
-                    "\r>> [%d/%d days] correlation matrix calculation....!!!"
-                    % (i, X.shape[0])
+                    f"\r>> [{i:%d}/{X.shape[0]:%d} days] correlation matrix calculation....!!!"
                 )
                 sys.stdout.flush()
 
@@ -104,7 +103,7 @@ def rolling_apply(fun, X, window_size):
         _, cnt = X.shape
         for i in range(cnt):
             r[:, i] = rolling_apply_1d(fun, X[:, i], window_size)
-            sys.stdout.write("\r>> [%d/%d] rolling_apply....!!!" % (i, cnt))
+            sys.stdout.write(f"\r>> [{i}/{cnt}] rolling_apply....!!!")
             sys.stdout.flush()
 
     return r
