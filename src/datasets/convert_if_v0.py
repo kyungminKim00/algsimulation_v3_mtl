@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import datetime
+# import datetime
 import math
 import os
 import pickle
@@ -12,6 +12,7 @@ from collections import OrderedDict
 import bottleneck as bn
 import numpy as np
 import pandas as pd
+import plotly
 import plotly.express as px
 import ray
 import statsmodels.api as sm
@@ -251,7 +252,13 @@ def pool_ordering_refine(
 
             if RUNHEADER._debug_on:
                 for var_name in list(mon_df["VarName"]):
-                    px.line(df[var_name])
+                    fig = px.line(df[var_name])
+                    plotly.io.write_image(
+                        fig=fig,
+                        file=f"./datasets/rawdata/{target_index_name}_{var_name}_{RUNHEADER.var_select_factor}.jpeg",
+                        format="jpeg",
+                        scale=0.5,
+                    )
 
     ordered_ids = list(set(ordered_ids_list))
     # 2-3-2. re-assign

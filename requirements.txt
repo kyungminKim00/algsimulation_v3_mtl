@@ -28,3 +28,4 @@ mpi4py==3.0.3
 mplfinance
 matplotlib
 ipykernel
+kaleido
